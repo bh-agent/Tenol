@@ -159,12 +159,12 @@ export async function POST(request: Request) {
 
     if (v2Result) {
       // Map V2 GameSlot[] to DB format
-      // game_order is 1-based sequential across all games
+      // game_order = time slot number (1-based), same for all courts in same slot
       // court_number is 1-based (courtIndex + 1)
-      gameInserts = v2Result.games.map((g, idx) => ({
+      gameInserts = v2Result.games.map((g) => ({
         draw_id: draw.id,
         court_number: g.courtIndex + 1,
-        game_order: idx + 1,
+        game_order: g.timeSlotIndex + 1,
         team_a_player1_id: g.teamA.player1.id,
         team_a_player2_id: g.teamA.player2.id,
         team_b_player1_id: g.teamB.player1.id,
