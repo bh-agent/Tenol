@@ -123,6 +123,10 @@ export const updateMediaSchema = z.object({
   caption: sanitizedText.pipe(z.string().max(500)).nullable(),
 });
 
+export const commentBodySchema = sanitizedText.pipe(
+  z.string().min(1, '댓글을 입력해주세요').max(500, '댓글은 500자 이내로 입력해주세요')
+);
+
 // ============================================================
 // Profile Schemas
 // ============================================================

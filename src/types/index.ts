@@ -149,3 +149,29 @@ export type Notification = {
   is_read: boolean;
   created_at: string;
 };
+
+export type Media = {
+  id: string;
+  club_id: string;
+  match_id: string | null;
+  uploaded_by: string;
+  file_url: string;
+  file_type: 'image' | 'video';
+  file_urls: { url: string; type: 'image' | 'video' }[];
+  caption: string | null;
+  feed_type: 'club' | 'personal';
+  created_at: string;
+  like_count?: number;
+  comment_count?: number;
+  profiles?: { display_name: string; avatar_url: string | null };
+  is_liked?: boolean;
+};
+
+export type MediaComment = {
+  id: string;
+  media_id: string;
+  user_id: string;
+  body: string;
+  created_at: string;
+  profiles?: { display_name: string; avatar_url: string | null };
+};

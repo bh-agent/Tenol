@@ -2,34 +2,51 @@
 
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { ImageViewer } from './image-viewer';
+import { LikeButton } from './like-button';
+import { DoubleTapHeart } from './double-tap-heart';
 import { updateMedia, deleteMedia } from '@/lib/actions/media';
-import { ChevronLeft, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { toggleLike } from '@/lib/actions/social';
+import { formatRelativeTime } from '@/lib/utils/format';
+import { cn } from '@/lib/utils/cn';
+import {
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  MessageCircle,
+  Send,
+  Bookmark,
+} from 'lucide-react';
 import Image from 'next/image';
-import { useState } from 'react';
+import Link from 'next/link';
+import { useCallback, useRef, useState, useTransition } from 'react';
 
 type MediaFile = { url: string; type: string };
 
 interface PostCardProps {
   post: {
     id: string;
-    file_url: string | null;
-    file_urls: MediaFile[] | null;
-    file_type: string | null;
+    file_url: string;
+    file_urls?: MediaFile[];
+    file_type: string;
     caption: string | null;
     created_at: string;
-    profiles?: { id: string; display_name: string; avatar_url: string | null } | null;
-    uploaded_by?: string;
+    uploaded_by: string;
+    like_count?: number;
+    comment_count?: number;
+    is_liked?: boolean;
+    profiles?: { display_name: string; avatar_url: string | null };
   };
   currentUserId?: string;
   isAdmin?: boolean;
-  onDeleted?: () => void;
-  onUpdated?: () => void;
+  onDelete?: (id: string) => void;
+  onUpdate?: (id: string, caption: string) => void;
 }
 
-export function PostCard({ post, currentUserId, isAdmin, onDeleted, onUpdated }: PostCardProps) {
+export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: PostCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
   const [showMenu, setShowMenu] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -37,8 +54,16 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted, onUpdated }:
   const [editCaption, setEditCaption] = useState(post.caption || '');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [captionExpanded, setCaptionExpanded] = useState(false);
+  const [liked, setLiked] = useState(post.is_liked ?? false);
+  const [likeCount, setLikeCount] = useState(post.like_count ?? 0);
+  const [, startTransition] = useTransition();
 
-  // file_urls가 있으면 사용, 없으면 file_url로 폴백
+  // Touch tracking for swipe carousel
+  const touchStartX = useRef(0);
+  const touchDeltaX = useRef(0);
+
+  // Build files array
   const files: MediaFile[] =
     post.file_urls && post.file_urls.length > 0
       ? post.file_urls
@@ -46,12 +71,8 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted, onUpdated }:
         ? [{ url: post.file_url, type: post.file_type || 'image' }]
         : [];
 
-  const canManage = currentUserId === post.uploaded_by || currentUserId === (post.profiles as any)?.id || isAdmin;
-
-  const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return `${d.getFullYear()}.${d.getMonth() + 1}.${d.getDate()}`;
-  };
+  const canManage = currentUserId === post.uploaded_by || isAdmin;
+  const displayName = post.profiles?.display_name || '알 수 없음';
 
   const handleDelete = async () => {
     if (!confirm('이 게시물을 삭제하시겠습니까?')) return;
@@ -59,7 +80,7 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted, onUpdated }:
     try {
       await deleteMedia(post.id);
       setShowMenu(false);
-      onDeleted?.();
+      onDelete?.(post.id);
     } catch (e) {
       alert(e instanceof Error ? e.message : '삭제에 실패했습니다');
     } finally {
@@ -72,7 +93,7 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted, onUpdated }:
     try {
       await updateMedia(post.id, editCaption || null);
       setShowEdit(false);
-      onUpdated?.();
+      onUpdate?.(post.id, editCaption);
     } catch (e) {
       alert(e instanceof Error ? e.message : '수정에 실패했습니다');
     } finally {
@@ -83,40 +104,85 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted, onUpdated }:
   const prevImage = () => setImageIndex((i) => Math.max(0, i - 1));
   const nextImage = () => setImageIndex((i) => Math.min(files.length - 1, i + 1));
 
+  const handleDoubleTapLike = useCallback(() => {
+    if (liked) return; // Already liked, just show animation
+    setLiked(true);
+    setLikeCount((c) => c + 1);
+    startTransition(async () => {
+      try {
+        const result = await toggleLike(post.id);
+        setLiked(result.liked);
+        setLikeCount(result.likeCount);
+      } catch {
+        setLiked(false);
+        setLikeCount((c) => Math.max(0, c - 1));
+      }
+    });
+  }, [liked, post.id, startTransition]);
+
+  // Swipe handlers for carousel
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchDeltaX.current = 0;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchDeltaX.current = e.touches[0].clientX - touchStartX.current;
+  };
+
+  const handleTouchEnd = () => {
+    if (Math.abs(touchDeltaX.current) > 50) {
+      if (touchDeltaX.current > 0) {
+        prevImage();
+      } else {
+        nextImage();
+      }
+    }
+    touchDeltaX.current = 0;
+  };
+
   if (files.length === 0) return null;
+
+  const captionText = post.caption || '';
+  const isCaptionLong = captionText.length > 80;
 
   return (
     <>
-      <Card padding="sm">
-        {/* Header */}
-        <div className="flex items-center gap-2 mb-3">
+      <article className="bg-[#141414] border-b border-[#2A2A2A]">
+        {/* ── Header ── */}
+        <div className="flex items-center gap-3 px-4 py-3">
           <Avatar
             src={post.profiles?.avatar_url}
-            alt={post.profiles?.display_name}
-            fallback={post.profiles?.display_name}
+            alt={displayName}
+            fallback={displayName}
             size="sm"
           />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-foreground">{post.profiles?.display_name}</p>
-            <p className="text-[10px] text-muted-foreground">{formatDate(post.created_at)}</p>
+          <div className="flex-1 min-w-0">
+            <Link
+              href={`/profile/${post.uploaded_by}`}
+              className="text-sm font-semibold text-foreground hover:text-primary transition-colors truncate block"
+            >
+              {displayName}
+            </Link>
           </div>
 
           {canManage && (
             <div className="relative">
               <button
                 onClick={() => setShowMenu(!showMenu)}
-                className="p-1.5 rounded-full hover:bg-surface-elevated transition-colors"
+                className="p-2 -mr-2 rounded-full hover:bg-surface-elevated transition-colors"
+                aria-label="더보기"
               >
-                <MoreVertical className="w-4 h-4 text-muted-foreground" />
+                <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
               </button>
 
               {showMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                  <div className="absolute right-0 top-8 z-50 bg-surface-elevated rounded-xl shadow-lg border border-border py-1 min-w-[120px] animate-fade-in">
+                  <div className="absolute right-0 top-10 z-50 bg-surface-elevated rounded-xl shadow-lg border border-border py-1 min-w-[140px] animate-fade-in">
                     <button
                       onClick={() => { setShowMenu(false); setShowEdit(true); }}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-surface-hover transition-colors"
                     >
                       <Pencil className="w-4 h-4" />
                       수정
@@ -124,7 +190,7 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted, onUpdated }:
                     <button
                       onClick={handleDelete}
                       disabled={deleting}
-                      className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-destructive hover:bg-surface-hover transition-colors"
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-destructive hover:bg-surface-hover transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                       {deleting ? '삭제 중...' : '삭제'}
@@ -136,77 +202,156 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted, onUpdated }:
           )}
         </div>
 
-        {/* Image Carousel */}
-        <div className="relative w-full aspect-square rounded-xl overflow-hidden bg-surface-elevated">
-          {files[imageIndex]?.type === 'video' ? (
-            <video
-              src={files[imageIndex].url}
-              controls
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <button
-              onClick={() => setViewerOpen(true)}
-              className="w-full h-full cursor-zoom-in"
-            >
-              <Image
-                src={files[imageIndex]?.url || ''}
-                alt={post.caption || ''}
-                fill
-                className="object-cover"
-              />
-            </button>
-          )}
-
-          {/* Navigation Arrows */}
-          {files.length > 1 && (
-            <>
-              {imageIndex > 0 && (
+        {/* ── Media Section (edge-to-edge) ── */}
+        <DoubleTapHeart onDoubleTap={handleDoubleTapLike}>
+          <div
+            className="relative w-full overflow-hidden bg-black"
+            style={{ maxHeight: '125vw' /* 4:5 aspect ratio max */ }}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <div className="relative w-full aspect-[4/5]">
+              {files[imageIndex]?.type === 'video' ? (
+                <video
+                  src={files[imageIndex].url}
+                  controls
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              ) : (
                 <button
-                  onClick={prevImage}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
+                  onClick={() => setViewerOpen(true)}
+                  className="w-full h-full cursor-zoom-in block"
                 >
-                  <ChevronLeft className="w-5 h-5 text-white" />
-                </button>
-              )}
-              {imageIndex < files.length - 1 && (
-                <button
-                  onClick={nextImage}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
-                >
-                  <ChevronRight className="w-5 h-5 text-white" />
-                </button>
-              )}
-
-              {/* Dots */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                {files.map((_, i) => (
-                  <div
-                    key={i}
-                    className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                      i === imageIndex ? 'bg-primary' : 'bg-white/40'
-                    }`}
+                  <Image
+                    src={files[imageIndex]?.url || ''}
+                    alt={post.caption || ''}
+                    fill
+                    className="object-cover"
+                    sizes="100vw"
                   />
-                ))}
-              </div>
-            </>
-          )}
+                </button>
+              )}
 
-          {/* Photo Count Badge */}
-          {files.length > 1 && (
-            <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-[10px] font-medium px-2 py-0.5 rounded-full">
-              {imageIndex + 1}/{files.length}
+              {/* Navigation arrows */}
+              {files.length > 1 && (
+                <>
+                  {imageIndex > 0 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); prevImage(); }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-white" />
+                    </button>
+                  )}
+                  {imageIndex < files.length - 1 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); nextImage(); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/70 transition-colors"
+                    >
+                      <ChevronRight className="w-5 h-5 text-white" />
+                    </button>
+                  )}
+
+                  {/* Photo count badge */}
+                  <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1 rounded-full">
+                    {imageIndex + 1}/{files.length}
+                  </div>
+                </>
+              )}
             </div>
-          )}
+          </div>
+        </DoubleTapHeart>
+
+        {/* ── Dot indicators (below media, not overlaid) ── */}
+        {files.length > 1 && (
+          <div className="flex justify-center gap-1.5 py-2.5">
+            {files.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setImageIndex(i)}
+                className={cn(
+                  'w-1.5 h-1.5 rounded-full transition-all duration-200',
+                  i === imageIndex
+                    ? 'bg-primary scale-125'
+                    : 'bg-[#555555]'
+                )}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* ── Action Bar ── */}
+        <div className="flex items-center justify-between px-4 pt-2 pb-1">
+          <div className="flex items-center gap-4">
+            <LikeButton
+              mediaId={post.id}
+              initialLiked={liked}
+              initialCount={likeCount}
+              showCount={false}
+              size={24}
+            />
+            <button className="hover:opacity-70 transition-opacity" aria-label="댓글">
+              <MessageCircle size={24} className="text-[#A0A0A0]" strokeWidth={1.5} />
+            </button>
+            <button className="hover:opacity-70 transition-opacity" aria-label="공유">
+              <Send size={22} className="text-[#A0A0A0] -rotate-12" strokeWidth={1.5} />
+            </button>
+          </div>
+          <button className="hover:opacity-70 transition-opacity" aria-label="저장">
+            <Bookmark size={24} className="text-[#A0A0A0]" strokeWidth={1.5} />
+          </button>
         </div>
 
-        {/* Caption */}
-        {post.caption && (
-          <p className="text-sm mt-2 text-foreground">{post.caption}</p>
+        {/* ── Like Count ── */}
+        {likeCount > 0 && (
+          <div className="px-4 pt-1">
+            <span className="text-sm font-semibold text-foreground">
+              좋아요 {likeCount.toLocaleString()}개
+            </span>
+          </div>
         )}
-      </Card>
 
-      {/* Fullscreen Image Viewer */}
+        {/* ── Caption Section ── */}
+        {captionText && (
+          <div className="px-4 pt-1.5">
+            <p className={cn(
+              'text-sm text-foreground leading-relaxed',
+              !captionExpanded && isCaptionLong && 'line-clamp-2'
+            )}>
+              <Link href={`/profile/${post.uploaded_by}`} className="font-semibold mr-1.5 hover:text-primary transition-colors">{displayName}</Link>
+              {captionText}
+            </p>
+            {isCaptionLong && !captionExpanded && (
+              <button
+                onClick={() => setCaptionExpanded(true)}
+                className="text-sm text-muted-foreground mt-0.5 hover:text-foreground transition-colors"
+              >
+                더 보기
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* ── Comments Preview ── */}
+        {(post.comment_count ?? 0) > 0 && (
+          <div className="px-4 pt-1.5">
+            <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              댓글 {post.comment_count?.toLocaleString()}개 모두 보기
+            </button>
+          </div>
+        )}
+
+        {/* ── Relative Time ── */}
+        <div className="px-4 pt-2 pb-4">
+          <time className="text-[11px] text-muted-foreground uppercase tracking-wide">
+            {formatRelativeTime(post.created_at)}
+          </time>
+        </div>
+      </article>
+
+      {/* ── Fullscreen Image Viewer ── */}
       <ImageViewer
         images={files}
         initialIndex={imageIndex}
@@ -214,7 +359,7 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted, onUpdated }:
         onClose={() => setViewerOpen(false)}
       />
 
-      {/* Edit Modal */}
+      {/* ── Edit Modal ── */}
       <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title="게시물 수정">
         <div className="space-y-4">
           <textarea
