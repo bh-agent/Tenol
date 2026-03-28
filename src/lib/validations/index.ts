@@ -28,7 +28,7 @@ export const matchStatusSchema = z.enum(['upcoming', 'in_progress', 'completed',
 
 export const matchFormatSchema = z.enum(['doubles', 'singles', 'mixed_doubles']);
 
-export const drawTypeSchema = z.enum(['random', 'ntrp_balanced', 'mixed_gender']);
+export const drawTypeSchema = z.enum(['random', 'ntrp_balanced', 'mixed_gender', 'mixed_doubles', 'mens_doubles', 'womens_doubles', 'free']);
 
 export const feedTypeSchema = z.enum(['club', 'personal']);
 
@@ -148,6 +148,7 @@ export const updateProfileSchema = z.object({
   bio: sanitizedText.pipe(z.string().max(200)).nullable(),
   ntrp_level: z.number().min(1.0).max(7.0).nullable(),
   tennis_start_date: z.string().regex(/^\d{4}-\d{2}-01$/).nullable(),
+  gender: genderSchema.optional(),
 });
 
 export const completeOnboardingSchema = z.object({
@@ -166,6 +167,10 @@ export const generateDrawSchema = z.object({
   matchId: uuidSchema,
   drawType: drawTypeSchema,
   roundNumber: z.number().int().min(1).max(50).default(1),
+  gamesPerCourt: z.number().int().min(1).max(50).optional(),
+  timeSlotMinutes: z.number().int().min(5).max(120).optional(),
+  startTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  courtNames: z.array(z.string().max(50)).optional(),
 });
 
 export const deleteDrawSchema = z.object({

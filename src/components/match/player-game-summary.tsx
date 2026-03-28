@@ -35,6 +35,7 @@ type Participant = {
 interface PlayerGameSummaryProps {
   games: GameData[];
   participantMap: Record<string, Participant>;
+  courtNames?: Record<number, string>;
 }
 
 type PlayerSummary = {
@@ -42,18 +43,20 @@ type PlayerSummary = {
   name: string;
   gender: string | null;
   gameCount: number;
-  gameNumbers: number[];
-  courts: number[];
+  // Each entry: { gameOrder, courtNumber }
+  appearances: { gameOrder: number; courtNumber: number }[];
 };
 
-export function PlayerGameSummary({ games, participantMap }: PlayerGameSummaryProps) {
+export function PlayerGameSummary({ games, participantMap, courtNames }: PlayerGameSummaryProps) {
   if (games.length === 0) return null;
 
-  // Build per-player summary
+  const getCourtName = (courtNum: number) =>
+    courtNames?.[courtNum] || `${courtNum}코트`;
+
+  // Build per-player summary using game_order
   const summaryMap: Record<string, PlayerSummary> = {};
 
-  games.forEach((game, idx) => {
-    const gameNumber = idx + 1;
+  games.forEach((game) => {
     const playerIds = [
       game.team_a_player1_id,
       game.team_a_player2_id,
@@ -69,27 +72,29 @@ export function PlayerGameSummary({ games, participantMap }: PlayerGameSummaryPr
           name: p?.name || '???',
           gender: p?.gender || null,
           gameCount: 0,
-          gameNumbers: [],
-          courts: [],
+          appearances: [],
         };
       }
       summaryMap[pid].gameCount++;
-      summaryMap[pid].gameNumbers.push(gameNumber);
-      if (!summaryMap[pid].courts.includes(game.court_number)) {
-        summaryMap[pid].courts.push(game.court_number);
-      }
+      summaryMap[pid].appearances.push({
+        gameOrder: game.game_order,
+        courtNumber: game.court_number,
+      });
     });
   });
 
+  // Sort by first game appearance (game_order)
   const summaries = Object.values(summaryMap).sort((a, b) => {
-    if (b.gameCount !== a.gameCount) return b.gameCount - a.gameCount;
+    const aFirst = Math.min(...a.appearances.map((ap) => ap.gameOrder));
+    const bFirst = Math.min(...b.appearances.map((ap) => ap.gameOrder));
+    if (aFirst !== bFirst) return aFirst - bFirst;
     return a.name.localeCompare(b.name, 'ko');
   });
 
   if (summaries.length === 0) return null;
 
   const avgGames = summaries.reduce((sum, s) => sum + s.gameCount, 0) / summaries.length;
-  const threshold = avgGames * 0.3; // 30% deviation from average
+  const threshold = avgGames * 0.3;
 
   return (
     <Card variant="glass" padding="lg">
@@ -104,7 +109,7 @@ export function PlayerGameSummary({ games, participantMap }: PlayerGameSummaryPr
             <tr className="border-b border-border">
               <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">이름</th>
               <th className="text-center py-2 px-2 text-xs font-semibold text-muted-foreground">경기 수</th>
-              <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">게임 번호</th>
+              <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">참여 경기</th>
               <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">코트</th>
             </tr>
           </thead>
@@ -112,6 +117,11 @@ export function PlayerGameSummary({ games, participantMap }: PlayerGameSummaryPr
             {summaries.map((s) => {
               const isMuchMore = s.gameCount > avgGames + threshold;
               const isMuchLess = s.gameCount < avgGames - threshold;
+              // Sort appearances by game order
+              const sorted = [...s.appearances].sort((a, b) => a.gameOrder - b.gameOrder);
+              const gameOrderLabels = sorted.map((ap) => `${ap.gameOrder}번째`).join(', ');
+              const courtLabels = sorted.map((ap) => getCourtName(ap.courtNumber)).join(', ');
+
               return (
                 <tr
                   key={s.participantId}
@@ -138,11 +148,11 @@ export function PlayerGameSummary({ games, participantMap }: PlayerGameSummaryPr
                       {s.gameCount}
                     </Badge>
                   </td>
-                  <td className="py-2.5 px-2 text-muted-foreground">
-                    {s.gameNumbers.join(', ')}번
+                  <td className="py-2.5 px-2 text-muted-foreground text-xs">
+                    {gameOrderLabels}
                   </td>
-                  <td className="py-2.5 px-2 text-muted-foreground">
-                    {s.courts.sort((a, b) => a - b).join(', ')}번
+                  <td className="py-2.5 px-2 text-muted-foreground text-xs">
+                    {courtLabels}
                   </td>
                 </tr>
               );

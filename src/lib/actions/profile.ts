@@ -16,11 +16,14 @@ export async function updateProfile(formData: FormData) {
   const startMonth = formData.get('tennis_start_date') as string;
   const tennisStartDate = startMonth ? `${startMonth}-01` : null;
 
+  const genderRaw = formData.get('gender') as string | null;
+
   const validated = updateProfileSchema.parse({
     display_name: formData.get('display_name'),
     bio: formData.get('bio') as string || null,
     ntrp_level: formData.get('ntrp_level') ? Number(formData.get('ntrp_level')) : null,
     tennis_start_date: tennisStartDate,
+    gender: genderRaw || undefined,
   });
 
   const updateData: Record<string, unknown> = {
@@ -29,6 +32,10 @@ export async function updateProfile(formData: FormData) {
     ntrp_level: validated.ntrp_level,
     updated_at: new Date().toISOString(),
   };
+
+  if (validated.gender) {
+    updateData.gender = validated.gender;
+  }
 
   if (validated.tennis_start_date !== undefined) {
     updateData.tennis_start_date = validated.tennis_start_date;

@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal';
 import { updateProfile, updateProfileAvatar } from '@/lib/actions/profile';
 import { NTRP_LEVELS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/utils/cn';
 import { Settings, HelpCircle, Camera } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
@@ -61,6 +62,7 @@ export function ProfileEditButton({ profile }: ProfileEditButtonProps) {
 
   const [startYear, setStartYear] = useState(existingYear);
   const [startMonth, setStartMonth] = useState(existingMonth);
+  const [editGender, setEditGender] = useState<string>(profile.gender || '');
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,6 +113,9 @@ export function ProfileEditButton({ profile }: ProfileEditButtonProps) {
       formData.set('tennis_start_date', '');
     }
 
+    if (editGender) {
+      formData.set('gender', editGender);
+    }
     await updateProfile(formData);
     setIsOpen(false);
     router.refresh();
@@ -176,6 +181,39 @@ export function ProfileEditButton({ profile }: ProfileEditButtonProps) {
               defaultValue={profile.bio || ''}
               placeholder="한 줄로 나를 소개해보세요"
             />
+
+            {/* Gender Selection */}
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-1.5">
+                성별
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditGender('M')}
+                  className={cn(
+                    'h-11 rounded-xl border text-sm font-medium transition-all duration-200',
+                    editGender === 'M'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-surface text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                  )}
+                >
+                  남성
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditGender('F')}
+                  className={cn(
+                    'h-11 rounded-xl border text-sm font-medium transition-all duration-200',
+                    editGender === 'F'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-surface text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                  )}
+                >
+                  여성
+                </button>
+              </div>
+            </div>
 
             {/* NTRP with help button */}
             <div>

@@ -9,6 +9,7 @@ import { Modal } from '@/components/ui/modal';
 import { updateProfile, updateProfileAvatar } from '@/lib/actions/profile';
 import { NTRP_LEVELS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
+import { cn } from '@/lib/utils/cn';
 import { Camera, Pencil, HelpCircle, Calendar } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
@@ -67,6 +68,7 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showNtrpGuide, setShowNtrpGuide] = useState(false);
+  const [editGender, setEditGender] = useState<string>(profile.gender || '');
 
   const existingYear = profile.tennis_start_date?.substring(0, 4) || '';
   const existingMonth = profile.tennis_start_date?.substring(5, 7) || '';
@@ -115,7 +117,11 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
     } else {
       formData.set('tennis_start_date', '');
     }
+    if (editGender) {
+      formData.set('gender', editGender);
+    }
     await updateProfile(formData);
+    setProfile((p) => ({ ...p, gender: (editGender as 'M' | 'F') || p.gender }));
     setShowEdit(false);
     router.refresh();
   };
@@ -169,6 +175,9 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
 
         {/* Info Badges */}
         <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+          {profile.gender && (
+            <Badge variant="outline">{profile.gender === 'M' ? '남성' : '여성'}</Badge>
+          )}
           {profile.ntrp_level && (
             <Badge variant="primary">NTRP {profile.ntrp_level}</Badge>
           )}
@@ -206,6 +215,39 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
             defaultValue={profile.bio || ''}
             placeholder="한 줄로 나를 소개해보세요"
           />
+
+          {/* Gender Selection */}
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              성별
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setEditGender('M')}
+                className={cn(
+                  'h-11 rounded-xl border text-sm font-medium transition-all duration-200',
+                  editGender === 'M'
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-surface text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                )}
+              >
+                남성
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditGender('F')}
+                className={cn(
+                  'h-11 rounded-xl border text-sm font-medium transition-all duration-200',
+                  editGender === 'F'
+                    ? 'border-primary bg-primary/10 text-primary'
+                    : 'border-border bg-surface text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                )}
+              >
+                여성
+              </button>
+            </div>
+          </div>
 
           <div>
             <div className="flex items-center gap-1 mb-1.5">

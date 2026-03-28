@@ -29,3 +29,10 @@ export const DRAW_TYPES = [
   { value: 'mixed_gender', label: '혼성' },
   { value: 'manual', label: '수동' },
 ] as const;
+
+export const NEW_DRAW_TYPES = [
+  { value: 'mixed_doubles', label: '혼복 (남녀 1명씩)' },
+  { value: 'mens_doubles', label: '남복 (남성 복식)' },
+  { value: 'womens_doubles', label: '여복 (여성 복식)' },
+  { value: 'free', label: '성별 무관' },
+] as const;

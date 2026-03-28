@@ -1,9 +1,12 @@
 import { createClient } from '@/lib/supabase/server';
-import { generateDraw } from '@/lib/draw-engine';
+import { generateDraw, generateDrawNew } from '@/lib/draw-engine';
+import type { DrawType as EngineDrawType } from '@/lib/draw-engine';
 import { createNotification } from '@/lib/actions/notifications';
 import { requireMatchPermission } from '@/lib/utils/check-permission';
 import { generateDrawSchema } from '@/lib/validations';
 import { NextResponse } from 'next/server';
+
+const NEW_DRAW_TYPES = new Set(['mixed_doubles', 'mens_doubles', 'womens_doubles', 'free']);
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +24,7 @@ export async function POST(request: Request) {
       .select(`
         id, title, court_count, format, created_by, club_id,
         match_participants (
-          id, user_id, guest_name, participant_type, status, ntrp_override,
+          id, user_id, guest_name, guest_gender, participant_type, status, ntrp_override,
           profiles:user_id (id, display_name, avatar_url, ntrp_level, gender)
         )
       `)
@@ -32,15 +35,46 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '경기를 찾을 수 없습니다' }, { status: 404 });
     }
 
-    // Generate draw
-    const games = generateDraw(
-      {
+    const isNewDrawType = NEW_DRAW_TYPES.has(validated.drawType);
+
+    let games;
+    let sitOuts: any[] = [];
+    let timeSlots: any[] = [];
+    let teams: any[] = [];
+
+    if (isNewDrawType) {
+      // New draw engine
+      const teamCount = Math.floor(
+        (match.match_participants as any[]).filter((p: any) => p.status === 'confirmed').length / 2
+      );
+      const totalGames = (teamCount * (teamCount - 1)) / 2;
+      const defaultGamesPerCourt = Math.max(1, Math.ceil(totalGames / match.court_count));
+
+      const result = generateDrawNew({
         participants: match.match_participants as any,
         courtCount: match.court_count,
-        format: match.format as any,
-      },
-      validated.drawType
-    );
+        gamesPerCourt: validated.gamesPerCourt || defaultGamesPerCourt,
+        drawType: validated.drawType as EngineDrawType,
+        timeSlotMinutes: validated.timeSlotMinutes,
+        startTime: validated.startTime,
+        courtNames: validated.courtNames,
+      });
+
+      games = result.games;
+      sitOuts = result.sitOuts;
+      timeSlots = result.timeSlots;
+      teams = result.teams;
+    } else {
+      // Legacy draw engine
+      games = generateDraw(
+        {
+          participants: match.match_participants as any,
+          courtCount: match.court_count,
+          format: match.format as any,
+        },
+        validated.drawType as any,
+      );
+    }
 
     // Delete existing draw for this round if exists
     await supabase
@@ -103,7 +137,14 @@ export async function POST(request: Request) {
       }
     }
 
-    return NextResponse.json({ success: true, drawId: draw.id, gameCount: games.length });
+    return NextResponse.json({
+      success: true,
+      drawId: draw.id,
+      gameCount: games.length,
+      sitOutCount: sitOuts.length,
+      teamCount: teams.length,
+      timeSlots: timeSlots.length > 0 ? timeSlots : undefined,
+    });
   } catch (error) {
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json({ error: '잘못된 요청 데이터입니다' }, { status: 400 });
