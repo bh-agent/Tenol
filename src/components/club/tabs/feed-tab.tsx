@@ -88,7 +88,7 @@ export function FeedTab({ clubId, media: initialMedia, canUpload }: FeedTabProps
       <Modal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
-        title="사진 올리기"
+        title="새 게시물"
       >
         <MultiUpload
           storagePath={clubId}
