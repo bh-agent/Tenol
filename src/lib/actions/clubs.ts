@@ -51,24 +51,79 @@ export async function joinClubByCode(inviteCode: string) {
 
   const { data: club, error: clubError } = await supabase
     .from('clubs')
-    .select('id')
+    .select('id, name')
     .eq('invite_code', validCode)
     .single();
 
   if (clubError || !club) throw new Error('유효하지 않은 초대 코드입니다');
 
-  const { error } = await supabase.from('club_members').insert({
+  // 이미 멤버인지 확인
+  const { data: existingMember } = await supabase
+    .from('club_members')
+    .select('id')
+    .eq('club_id', club.id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (existingMember) throw new Error('이미 가입된 클럽입니다');
+
+  // 이미 신청했는지 확인
+  const { data: existingRequest } = await supabase
+    .from('club_join_requests')
+    .select('id, status')
+    .eq('club_id', club.id)
+    .eq('user_id', user.id)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (existingRequest) throw new Error('이미 가입 신청 중입니다');
+
+  // 이전 거절 기록이 있으면 삭제 후 재신청
+  await supabase
+    .from('club_join_requests')
+    .delete()
+    .eq('club_id', club.id)
+    .eq('user_id', user.id)
+    .neq('status', 'pending');
+
+  const { error } = await supabase.from('club_join_requests').insert({
     club_id: club.id,
     user_id: user.id,
-    role: 'member',
+    message: '초대 코드로 가입 신청',
   });
 
   if (error) {
-    if (error.code === '23505') throw new Error('이미 가입된 클럽입니다');
-    throw new Error('클럽 가입에 실패했습니다');
+    if (error.code === '23505') throw new Error('이미 가입 신청 중입니다');
+    throw new Error('가입 신청에 실패했습니다');
   }
 
-  redirect(`/clubs/${club.id}`);
+  // 클럽 관리자에게 알림 전송
+  try {
+    const { data: admins } = await supabase
+      .from('club_members')
+      .select('user_id')
+      .eq('club_id', club.id)
+      .in('role', ['owner', 'admin']);
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', user.id)
+      .single();
+
+    const { createNotification } = await import('@/lib/actions/notifications');
+    for (const admin of admins || []) {
+      await createNotification(
+        admin.user_id,
+        'join_request',
+        '새 가입 신청',
+        `${profile?.display_name || '회원'}님이 "${club.name}" 클럽에 가입을 신청했습니다.`,
+        { club_id: club.id }
+      ).catch(() => {});
+    }
+  } catch {
+    // 알림 실패해도 가입 신청은 성공
+  }
 }
 
 // club.edit 권한 필요 (회장만)
@@ -193,25 +248,176 @@ export async function joinPublicClub(clubId: string) {
   // 공개 클럽인지 확인
   const { data: club } = await supabase
     .from('clubs')
-    .select('id, is_public')
+    .select('id, name, is_public')
     .eq('id', validClubId)
     .eq('is_public', true)
     .single();
 
   if (!club) throw new Error('공개 클럽이 아니거나 존재하지 않는 클럽입니다');
 
-  const { error } = await supabase.from('club_members').insert({
+  // 이미 멤버인지 확인
+  const { data: existingMember } = await supabase
+    .from('club_members')
+    .select('id')
+    .eq('club_id', validClubId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (existingMember) throw new Error('이미 가입된 클럽입니다');
+
+  // 이미 신청했는지 확인
+  const { data: existingRequest } = await supabase
+    .from('club_join_requests')
+    .select('id, status')
+    .eq('club_id', validClubId)
+    .eq('user_id', user.id)
+    .eq('status', 'pending')
+    .maybeSingle();
+
+  if (existingRequest) throw new Error('이미 가입 신청 중입니다');
+
+  // 이전 거절 기록이 있으면 삭제 후 재신청
+  await supabase
+    .from('club_join_requests')
+    .delete()
+    .eq('club_id', validClubId)
+    .eq('user_id', user.id)
+    .neq('status', 'pending');
+
+  const { error } = await supabase.from('club_join_requests').insert({
     club_id: validClubId,
     user_id: user.id,
-    role: 'member',
   });
 
   if (error) {
-    if (error.code === '23505') throw new Error('이미 가입된 클럽입니다');
-    throw new Error('클럽 가입에 실패했습니다');
+    if (error.code === '23505') throw new Error('이미 가입 신청 중입니다');
+    throw new Error('가입 신청에 실패했습니다');
   }
 
-  redirect(`/clubs/${validClubId}`);
+  // 클럽 관리자에게 알림 전송
+  try {
+    const { data: admins } = await supabase
+      .from('club_members')
+      .select('user_id')
+      .eq('club_id', validClubId)
+      .in('role', ['owner', 'admin']);
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name')
+      .eq('id', user.id)
+      .single();
+
+    const { createNotification } = await import('@/lib/actions/notifications');
+    for (const admin of admins || []) {
+      await createNotification(
+        admin.user_id,
+        'join_request',
+        '새 가입 신청',
+        `${profile?.display_name || '회원'}님이 "${club.name}" 클럽에 가입을 신청했습니다.`,
+        { club_id: validClubId }
+      ).catch(() => {});
+    }
+  } catch {
+    // 알림 실패해도 가입 신청은 성공
+  }
+}
+
+// member.manage 권한 필요 - 가입 신청 승인/거절
+export async function respondToJoinRequest(requestId: string, approved: boolean) {
+  const validRequestId = uuidSchema.parse(requestId);
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('인증이 필요합니다');
+
+  // 신청 정보 조회
+  const { data: request } = await supabase
+    .from('club_join_requests')
+    .select('id, club_id, user_id, status')
+    .eq('id', validRequestId)
+    .single();
+
+  if (!request) throw new Error('가입 신청을 찾을 수 없습니다');
+  if (request.status !== 'pending') throw new Error('이미 처리된 신청입니다');
+
+  // 권한 확인
+  await requirePermission(request.club_id, 'member.manage');
+
+  if (approved) {
+    // 승인: club_members에 추가
+    const { error: memberError } = await supabase.from('club_members').insert({
+      club_id: request.club_id,
+      user_id: request.user_id,
+      role: 'member',
+    });
+
+    if (memberError) {
+      if (memberError.code === '23505') {
+        // 이미 멤버인 경우 신청만 업데이트
+      } else {
+        throw new Error('멤버 추가에 실패했습니다');
+      }
+    }
+  }
+
+  // 신청 상태 업데이트
+  const { error: updateError } = await supabase
+    .from('club_join_requests')
+    .update({
+      status: approved ? 'approved' : 'rejected',
+      responded_by: user.id,
+      responded_at: new Date().toISOString(),
+    })
+    .eq('id', validRequestId);
+
+  if (updateError) throw new Error('신청 처리에 실패했습니다');
+
+  // 신청자에게 알림 전송
+  try {
+    const { data: club } = await supabase
+      .from('clubs')
+      .select('name')
+      .eq('id', request.club_id)
+      .single();
+
+    const { createNotification } = await import('@/lib/actions/notifications');
+    await createNotification(
+      request.user_id,
+      approved ? 'join_approved' : 'join_rejected',
+      approved ? '가입이 승인되었습니다' : '가입이 거절되었습니다',
+      approved
+        ? `"${club?.name || '클럽'}" 클럽 가입이 승인되었습니다. 환영합니다!`
+        : `"${club?.name || '클럽'}" 클럽 가입이 거절되었습니다.`,
+      { club_id: request.club_id }
+    );
+  } catch {
+    // 알림 실패해도 주요 기능은 계속 진행
+  }
+}
+
+// 사용자가 자신의 가입 신청 취소
+export async function cancelJoinRequest(requestId: string) {
+  const validRequestId = uuidSchema.parse(requestId);
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('인증이 필요합니다');
+
+  const { data: request } = await supabase
+    .from('club_join_requests')
+    .select('id, user_id, status')
+    .eq('id', validRequestId)
+    .single();
+
+  if (!request) throw new Error('가입 신청을 찾을 수 없습니다');
+  if (request.user_id !== user.id) throw new Error('권한이 없습니다');
+  if (request.status !== 'pending') throw new Error('이미 처리된 신청입니다');
+
+  const { error } = await supabase
+    .from('club_join_requests')
+    .delete()
+    .eq('id', validRequestId);
+
+  if (error) throw new Error('신청 취소에 실패했습니다');
 }
 
 // club.edit 권한 필요 (회장만) - 클럽 삭제

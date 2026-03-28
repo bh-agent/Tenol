@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/search/search-input';
 import { FilterChips } from '@/components/search/filter-chips';
 import { SearchEmpty } from '@/components/search/search-empty';
-import { MapPin, Users } from 'lucide-react';
+import { MapPin, Users, Star, Clock, X } from 'lucide-react';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import { BookmarkButton } from '@/components/club/bookmark-button';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { joinPublicClub } from '@/lib/actions/clubs';
+import { joinPublicClub, cancelJoinRequest } from '@/lib/actions/clubs';
+import type { ClubJoinRequest } from '@/types';
 
 const REGION_CHIPS = [
   { key: 'all', label: '전체' },
@@ -39,6 +40,8 @@ interface ExploreClubListProps {
   initialQuery: string;
   initialRegion: string;
   bookmarkedClubIds?: string[];
+  memberClubIds?: string[];
+  joinRequests?: Record<string, ClubJoinRequest>;
 }
 
 export function ExploreClubList({
@@ -46,11 +49,16 @@ export function ExploreClubList({
   initialQuery,
   initialRegion,
   bookmarkedClubIds = [],
+  memberClubIds = [],
+  joinRequests: initialJoinRequests = {},
 }: ExploreClubListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [clubs] = useState(initialClubs);
+  const clubs = initialClubs;
   const [joiningId, setJoiningId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [cancelledIds, setCancelledIds] = useState<Set<string>>(new Set());
+  const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
 
   function updateSearch(query: string, region: string) {
@@ -76,11 +84,95 @@ export function ExploreClubList({
     try {
       startTransition(async () => {
         await joinPublicClub(clubId);
+        setRequestedIds((prev) => new Set(prev).add(clubId));
+        setJoiningId(null);
       });
     } catch (error: any) {
-      alert(error.message || '가입에 실패했습니다');
+      alert(error.message || '가입 신청에 실패했습니다');
       setJoiningId(null);
     }
+  }
+
+  async function handleCancel(requestId: string, clubId: string) {
+    setCancellingId(clubId);
+    try {
+      startTransition(async () => {
+        await cancelJoinRequest(requestId);
+        setCancelledIds((prev) => new Set(prev).add(clubId));
+        setCancellingId(null);
+      });
+    } catch (error: any) {
+      alert(error.message || '신청 취소에 실패했습니다');
+      setCancellingId(null);
+    }
+  }
+
+  function getClubStatus(clubId: string): 'member' | 'pending' | 'rejected' | 'none' {
+    if (memberClubIds.includes(clubId)) return 'member';
+    if (requestedIds.has(clubId) && !cancelledIds.has(clubId)) return 'pending';
+    if (cancelledIds.has(clubId)) return 'none';
+    const request = initialJoinRequests[clubId];
+    if (request?.status === 'pending') return 'pending';
+    if (request?.status === 'rejected') return 'rejected';
+    return 'none';
+  }
+
+  function renderJoinButton(club: any) {
+    const status = getClubStatus(club.id);
+    const request = initialJoinRequests[club.id];
+
+    if (status === 'member') {
+      return (
+        <Badge variant="success">가입됨</Badge>
+      );
+    }
+
+    if (status === 'pending') {
+      return (
+        <div className="flex items-center gap-2">
+          <Badge variant="warning" className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            승인 대기중
+          </Badge>
+          {request && (
+            <button
+              onClick={() => handleCancel(request.id, club.id)}
+              disabled={cancellingId === club.id || isPending}
+              className="text-xs text-muted-foreground hover:text-destructive transition-colors p-1 rounded"
+              title="신청 취소"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    if (status === 'rejected') {
+      return (
+        <div className="flex items-center gap-2">
+          <Badge variant="destructive" className="text-xs">거절됨</Badge>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleJoin(club.id)}
+            disabled={joiningId === club.id || isPending}
+          >
+            재신청
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <Button
+        size="sm"
+        onClick={() => handleJoin(club.id)}
+        disabled={joiningId === club.id || isPending}
+      >
+        {joiningId === club.id ? '신청 중...' : '가입 신청'}
+      </Button>
+    );
   }
 
   return (
@@ -143,15 +235,15 @@ export function ExploreClubList({
                       <Users className="w-3.5 h-3.5" />
                       {club.member_count}명
                     </span>
+                    {club.bookmark_count > 0 && (
+                      <span className="flex items-center gap-1">
+                        <Star className="w-3.5 h-3.5" />
+                        {club.bookmark_count}
+                      </span>
+                    )}
                   </div>
                   <div className="pt-1">
-                    <Button
-                      size="sm"
-                      onClick={() => handleJoin(club.id)}
-                      disabled={joiningId === club.id || isPending}
-                    >
-                      {joiningId === club.id ? '가입 중...' : '가입하기'}
-                    </Button>
+                    {renderJoinButton(club)}
                   </div>
                 </div>
               </div>

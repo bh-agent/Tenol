@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { TopBar } from '@/components/layout/top-bar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { getClub, getClubMembers, getMyRole } from '@/lib/queries/clubs';
+import { getClub, getClubMembers, getMyRole, getPendingJoinRequests } from '@/lib/queries/clubs';
 import { getClubMatches } from '@/lib/queries/matches';
 import { getClubMedia } from '@/lib/queries/media';
 import { formatRole } from '@/lib/utils/format';
@@ -20,6 +20,7 @@ import { ClubActivitySummary } from '@/components/club/club-activity-summary';
 import { BookmarkButton } from '@/components/club/bookmark-button';
 import { ShareButton } from '@/components/ui/share-button';
 import { isClubBookmarked } from '@/lib/queries/bookmarks';
+import { JoinRequestList } from '@/components/club/join-request-list';
 import { Suspense } from 'react';
 
 export default async function ClubDetailPage({
@@ -28,13 +29,14 @@ export default async function ClubDetailPage({
   params: Promise<{ clubId: string }>;
 }) {
   const { clubId } = await params;
-  const [club, members, matches, media, myRole, bookmarked] = await Promise.all([
+  const [club, members, matches, media, myRole, bookmarked, joinRequests] = await Promise.all([
     getClub(clubId),
     getClubMembers(clubId),
     getClubMatches(clubId),
     getClubMedia(clubId),
     getMyRole(clubId),
     isClubBookmarked(clubId),
+    getPendingJoinRequests(clubId),
   ]);
 
   if (!club) notFound();
@@ -120,6 +122,14 @@ export default async function ClubDetailPage({
           </div>
         </Card>
       </div>
+
+      {/* Join Requests for admins */}
+      {canManageMembers && joinRequests.length > 0 && (
+        <JoinRequestList
+          requests={JSON.parse(JSON.stringify(joinRequests))}
+          clubId={clubId}
+        />
+      )}
 
       {/* Quick Stats */}
       <div className="px-4 pt-2 pb-0 animate-fade-in">

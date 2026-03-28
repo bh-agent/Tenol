@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import type { ClubJoinRequest } from '@/types';
 
 export async function getMyClubs() {
   const supabase = await createClient();
@@ -80,10 +81,9 @@ export async function searchPublicClubs(query?: string, region?: string) {
   const supabase = await createClient();
 
   let q = supabase
-    .from('clubs')
+    .from('clubs_with_bookmark_count')
     .select(`
-      id, name, description, logo_url, region, main_court, is_public, created_at,
-      club_members (id)
+      id, name, description, logo_url, region, main_court, is_public, created_at, bookmark_count
     `)
     .eq('is_public', true);
 
@@ -95,14 +95,30 @@ export async function searchPublicClubs(query?: string, region?: string) {
     q = q.eq('region', region);
   }
 
-  q = q.order('created_at', { ascending: false });
+  q = q.order('bookmark_count', { ascending: false })
+    .order('created_at', { ascending: false });
 
   const { data } = await q;
 
+  // Batch-fetch member counts for returned clubs
+  const clubIds = (data || []).map((c) => c.id);
+  let memberCounts: Record<string, number> = {};
+  if (clubIds.length > 0) {
+    const { data: members } = await supabase
+      .from('club_members')
+      .select('club_id')
+      .in('club_id', clubIds);
+
+    if (members) {
+      for (const m of members) {
+        memberCounts[m.club_id] = (memberCounts[m.club_id] || 0) + 1;
+      }
+    }
+  }
+
   return (data || []).map((club) => ({
     ...club,
-    member_count: club.club_members?.length || 0,
-    club_members: undefined,
+    member_count: memberCounts[club.id] || 0,
   }));
 }
 
@@ -124,4 +140,70 @@ export async function getClubStats(clubId: string) {
     memberCount: memberResult.count || 0,
     matchCount: matchResult.count || 0,
   };
+}
+
+export async function getPendingJoinRequests(clubId: string): Promise<ClubJoinRequest[]> {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from('club_join_requests')
+    .select(`
+      id, club_id, user_id, message, status, responded_by, created_at, responded_at,
+      profiles:user_id (
+        id, display_name, avatar_url, ntrp_level, gender
+      )
+    `)
+    .eq('club_id', clubId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true });
+
+  return (data as unknown as ClubJoinRequest[]) || [];
+}
+
+export async function getMyJoinRequestStatus(clubId: string): Promise<ClubJoinRequest | null> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data } = await supabase
+    .from('club_join_requests')
+    .select('id, club_id, user_id, message, status, responded_by, created_at, responded_at')
+    .eq('club_id', clubId)
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data as ClubJoinRequest | null;
+}
+
+export async function getMyJoinRequestsForClubs(clubIds: string[]): Promise<Record<string, ClubJoinRequest>> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || clubIds.length === 0) return {};
+
+  const { data } = await supabase
+    .from('club_join_requests')
+    .select('id, club_id, user_id, message, status, created_at, responded_at')
+    .eq('user_id', user.id)
+    .in('club_id', clubIds);
+
+  const map: Record<string, ClubJoinRequest> = {};
+  for (const req of (data || []) as ClubJoinRequest[]) {
+    map[req.club_id] = req;
+  }
+  return map;
+}
+
+export async function getMyMembershipClubIds(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from('club_members')
+    .select('club_id')
+    .eq('user_id', user.id);
+
+  return (data || []).map((m: any) => m.club_id);
 }

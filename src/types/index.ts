@@ -130,6 +130,20 @@ export type PlayerGameStat = {
   team: 'team_a' | 'team_b';
 };
 
+export type JoinRequestStatus = 'pending' | 'approved' | 'rejected';
+
+export type ClubJoinRequest = {
+  id: string;
+  club_id: string;
+  user_id: string;
+  message: string | null;
+  status: JoinRequestStatus;
+  responded_by: string | null;
+  created_at: string;
+  responded_at: string | null;
+  profiles?: Profile;
+};
+
 export type NotificationType =
   | 'match_invite'
   | 'guest_approved'
@@ -139,7 +153,10 @@ export type NotificationType =
   | 'score_updated'
   | 'role_changed'
   | 'new_follower'
-  | 'mention';
+  | 'mention'
+  | 'join_request'
+  | 'join_approved'
+  | 'join_rejected';
 
 export type Notification = {
   id: string;
