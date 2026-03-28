@@ -103,16 +103,8 @@ const DRAW_MODE_OPTIONS: {
 // ── Draw mode → API draw type mapping ──
 
 function mapDrawModeToApiType(mode: DrawMode): string {
-  switch (mode) {
-    case 'mixed_all':
-      return 'mixed_doubles';
-    case 'mixed_only':
-      return 'mixed_doubles';
-    case 'gendered_only':
-      return 'mens_doubles';
-    case 'free':
-      return 'free';
-  }
+  // Send v2 mode directly to API - the API route detects v2 modes
+  return mode;
 }
 
 function mapDrawTypeFromApi(apiType: string): string {
