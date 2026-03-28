@@ -8,11 +8,13 @@ import { TopBar } from '@/components/layout/top-bar';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs } from '@/lib/queries/clubs';
 import { getPlayerStats } from '@/lib/queries/stats';
+import { getFollowStatus } from '@/lib/queries/follow';
 import { BarChart3, Users, ChevronRight, Crown, Shield, Plus, Search } from 'lucide-react';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { ProfileHeader } from '@/components/profile/profile-header';
+import { ProfileStatsBar } from '@/components/profile/profile-stats-bar';
 import { SignOutButton } from '@/components/profile/sign-out-button';
 import { ProfileFeed } from '@/components/profile/profile-feed';
 
@@ -29,9 +31,10 @@ export default async function ProfilePage() {
 
   if (!profile) redirect('/login');
 
-  const [clubs, overallStats] = await Promise.all([
+  const [clubs, overallStats, followStatus] = await Promise.all([
     getMyClubs(),
     getPlayerStats(user.id),
+    getFollowStatus(user.id),
   ]);
 
   const getRoleIcon = (role: string) => {
@@ -47,6 +50,14 @@ export default async function ProfilePage() {
       <div className="px-4 py-5 space-y-5 animate-fade-in">
         {/* Profile Header */}
         <ProfileHeader profile={JSON.parse(JSON.stringify(profile))} />
+
+        {/* Follow Stats Bar */}
+        <ProfileStatsBar
+          userId={user.id}
+          postCount={followStatus.postCount}
+          followerCount={followStatus.followerCount}
+          followingCount={followStatus.followingCount}
+        />
 
         {/* Overall Stats Summary */}
         <Card variant="glass" padding="lg">

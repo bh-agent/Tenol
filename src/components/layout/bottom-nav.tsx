@@ -1,14 +1,15 @@
 'use client';
 
 import { cn } from '@/lib/utils/cn';
-import { Home, Compass, Trophy, User } from 'lucide-react';
+import { Home, Compass, Users, Trophy, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const navItems = [
-  { href: '/clubs', label: '홈', icon: Home },
+  { href: '/feed', label: '홈', icon: Home },
   { href: '/clubs/explore', label: '탐색', icon: Compass },
-  { href: '/my-matches', label: '내 경기', icon: Trophy },
+  { href: '/clubs', label: '클럽', icon: Users },
+  { href: '/my-matches', label: '경기', icon: Trophy },
   { href: '/profile', label: '프로필', icon: User },
 ];
 
@@ -20,10 +21,16 @@ export function BottomNav() {
       <div className="max-w-lg mx-auto glass border border-border/50 rounded-2xl">
         <div className="flex items-center justify-around h-16">
           {navItems.map((item) => {
-            const isActive =
-              item.href === '/clubs'
-                ? pathname === '/clubs' || (pathname.startsWith('/clubs/') && !pathname.startsWith('/clubs/explore'))
-                : pathname.startsWith(item.href);
+            let isActive: boolean;
+            if (item.href === '/clubs') {
+              isActive = pathname === '/clubs' || (pathname.startsWith('/clubs/') && !pathname.startsWith('/clubs/explore'));
+            } else if (item.href === '/feed') {
+              isActive = pathname === '/feed' || pathname.startsWith('/feed/');
+            } else if (item.href === '/clubs/explore') {
+              isActive = pathname.startsWith('/clubs/explore');
+            } else {
+              isActive = pathname.startsWith(item.href);
+            }
 
             return (
               <Link

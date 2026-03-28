@@ -137,7 +137,8 @@ export type NotificationType =
   | 'match_reminder'
   | 'draw_published'
   | 'score_updated'
-  | 'role_changed';
+  | 'role_changed'
+  | 'new_follower';
 
 export type Notification = {
   id: string;
@@ -165,6 +166,20 @@ export type Media = {
   comment_count?: number;
   profiles?: { display_name: string; avatar_url: string | null };
   is_liked?: boolean;
+};
+
+export type Follow = {
+  id: string;
+  follower_id: string;
+  following_id: string;
+  created_at: string;
+};
+
+export type UserProfile = Profile & {
+  follower_count?: number;
+  following_count?: number;
+  is_following?: boolean;
+  post_count?: number;
 };
 
 export type MediaComment = {

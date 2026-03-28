@@ -6,8 +6,11 @@ import { Card } from '@/components/ui/card';
 import { TopBar } from '@/components/layout/top-bar';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import { ProfileFeed } from '@/components/profile/profile-feed';
+import { FollowButton } from '@/components/profile/follow-button';
+import { ProfileStatsBar } from '@/components/profile/profile-stats-bar';
 import { createClient } from '@/lib/supabase/server';
 import { getPlayerStats } from '@/lib/queries/stats';
+import { getFollowStatus } from '@/lib/queries/follow';
 import { ChevronRight, MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -29,8 +32,8 @@ export default async function UserProfilePage({
 
   if (!profile) notFound();
 
-  // Fetch stats and clubs in parallel
-  const [stats, clubsResult] = await Promise.all([
+  // Fetch stats, clubs, and follow status in parallel
+  const [stats, clubsResult, followStatus] = await Promise.all([
     getPlayerStats(userId),
     supabase
       .from('club_members')
@@ -39,6 +42,7 @@ export default async function UserProfilePage({
         clubs (id, name, logo_url, region, is_public)
       `)
       .eq('user_id', userId),
+    getFollowStatus(userId),
   ]);
 
   // Only show public clubs
@@ -62,9 +66,18 @@ export default async function UserProfilePage({
             />
           </div>
 
-          <h2 className="text-xl font-bold text-foreground mt-3">
-            {profile.display_name}
-          </h2>
+          <div className="flex items-center gap-3 mt-3">
+            <h2 className="text-xl font-bold text-foreground">
+              {profile.display_name}
+            </h2>
+            {!followStatus.isOwnProfile && (
+              <FollowButton
+                targetUserId={userId}
+                isFollowing={followStatus.isFollowing}
+                size="sm"
+              />
+            )}
+          </div>
 
           {profile.bio && (
             <p className="text-sm text-muted-foreground mt-1 max-w-xs">
@@ -86,7 +99,15 @@ export default async function UserProfilePage({
           </div>
         </div>
 
-        {/* Stats row */}
+        {/* Follow Stats Bar */}
+        <ProfileStatsBar
+          userId={userId}
+          postCount={followStatus.postCount}
+          followerCount={followStatus.followerCount}
+          followingCount={followStatus.followingCount}
+        />
+
+        {/* Match Stats row */}
         <div className="flex items-center justify-center gap-8">
           <div className="text-center">
             <p className="text-xl font-bold text-foreground">{stats.total}</p>
