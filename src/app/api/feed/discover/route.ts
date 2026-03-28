@@ -1,15 +1,18 @@
-import { getDiscoverFeed, getSuggestedUsers } from '@/lib/queries/follow';
-import { NextResponse } from 'next/server';
+import { getMoreFeed } from '@/lib/queries/feed';
+import { getSuggestedUsers } from '@/lib/queries/follow';
 
+/**
+ * @deprecated Use /api/feed/more instead. Kept for backwards compatibility.
+ */
 export async function GET() {
   try {
     const [feed, suggestedUsers] = await Promise.all([
-      getDiscoverFeed(),
+      getMoreFeed(0, 50),
       getSuggestedUsers(),
     ]);
 
-    return NextResponse.json({ feed, suggestedUsers });
+    return Response.json({ feed, suggestedUsers });
   } catch {
-    return NextResponse.json({ feed: [], suggestedUsers: [] }, { status: 500 });
+    return Response.json({ feed: [], suggestedUsers: [] }, { status: 500 });
   }
 }

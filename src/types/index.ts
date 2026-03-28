@@ -229,3 +229,23 @@ export type MediaMention = {
   mentioned_user_id: string;
   created_at: string;
 };
+
+export type RecruitmentType = 'member_recruit' | 'guest_recruit';
+export type RecruitmentPost = {
+  id: string;
+  club_id: string;
+  match_id: string | null;
+  created_by: string;
+  type: RecruitmentType;
+  title: string;
+  description: string | null;
+  match_date: string | null;
+  location: string | null;
+  needed_count: number | null;
+  ntrp_min: number | null;
+  ntrp_max: number | null;
+  status: 'open' | 'closed';
+  created_at: string;
+  clubs?: { name: string; logo_url: string | null; region: string | null };
+  profiles?: { display_name: string; avatar_url: string | null };
+};

@@ -3,12 +3,16 @@ export const dynamic = 'force-dynamic';
 import { TopBar } from '@/components/layout/top-bar';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { RefreshButton } from '@/components/ui/refresh-button';
-import { FeedTabs } from '@/components/feed/feed-tabs';
-import { getFollowingFeed } from '@/lib/queries/follow';
+import { FeedList } from '@/components/feed/feed-list';
+import { getUnifiedFeed } from '@/lib/queries/feed';
+import { getSuggestedUsers } from '@/lib/queries/follow';
 import { Suspense } from 'react';
 
 export default async function FeedPage() {
-  const followingFeed = await getFollowingFeed();
+  const [feed, suggestedUsers] = await Promise.all([
+    getUnifiedFeed(),
+    getSuggestedUsers(),
+  ]);
 
   return (
     <>
@@ -25,7 +29,7 @@ export default async function FeedPage() {
         }
       />
 
-      <FeedTabs followingFeed={followingFeed} />
+      <FeedList initialFeed={feed} suggestedUsers={suggestedUsers} />
     </>
   );
 }

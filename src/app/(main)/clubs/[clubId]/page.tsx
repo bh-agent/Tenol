@@ -9,7 +9,7 @@ import { getClubMedia } from '@/lib/queries/media';
 import { formatRole } from '@/lib/utils/format';
 import { hasPermission } from '@/lib/utils/permissions';
 import { RefreshButton } from '@/components/ui/refresh-button';
-import { Settings, MapPin, Users, Trophy, BarChart3, Calendar, Swords } from 'lucide-react';
+import { Settings, MapPin, Users, Trophy, BarChart3, Calendar, Swords, Megaphone } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ClubInviteCode } from '@/components/club/club-invite-code';
@@ -164,7 +164,7 @@ export default async function ClubDetailPage({
       />
 
       {/* Quick Links */}
-      <div className="px-4 py-2 animate-fade-in">
+      <div className="px-4 py-2 animate-fade-in space-y-2">
         <Link
           href={`/clubs/${clubId}/stats`}
           className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-200"
@@ -177,6 +177,21 @@ export default async function ClubDetailPage({
             <p className="text-xs text-muted-foreground">클럽 활동 통계 보기</p>
           </div>
         </Link>
+
+        {canManageMembers && (
+          <Link
+            href={`/clubs/${clubId}/recruit`}
+            className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-[#00E676]/30 transition-all duration-200"
+          >
+            <div className="w-10 h-10 rounded-xl bg-[#00E676]/15 flex items-center justify-center">
+              <Megaphone className="w-5 h-5 text-[#00E676]" />
+            </div>
+            <div className="flex-1">
+              <span className="text-sm font-semibold text-foreground">모집글 작성</span>
+              <p className="text-xs text-muted-foreground">회원 또는 게스트 모집하기</p>
+            </div>
+          </Link>
+        )}
       </div>
 
       {/* Tabs */}

@@ -172,3 +172,22 @@ export const deleteDrawSchema = z.object({
   drawId: uuidSchema,
   matchId: uuidSchema,
 });
+
+// ============================================================
+// Recruitment Schemas
+// ============================================================
+
+export const recruitmentTypeSchema = z.enum(['member_recruit', 'guest_recruit']);
+
+export const createRecruitmentSchema = z.object({
+  club_id: uuidSchema,
+  type: recruitmentTypeSchema,
+  title: sanitizedText.pipe(z.string().min(1, '제목을 입력해주세요').max(100)),
+  description: sanitizedText.pipe(z.string().max(1000)).optional(),
+  match_id: uuidSchema.optional(),
+  match_date: dateSchema.optional(),
+  location: sanitizedText.pipe(z.string().max(200)).optional(),
+  needed_count: z.number().int().min(1).max(100).optional(),
+  ntrp_min: z.number().min(1.0).max(7.0).optional(),
+  ntrp_max: z.number().min(1.0).max(7.0).optional(),
+});

@@ -7,10 +7,17 @@ import { cn } from '@/lib/utils/cn';
 import { ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
-import type { UserProfile } from '@/types';
+interface SuggestedUser {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+  bio?: string | null;
+  ntrp_level?: number | null;
+  is_following?: boolean;
+}
 
 interface SuggestedUsersProps {
-  users: UserProfile[];
+  users: SuggestedUser[];
 }
 
 export function SuggestedUsers({ users }: SuggestedUsersProps) {
@@ -40,7 +47,7 @@ export function SuggestedUsers({ users }: SuggestedUsersProps) {
   );
 }
 
-function SuggestedUserCard({ user }: { user: UserProfile }) {
+function SuggestedUserCard({ user }: { user: SuggestedUser }) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [isPending, startTransition] = useTransition();
 
