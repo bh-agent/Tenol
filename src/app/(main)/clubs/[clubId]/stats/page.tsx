@@ -1,15 +1,24 @@
 export const dynamic = 'force-dynamic';
 
+import { AchievementBadges } from '@/components/stats/achievement-badges';
+import { ActivityCalendar } from '@/components/stats/activity-calendar';
+import { ClubRecords } from '@/components/stats/club-records';
+import { H2HSelector } from '@/components/stats/h2h-selector';
 import { Leaderboard } from '@/components/stats/leaderboard';
+import { MvpCard } from '@/components/stats/mvp-card';
 import { RecentGamesList } from '@/components/stats/recent-games-list';
 import { StatCard } from '@/components/stats/stat-card';
 import { WinRateChart } from '@/components/stats/win-rate-chart';
 import { Card, CardTitle } from '@/components/ui/card';
 import { TopBar } from '@/components/layout/top-bar';
-import { getClub } from '@/lib/queries/clubs';
+import { getClub, getClubMembers } from '@/lib/queries/clubs';
+import { getClubAchievements } from '@/lib/queries/achievements';
+import { getClubMvp } from '@/lib/queries/mvp';
+import { getClubRecords, getClubActivityCalendar } from '@/lib/queries/records';
 import { getPlayerStats, getPlayerRecentGames, getClubLeaderboard } from '@/lib/queries/stats';
 import { createClient } from '@/lib/supabase/server';
-import { BarChart3, Trophy, Users, TrendingUp } from 'lucide-react';
+import type { MvpPeriod } from '@/lib/queries/mvp';
+import { BarChart3, Trophy, Users, TrendingUp, Award, Swords, Calendar } from 'lucide-react';
 import { notFound, redirect } from 'next/navigation';
 
 export default async function ClubStatsPage({
@@ -26,17 +35,60 @@ export default async function ClubStatsPage({
   const club = await getClub(clubId);
   if (!club) notFound();
 
-  const [stats, recentGames, leaderboard] = await Promise.all([
+  const periods: MvpPeriod[] = ['week', 'month', 'year', 'all'];
+  const now = new Date();
+
+  const [stats, recentGames, leaderboard, achievements, members, clubRecords, activityData, ...mvpResults] = await Promise.all([
     getPlayerStats(user.id, clubId),
     getPlayerRecentGames(user.id, 10, clubId),
     getClubLeaderboard(clubId),
+    getClubAchievements(clubId),
+    getClubMembers(clubId),
+    getClubRecords(clubId),
+    getClubActivityCalendar(clubId, now.getFullYear(), now.getMonth() + 1),
+    ...periods.map((p) => getClubMvp(clubId, p)),
   ]);
+
+  const mvpByPeriod: Partial<Record<MvpPeriod, Awaited<ReturnType<typeof getClubMvp>>>> = {};
+  periods.forEach((p, i) => {
+    mvpByPeriod[p] = mvpResults[i];
+  });
+
+  // Build player options for H2H selector
+  const playerOptions = members
+    .map((m: any) => ({
+      id: m.profiles?.id as string,
+      displayName: (m.profiles?.display_name as string) || '알 수 없음',
+      avatarUrl: (m.profiles?.avatar_url as string | null) || null,
+    }))
+    .filter((p) => p.id);
 
   return (
     <>
       <TopBar title="통계" backHref={`/clubs/${clubId}`} />
 
       <div className="px-4 py-5 space-y-6 animate-fade-in">
+        {/* MVP Section */}
+        <section>
+          <MvpCard mvpByPeriod={mvpByPeriod} periods={periods} />
+        </section>
+
+        {/* Achievement Badges */}
+        {achievements.length > 0 && (
+          <section>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-10 h-10 rounded-xl bg-[#FFD740]/15 flex items-center justify-center">
+                <Award className="w-5 h-5 text-[#FFD740]" />
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground">업적 배지</h2>
+                <p className="text-xs text-muted-foreground">클럽 내 특별한 기록 보유자</p>
+              </div>
+            </div>
+            <AchievementBadges achievements={achievements} />
+          </section>
+        )}
+
         {/* My Stats Summary */}
         <section>
           <div className="flex items-center gap-3 mb-4">
@@ -72,6 +124,54 @@ export default async function ClubStatsPage({
             />
           </Card>
         )}
+
+        {/* Activity Calendar */}
+        <section>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+              <Calendar className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-foreground">활동 캘린더</h2>
+              <p className="text-xs text-muted-foreground">이번 달 경기 현황</p>
+            </div>
+          </div>
+          <ActivityCalendar activityData={activityData} />
+        </section>
+
+        {/* Club Records */}
+        {clubRecords.length > 0 && (
+          <section>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-[#FFD740]/15 flex items-center justify-center">
+                <span className="text-lg">🏆</span>
+              </div>
+              <div>
+                <h2 className="font-semibold text-foreground">클럽 기록</h2>
+                <p className="text-xs text-muted-foreground">역대 최고 기록들</p>
+              </div>
+            </div>
+            <ClubRecords records={clubRecords} />
+          </section>
+        )}
+
+        {/* Head-to-Head Comparison */}
+        <section>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+              <Swords className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-foreground">전적 비교</h2>
+              <p className="text-xs text-muted-foreground">두 선수의 상대 전적</p>
+            </div>
+          </div>
+          <H2HSelector
+            players={playerOptions}
+            clubId={clubId}
+            currentUserId={user.id}
+          />
+        </section>
 
         {/* Club Leaderboard */}
         <section>

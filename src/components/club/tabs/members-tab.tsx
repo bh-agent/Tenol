@@ -2,9 +2,11 @@
 
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { MemberAchievementBadges } from '@/components/stats/achievement-badges';
 import { formatRole } from '@/lib/utils/format';
 import { MemberManageActions } from '@/components/club/member-manage-actions';
 import type { ClubRole } from '@/types';
+import type { Achievement } from '@/lib/queries/achievements';
 import { Crown, Shield } from 'lucide-react';
 import Link from 'next/link';
 
@@ -13,9 +15,11 @@ interface MembersTabProps {
   members: any[];
   myRole: ClubRole | null;
   canManageMembers: boolean;
+  /** Map of user_id -> their achievements in this club */
+  achievementsByUser?: Record<string, Achievement[]>;
 }
 
-export function MembersTab({ clubId, members, myRole, canManageMembers }: MembersTabProps) {
+export function MembersTab({ clubId, members, myRole, canManageMembers, achievementsByUser = {} }: MembersTabProps) {
   const rolePriority = { owner: 0, admin: 1, member: 2 };
   const sorted = [...members].sort(
     (a: any, b: any) =>
@@ -57,6 +61,11 @@ export function MembersTab({ clubId, members, myRole, canManageMembers }: Member
                   <span className="font-semibold text-sm text-foreground truncate hover:text-primary transition-colors">
                     {member.profiles?.display_name}
                   </span>
+                  {member.profiles?.id && achievementsByUser[member.profiles.id]?.length > 0 && (
+                    <MemberAchievementBadges
+                      achievements={achievementsByUser[member.profiles.id]}
+                    />
+                  )}
                   <Badge variant={roleVariant(member.role)}>
                     <span className="flex items-center gap-1">
                       {member.role === 'owner' && <Crown className="w-3 h-3 text-yellow-500" />}

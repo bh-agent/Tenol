@@ -4,7 +4,9 @@ import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { TopBar } from '@/components/layout/top-bar';
+import { MemberAchievementBadges } from '@/components/stats/achievement-badges';
 import { getClubMembers, getMyRole } from '@/lib/queries/clubs';
+import { getClubAchievements } from '@/lib/queries/achievements';
 import { formatRole } from '@/lib/utils/format';
 import { hasPermission } from '@/lib/utils/permissions';
 import { Users, Crown, Shield } from 'lucide-react';
@@ -17,12 +19,20 @@ export default async function MembersPage({
   params: Promise<{ clubId: string }>;
 }) {
   const { clubId } = await params;
-  const [members, myRole] = await Promise.all([
+  const [members, myRole, achievements] = await Promise.all([
     getClubMembers(clubId),
     getMyRole(clubId),
+    getClubAchievements(clubId),
   ]);
 
   const canManageMembers = hasPermission(myRole, 'member.manage');
+
+  // Build map of user_id -> achievements
+  const achievementsByUser: Record<string, typeof achievements> = {};
+  for (const a of achievements) {
+    if (!achievementsByUser[a.user_id]) achievementsByUser[a.user_id] = [];
+    achievementsByUser[a.user_id].push(a);
+  }
 
   const rolePriority = { owner: 0, admin: 1, member: 2 };
   const sorted = [...members].sort(
@@ -73,6 +83,11 @@ export default async function MembersPage({
                       <span className="font-medium text-foreground truncate hover:text-primary transition-colors">
                         {member.profiles?.display_name}
                       </span>
+                      {member.profiles?.id && achievementsByUser[member.profiles.id]?.length > 0 && (
+                        <MemberAchievementBadges
+                          achievements={achievementsByUser[member.profiles.id]}
+                        />
+                      )}
                     <Badge
                       variant={member.role === 'owner' ? 'primary' : member.role === 'admin' ? 'success' : 'default'}
                     >
