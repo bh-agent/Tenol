@@ -3,9 +3,11 @@
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+import { ShareButton } from '@/components/ui/share-button';
 import { ImageViewer } from './image-viewer';
 import { LikeButton } from './like-button';
 import { DoubleTapHeart } from './double-tap-heart';
+import { CommentSheet } from './comment-sheet';
 import { CaptionText } from './caption-text';
 import { updateMedia, deleteMedia } from '@/lib/actions/media';
 import { toggleLike } from '@/lib/actions/social';
@@ -18,7 +20,6 @@ import {
   Pencil,
   Trash2,
   MessageCircle,
-  Send,
   Bookmark,
 } from 'lucide-react';
 import Image from 'next/image';
@@ -58,6 +59,8 @@ export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: P
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const [liked, setLiked] = useState(post.is_liked ?? false);
   const [likeCount, setLikeCount] = useState(post.like_count ?? 0);
+  const [commentCount, setCommentCount] = useState(post.comment_count ?? 0);
+  const [commentSheetOpen, setCommentSheetOpen] = useState(false);
   const [, startTransition] = useTransition();
 
   // Touch tracking for swipe carousel
@@ -292,13 +295,23 @@ export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: P
               initialCount={likeCount}
               showCount={false}
               size={24}
+              onLikeChange={(newLiked, newCount) => {
+                setLiked(newLiked);
+                setLikeCount(newCount);
+              }}
             />
-            <button className="hover:opacity-70 transition-opacity" aria-label="댓글">
+            <button
+              onClick={() => setCommentSheetOpen(true)}
+              className="hover:opacity-70 transition-opacity cursor-pointer"
+              aria-label="댓글"
+            >
               <MessageCircle size={24} className="text-muted-foreground" strokeWidth={1.5} />
             </button>
-            <button className="hover:opacity-70 transition-opacity" aria-label="공유">
-              <Send size={22} className="text-muted-foreground -rotate-12" strokeWidth={1.5} />
-            </button>
+            <ShareButton
+              url={`/feed/${post.id}`}
+              title={post.caption || '테놀 게시물'}
+              className="hover:opacity-70 transition-opacity cursor-pointer p-0 bg-transparent border-none"
+            />
           </div>
           <button className="hover:opacity-70 transition-opacity" aria-label="저장">
             <Bookmark size={24} className="text-muted-foreground" strokeWidth={1.5} />
@@ -336,10 +349,13 @@ export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: P
         )}
 
         {/* ── Comments Preview ── */}
-        {(post.comment_count ?? 0) > 0 && (
+        {commentCount > 0 && (
           <div className="px-4 pt-1.5">
-            <button className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              댓글 {post.comment_count?.toLocaleString()}개 모두 보기
+            <button
+              onClick={() => setCommentSheetOpen(true)}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+            >
+              댓글 {commentCount.toLocaleString()}개 모두 보기
             </button>
           </div>
         )}
@@ -375,6 +391,16 @@ export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: P
           </Button>
         </div>
       </Modal>
+
+      {/* ── Comment Sheet ── */}
+      <CommentSheet
+        mediaId={post.id}
+        isOpen={commentSheetOpen}
+        onClose={() => setCommentSheetOpen(false)}
+        commentCount={commentCount}
+        currentUserId={currentUserId}
+        onCommentCountChange={setCommentCount}
+      />
     </>
   );
 }

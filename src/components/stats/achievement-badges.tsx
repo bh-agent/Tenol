@@ -104,6 +104,14 @@ export function AchievementBadges({
                 </button>
               </div>
 
+              {/* Criteria */}
+              <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 mb-3">
+                <p className="text-xs font-medium text-primary/80 mb-1">획득 조건</p>
+                <p className="text-sm text-foreground/80">
+                  {selectedBadge.criteria}
+                </p>
+              </div>
+
               <div className="flex items-center gap-3 p-3 rounded-xl bg-surface-elevated/50">
                 <div className="flex-1">
                   <p className="font-semibold text-foreground">

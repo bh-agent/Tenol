@@ -30,6 +30,7 @@ interface CommentSheetProps {
   onClose: () => void;
   commentCount: number;
   currentUserId?: string;
+  onCommentCountChange?: (count: number) => void;
 }
 
 export function CommentSheet({
@@ -38,6 +39,7 @@ export function CommentSheet({
   onClose,
   commentCount,
   currentUserId,
+  onCommentCountChange,
 }: CommentSheetProps) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
@@ -86,11 +88,13 @@ export function CommentSheet({
         )
         .eq('media_id', mediaId)
         .order('created_at', { ascending: false });
-      setComments((data as unknown as Comment[]) ?? []);
+      const fetched = (data as unknown as Comment[]) ?? [];
+      setComments(fetched);
+      onCommentCountChange?.(fetched.length);
     } finally {
       setLoading(false);
     }
-  }, [mediaId]);
+  }, [mediaId, onCommentCountChange]);
 
   useEffect(() => {
     if (isOpen) {

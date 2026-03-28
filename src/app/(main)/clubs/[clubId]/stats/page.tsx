@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { AchievementBadges } from '@/components/stats/achievement-badges';
+import { AchievementInfoButton } from '@/components/stats/achievement-info-modal';
 import { ActivityCalendar } from '@/components/stats/activity-calendar';
 import { ClubRecords } from '@/components/stats/club-records';
 import { H2HSelector } from '@/components/stats/h2h-selector';
@@ -12,7 +13,7 @@ import { WinRateChart } from '@/components/stats/win-rate-chart';
 import { Card, CardTitle } from '@/components/ui/card';
 import { TopBar } from '@/components/layout/top-bar';
 import { getClub, getClubMembers } from '@/lib/queries/clubs';
-import { getClubAchievements } from '@/lib/queries/achievements';
+import { getClubAchievements, getAllAchievementMeta } from '@/lib/queries/achievements';
 import { getClubMvp } from '@/lib/queries/mvp';
 import { getClubRecords, getClubActivityCalendar } from '@/lib/queries/records';
 import { getPlayerStats, getPlayerRecentGames, getClubLeaderboard } from '@/lib/queries/stats';
@@ -74,9 +75,9 @@ export default async function ClubStatsPage({
         </section>
 
         {/* Achievement Badges */}
-        {achievements.length > 0 && (
-          <section>
-            <div className="flex items-center gap-3 mb-3">
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#FFD740]/15 flex items-center justify-center">
                 <Award className="w-5 h-5 text-[#FFD740]" />
               </div>
@@ -85,9 +86,15 @@ export default async function ClubStatsPage({
                 <p className="text-xs text-muted-foreground">클럽 내 특별한 기록 보유자</p>
               </div>
             </div>
+            <AchievementInfoButton
+              allMeta={getAllAchievementMeta()}
+              achievements={achievements}
+            />
+          </div>
+          {achievements.length > 0 && (
             <AchievementBadges achievements={achievements} />
-          </section>
-        )}
+          )}
+        </section>
 
         {/* My Stats Summary */}
         <section>

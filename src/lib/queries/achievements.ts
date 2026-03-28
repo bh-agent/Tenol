@@ -17,6 +17,7 @@ export type Achievement = {
   label: string;
   emoji: string;
   description: string;
+  criteria: string;
   user_id: string;
   display_name: string;
   value: number;
@@ -24,52 +25,61 @@ export type Achievement = {
 
 const ACHIEVEMENT_META: Record<
   AchievementType,
-  { label: string; emoji: string; description: string }
+  { label: string; emoji: string; description: string; criteria: string }
 > = {
   current_mvp: {
     label: '이번 달 MVP',
     emoji: '\u{1F3C6}',
     description: '이번 달 가장 높은 득점을 기록한 선수',
+    criteria: '이번 달 가장 많은 점수를 획득한 선수 (최소 3경기 이상)',
   },
   all_time_mvp: {
     label: '통합 MVP',
     emoji: '\u{1F451}',
     description: '역대 최고 득점 선수',
+    criteria: '전체 기간 가장 많은 점수를 획득한 선수 (최소 3경기 이상)',
   },
   most_games: {
     label: '최다 참여',
     emoji: '\u{1F4AA}',
     description: '가장 많은 경기에 참여한 선수',
+    criteria: '가장 많은 경기에 참여한 선수 (최소 5경기 이상)',
   },
   win_streak: {
     label: '연승왕',
     emoji: '\u{1F525}',
     description: '가장 긴 연속 승리 기록 보유자',
+    criteria: '가장 긴 연속 승리 기록 보유자 (최소 3연승)',
   },
   iron_man: {
     label: '개근왕',
     emoji: '\u{1F9BE}',
     description: '이번 달 가장 많은 매치에 참석한 선수',
+    criteria: '이번 달 가장 많은 경기에 참석한 선수 (최소 2경기)',
   },
   social_butterfly: {
     label: '소셜왕',
     emoji: '\u{1F98B}',
     description: '가장 많은 상대와 경기한 선수',
+    criteria: '가장 다양한 상대와 경기한 선수 (최소 3명 이상)',
   },
   rookie_star: {
     label: '루키왕',
     emoji: '\u{2B50}',
     description: '가입 30일 이내 최고의 신입',
+    criteria: '가입 30일 이내 가장 좋은 성적의 신입 (최소 3경기 이상)',
   },
   ace: {
     label: '에이스',
     emoji: '\u{1F3AF}',
     description: '단일 경기 최고 득점 기록 보유자',
+    criteria: '단일 경기 최고 점수 기록 보유자 (최소 6점 이상)',
   },
   clutch: {
     label: '역전왕',
     emoji: '\u{26A1}',
     description: '역전승이 가장 많은 선수',
+    criteria: '가장 많은 역전승을 기록한 선수 (최소 2회 이상)',
   },
 };
 
@@ -85,10 +95,25 @@ function makeAchievement(
     label: meta.label,
     emoji: meta.emoji,
     description: meta.description,
+    criteria: meta.criteria,
     user_id: userId,
     display_name: displayName,
     value,
   };
+}
+
+/** Get all achievement types with their metadata (for info modal) */
+export function getAllAchievementMeta(): Array<{
+  type: AchievementType;
+  label: string;
+  emoji: string;
+  description: string;
+  criteria: string;
+}> {
+  return (Object.keys(ACHIEVEMENT_META) as AchievementType[]).map((type) => ({
+    type,
+    ...ACHIEVEMENT_META[type],
+  }));
 }
 
 export async function getClubAchievements(

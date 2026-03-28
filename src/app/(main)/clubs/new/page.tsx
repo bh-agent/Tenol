@@ -6,24 +6,42 @@ import { Input } from '@/components/ui/input';
 import { TopBar } from '@/components/layout/top-bar';
 import { createClub, joinClubByCode } from '@/lib/actions/clubs';
 import { cn } from '@/lib/utils/cn';
-import { Plus, Ticket } from 'lucide-react';
+import { Plus, Link as LinkIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export default function NewClubPage() {
   const [mode, setMode] = useState<'create' | 'join'>('create');
-  const [inviteCode, setInviteCode] = useState('');
+  const [inviteInput, setInviteInput] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  /** Extract invite code from a link or raw code */
+  const extractCode = (input: string): string => {
+    const trimmed = input.trim();
+    // Check if it's a full invite link
+    const linkMatch = trimmed.match(/\/clubs\/join\/([A-Za-z0-9]+)\/?$/);
+    if (linkMatch) return linkMatch[1];
+    // Otherwise treat as raw code
+    return trimmed;
+  };
 
   const handleJoin = async () => {
-    if (!inviteCode.trim()) {
-      setError('초대 코드를 입력해주세요');
+    const code = extractCode(inviteInput);
+    if (!code) {
+      setError('초대 코드 또는 링크를 입력해주세요');
+      return;
+    }
+    // If it looks like a full link, redirect to the join page
+    if (inviteInput.trim().includes('/clubs/join/')) {
+      router.push(`/clubs/join/${code}`);
       return;
     }
     setLoading(true);
     setError('');
     try {
-      await joinClubByCode(inviteCode.trim());
+      await joinClubByCode(code);
     } catch (e) {
       setError(e instanceof Error ? e.message : '오류가 발생했습니다');
       setLoading(false);
@@ -58,8 +76,8 @@ export default function NewClubPage() {
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
-            <Ticket className="w-4 h-4" />
-            초대 코드로 가입
+            <LinkIcon className="w-4 h-4" />
+            초대 링크/코드로 가입
           </button>
         </div>
 
@@ -112,21 +130,21 @@ export default function NewClubPage() {
           <Card variant="glass" padding="lg" className="animate-fade-in">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Ticket className="w-5 h-5 text-primary" />
+                <LinkIcon className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h3 className="font-semibold text-foreground">초대 코드로 가입</h3>
-                <p className="text-xs text-muted-foreground">기존 클럽의 초대 코드를 입력하세요</p>
+                <h3 className="font-semibold text-foreground">초대 링크/코드로 가입</h3>
+                <p className="text-xs text-muted-foreground">초대 링크 또는 코드를 입력하세요</p>
               </div>
             </div>
 
             <div className="space-y-4">
               <Input
-                id="invite_code"
-                label="초대 코드"
-                placeholder="초대 코드를 입력해주세요"
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
+                id="invite_input"
+                label="초대 링크 또는 코드"
+                placeholder="링크 또는 코드를 붙여넣기 하세요"
+                value={inviteInput}
+                onChange={(e) => setInviteInput(e.target.value)}
                 error={error}
               />
               <Button

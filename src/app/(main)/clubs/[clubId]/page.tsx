@@ -12,7 +12,7 @@ import { RefreshButton } from '@/components/ui/refresh-button';
 import { Settings, MapPin, Users, Trophy, BarChart3, Calendar, Swords, Megaphone } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ClubInviteCode } from '@/components/club/club-invite-code';
+import { ClubInviteLink } from '@/components/club/club-invite-link';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import { ClubTabs } from '@/components/club/club-tabs';
 import { ClubCreatedCelebration } from '@/components/club/club-created-celebration';
@@ -116,7 +116,7 @@ export default async function ClubDetailPage({
             {/* Invite code for managers */}
             {canManageMembers && (
               <div className="pt-2 border-t border-border">
-                <ClubInviteCode code={club.invite_code} />
+                <ClubInviteLink code={club.invite_code} />
               </div>
             )}
           </div>

@@ -3,7 +3,7 @@
 import { cn } from '@/lib/utils/cn';
 import { toggleLike } from '@/lib/actions/social';
 import { Heart } from 'lucide-react';
-import { useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 
 interface LikeButtonProps {
   mediaId: string;
@@ -11,6 +11,7 @@ interface LikeButtonProps {
   initialCount: number;
   showCount?: boolean;
   size?: number;
+  onLikeChange?: (liked: boolean, count: number) => void;
 }
 
 export function LikeButton({
@@ -19,17 +20,30 @@ export function LikeButton({
   initialCount,
   showCount = true,
   size = 24,
+  onLikeChange,
 }: LikeButtonProps) {
   const [liked, setLiked] = useState(initialLiked);
   const [count, setCount] = useState(initialCount);
   const [animating, setAnimating] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // Sync with parent state when props change (e.g. double-tap like from PostCard)
+  const prevLikedRef = useRef(initialLiked);
+  const prevCountRef = useRef(initialCount);
+  if (prevLikedRef.current !== initialLiked || prevCountRef.current !== initialCount) {
+    prevLikedRef.current = initialLiked;
+    prevCountRef.current = initialCount;
+    setLiked(initialLiked);
+    setCount(initialCount);
+  }
+
   const handleToggle = () => {
     // Optimistic update
     const newLiked = !liked;
+    const newCount = newLiked ? count + 1 : Math.max(0, count - 1);
     setLiked(newLiked);
-    setCount((c) => (newLiked ? c + 1 : Math.max(0, c - 1)));
+    setCount(newCount);
+    onLikeChange?.(newLiked, newCount);
 
     if (newLiked) {
       setAnimating(true);
@@ -41,10 +55,13 @@ export function LikeButton({
         const result = await toggleLike(mediaId);
         setLiked(result.liked);
         setCount(result.likeCount);
+        onLikeChange?.(result.liked, result.likeCount);
       } catch {
         // Revert on error
         setLiked(!newLiked);
-        setCount((c) => (newLiked ? Math.max(0, c - 1) : c + 1));
+        const revertedCount = newLiked ? Math.max(0, count - 1) : count + 1;
+        setCount(revertedCount);
+        onLikeChange?.(!newLiked, revertedCount);
       }
     });
   };
