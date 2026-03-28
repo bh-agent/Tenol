@@ -343,7 +343,10 @@ export default function DrawPage() {
         }),
       });
       const result = await res.json();
-      if (!res.ok) throw new Error(result.error);
+      if (!res.ok) {
+        const detail = result.details ? `\n${JSON.stringify(result.details)}` : '';
+        throw new Error((result.error || '대진표 생성에 실패했습니다') + detail);
+      }
       await loadData();
     } catch (e) {
       alert(e instanceof Error ? e.message : '대진표 생성에 실패했습니다');

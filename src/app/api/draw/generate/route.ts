@@ -200,10 +200,12 @@ export async function POST(request: Request) {
       playerSummary: v2Result ? v2Result.playerSummary : undefined,
     });
   } catch (error) {
+    console.error('[draw/generate] Error:', error);
     if (error instanceof Error && error.name === 'ZodError') {
-      return NextResponse.json({ error: '잘못된 요청 데이터입니다' }, { status: 400 });
+      return NextResponse.json({ error: '잘못된 요청 데이터입니다', details: (error as any).issues }, { status: 400 });
     }
     const message = error instanceof Error ? error.message : '오류가 발생했습니다';
-    return NextResponse.json({ error: message }, { status: 400 });
+    const stack = error instanceof Error ? error.stack : undefined;
+    return NextResponse.json({ error: message, stack: process.env.NODE_ENV === 'development' ? stack : undefined }, { status: 400 });
   }
 }

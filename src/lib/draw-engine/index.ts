@@ -318,75 +318,53 @@ function selectPlayers(
     const s = states.get(getPlayerId(p))!;
     let score = 0;
 
-    // Primary: fewer games played = higher priority (lower score)
-    score += s.gameCount * 1000;
+    // Primary: fewer games played = much higher priority (lower score)
+    score += s.gameCount * 100;
 
-    // Penalty for consecutive play: if played in previous slot, add penalty
+    // Soft penalty for consecutive play (avoid but don't block)
     if (s.lastPlayedSlot === currentSlot - 1) {
-      score += 200;
-      // Even higher penalty for 2+ consecutive
+      score += 30;
       if (s.consecutiveSlots >= 2) {
-        score += 500;
+        score += 50; // prefer rest but allow if needed
       }
     }
 
-    // Small penalty if already maxed on this game type
+    // Small penalty if already maxed on this game type (variety)
     const typeCount = s.gameTypes[gameType === 'free' ? 'free' : gameType];
-    score += typeCount * 50;
+    score += typeCount * 20;
 
     // Tiny random factor to break ties
-    score += Math.random() * 10;
+    score += Math.random() * 5;
 
     return score;
   }
 
+  // Always sort by score - no hard filtering by targetGames (soft constraint via scoring)
+  // This prevents null returns when everyone has played targetGames
   if (gameType === 'mixed') {
-    // Need 2 males + 2 females
-    const eligibleMales = males
-      .filter(p => states.get(getPlayerId(p))!.gameCount < targetGames + 1)
-      .sort((a, b) => playerScore(a) - playerScore(b));
+    const mSorted = [...males].sort((a, b) => playerScore(a) - playerScore(b));
+    const fSorted = [...females].sort((a, b) => playerScore(a) - playerScore(b));
 
-    const eligibleFemales = females
-      .filter(p => states.get(getPlayerId(p))!.gameCount < targetGames + 1)
-      .sort((a, b) => playerScore(a) - playerScore(b));
-
-    // Relax constraint if not enough eligible
-    const mPool = eligibleMales.length >= 2 ? eligibleMales : [...males].sort((a, b) => playerScore(a) - playerScore(b));
-    const fPool = eligibleFemales.length >= 2 ? eligibleFemales : [...females].sort((a, b) => playerScore(a) - playerScore(b));
-
-    if (mPool.length < 2 || fPool.length < 2) return null;
-
-    return [mPool[0], mPool[1], fPool[0], fPool[1]];
+    if (mSorted.length < 2 || fSorted.length < 2) return null;
+    return [mSorted[0], mSorted[1], fSorted[0], fSorted[1]];
   }
 
   if (gameType === 'mens') {
-    const eligible = males
-      .filter(p => states.get(getPlayerId(p))!.gameCount < targetGames + 1)
-      .sort((a, b) => playerScore(a) - playerScore(b));
-
-    const finalPool = eligible.length >= 4 ? eligible : [...males].sort((a, b) => playerScore(a) - playerScore(b));
-    if (finalPool.length < 4) return null;
-    return finalPool.slice(0, 4);
+    const sorted = [...males].sort((a, b) => playerScore(a) - playerScore(b));
+    if (sorted.length < 4) return null;
+    return sorted.slice(0, 4);
   }
 
   if (gameType === 'womens') {
-    const eligible = females
-      .filter(p => states.get(getPlayerId(p))!.gameCount < targetGames + 1)
-      .sort((a, b) => playerScore(a) - playerScore(b));
-
-    const finalPool = eligible.length >= 4 ? eligible : [...females].sort((a, b) => playerScore(a) - playerScore(b));
-    if (finalPool.length < 4) return null;
-    return finalPool.slice(0, 4);
+    const sorted = [...females].sort((a, b) => playerScore(a) - playerScore(b));
+    if (sorted.length < 4) return null;
+    return sorted.slice(0, 4);
   }
 
   // free mode
-  const eligible = allPlayers
-    .filter(p => states.get(getPlayerId(p))!.gameCount < targetGames + 1)
-    .sort((a, b) => playerScore(a) - playerScore(b));
-
-  const finalPool = eligible.length >= 4 ? eligible : [...allPlayers].sort((a, b) => playerScore(a) - playerScore(b));
-  if (finalPool.length < 4) return null;
-  return finalPool.slice(0, 4);
+  const sorted = [...allPlayers].sort((a, b) => playerScore(a) - playerScore(b));
+  if (sorted.length < 4) return null;
+  return sorted.slice(0, 4);
 }
 
 /**
