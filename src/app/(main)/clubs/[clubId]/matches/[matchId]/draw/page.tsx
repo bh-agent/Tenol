@@ -15,6 +15,7 @@ import { createClient } from '@/lib/supabase/client';
 import { hasPermission } from '@/lib/utils/permissions';
 import { cn } from '@/lib/utils/cn';
 import type { ClubRole } from '@/types';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Shuffle, Check, RefreshCw, UserPlus, X, Users, Trash2, RotateCcw } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -360,17 +361,14 @@ export default function DrawPage() {
 
         {/* Draw Results */}
         {!loading && draws.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="w-16 h-16 rounded-full bg-surface-elevated flex items-center justify-center mx-auto mb-3">
-              <Shuffle className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground font-medium">아직 대진표가 없습니다</p>
-            {canManageDraw ? (
-              <p className="text-xs text-subtle mt-1">참가자를 확인하고 자동 생성해보세요</p>
-            ) : (
-              <p className="text-xs text-subtle mt-1">운영진이 대진표를 생성할 때까지 기다려주세요</p>
-            )}
-          </div>
+          <EmptyState
+            icon={Shuffle}
+            title="아직 대진표가 없어요"
+            description={canManageDraw
+              ? '참가자를 확인하고 자동 생성해보세요'
+              : '운영진이 대진표를 생성할 때까지 기다려주세요'
+            }
+          />
         ) : (
           draws.map((draw) => {
             const courts = getGamesByCourt(draw.games || []);

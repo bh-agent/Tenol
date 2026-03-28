@@ -124,7 +124,7 @@ export function MyMatchesTabs({ upcoming, history }: MyMatchesTabsProps) {
   return (
     <div>
       {/* Tab Bar */}
-      <div className="flex border-b border-border sticky top-14 bg-background/95 backdrop-blur-sm z-20">
+      <div className="flex border-b border-border sticky top-14 glass z-20">
         {tabs.map((tab) => (
           <button
             key={tab.key}

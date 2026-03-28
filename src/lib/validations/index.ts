@@ -73,6 +73,18 @@ export const createMatchSchema = z.object({
   format: matchFormatSchema.default('doubles'),
 });
 
+export const updateMatchSchema = z.object({
+  title: sanitizedText.pipe(z.string().min(1, '경기 제목을 입력해주세요').max(100)),
+  description: sanitizedText.pipe(z.string().max(1000)).optional(),
+  location: sanitizedText.pipe(z.string().max(200)).optional(),
+  match_date: dateSchema,
+  start_time: timeSchema.optional(),
+  end_time: timeSchema.optional(),
+  court_count: z.number().int().min(1).max(20),
+  max_participants: z.number().int().min(2).max(100).optional(),
+  format: matchFormatSchema,
+});
+
 export const guestApplySchema = z.object({
   name: sanitizedText.pipe(z.string().min(1, '이름을 입력해주세요').max(50)),
   phone: z.string().max(20).regex(/^[0-9\-+() ]*$/, '올바른 전화번호 형식이 아닙니다').optional(),

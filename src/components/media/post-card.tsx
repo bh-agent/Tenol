@@ -148,7 +148,7 @@ export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: P
 
   return (
     <>
-      <article className="bg-[#141414] border-b border-[#2A2A2A]">
+      <article className="bg-surface border-b border-border">
         {/* ── Header ── */}
         <div className="flex items-center gap-3 px-4 py-3">
           <Avatar
@@ -275,7 +275,7 @@ export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: P
                   'w-1.5 h-1.5 rounded-full transition-all duration-200',
                   i === imageIndex
                     ? 'bg-primary scale-125'
-                    : 'bg-[#555555]'
+                    : 'bg-subtle'
                 )}
               />
             ))}
@@ -293,14 +293,14 @@ export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: P
               size={24}
             />
             <button className="hover:opacity-70 transition-opacity" aria-label="댓글">
-              <MessageCircle size={24} className="text-[#A0A0A0]" strokeWidth={1.5} />
+              <MessageCircle size={24} className="text-muted-foreground" strokeWidth={1.5} />
             </button>
             <button className="hover:opacity-70 transition-opacity" aria-label="공유">
-              <Send size={22} className="text-[#A0A0A0] -rotate-12" strokeWidth={1.5} />
+              <Send size={22} className="text-muted-foreground -rotate-12" strokeWidth={1.5} />
             </button>
           </div>
           <button className="hover:opacity-70 transition-opacity" aria-label="저장">
-            <Bookmark size={24} className="text-[#A0A0A0]" strokeWidth={1.5} />
+            <Bookmark size={24} className="text-muted-foreground" strokeWidth={1.5} />
           </button>
         </div>
 

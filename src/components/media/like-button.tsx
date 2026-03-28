@@ -62,8 +62,8 @@ export function LikeButton({
           className={cn(
             'transition-all duration-200 ease-out',
             liked
-              ? 'fill-[#FF5252] text-[#FF5252]'
-              : 'fill-transparent text-[#A0A0A0] hover:text-foreground',
+              ? 'fill-destructive text-destructive'
+              : 'fill-transparent text-muted-foreground hover:text-foreground',
             animating && 'scale-[1.2]'
           )}
           strokeWidth={liked ? 0 : 1.5}

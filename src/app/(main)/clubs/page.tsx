@@ -34,7 +34,7 @@ export default async function ClubsPage() {
         }
       />
 
-      <div className="px-4 py-5">
+      <div className="px-4 py-5 animate-fade-in">
         {/* Section header */}
         <div className="flex items-center justify-between mb-4">
           <div>

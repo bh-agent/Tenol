@@ -12,6 +12,7 @@ import { MapPin, Clock, Users, LayoutGrid, Trophy, ChevronRight, AlertTriangle, 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { MatchActions } from '@/components/match/match-actions';
+import { MatchManageButtons } from '@/components/match/match-manage-buttons';
 import { GuestActions } from '@/components/match/guest-actions';
 import { MatchBottomBar } from '@/components/match/match-bottom-bar';
 import { createClient } from '@/lib/supabase/server';
@@ -126,6 +127,11 @@ export default async function MatchDetailPage({
             )}
           </div>
         </Card>
+
+        {/* Edit / Delete Buttons */}
+        {canCreateMatch && (
+          <MatchManageButtons matchId={matchId} clubId={clubId} status={match.status} />
+        )}
 
         {/* Action Buttons */}
         {canCreateMatch && (

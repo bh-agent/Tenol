@@ -214,6 +214,38 @@ export async function joinPublicClub(clubId: string) {
   redirect(`/clubs/${validClubId}`);
 }
 
+// club.edit 권한 필요 (회장만) - 클럽 삭제
+export async function deleteClub(clubId: string) {
+  const validClubId = uuidSchema.parse(clubId);
+  await requirePermission(validClubId, 'club.edit');
+
+  const supabase = await createClient();
+
+  // 회장만 삭제 가능하므로 추가 검증
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('인증이 필요합니다');
+
+  const { data: membership } = await supabase
+    .from('club_members')
+    .select('role')
+    .eq('club_id', validClubId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (membership?.role !== 'owner') {
+    throw new Error('클럽장만 클럽을 삭제할 수 있습니다');
+  }
+
+  const { error } = await supabase
+    .from('clubs')
+    .delete()
+    .eq('id', validClubId);
+
+  if (error) throw new Error('클럽 삭제에 실패했습니다');
+
+  redirect('/clubs');
+}
+
 export async function leaveClub(clubId: string) {
   const validClubId = uuidSchema.parse(clubId);
   const supabase = await createClient();

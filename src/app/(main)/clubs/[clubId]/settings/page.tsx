@@ -3,13 +3,14 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
 import { TopBar } from '@/components/layout/top-bar';
 import { ClubAvatar } from '@/components/club/club-avatar';
-import { updateClub, updateClubLogo } from '@/lib/actions/clubs';
+import { updateClub, updateClubLogo, deleteClub } from '@/lib/actions/clubs';
 import { createClient } from '@/lib/supabase/client';
-import { Settings, AlertTriangle, Camera, Loader2 } from 'lucide-react';
+import { Settings, AlertTriangle, Camera, Loader2, RefreshCw } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function ClubSettingsPage() {
   const params = useParams();
@@ -18,6 +19,42 @@ export default function ClubSettingsPage() {
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [clubName, setClubName] = useState('');
+  const [clubDescription, setClubDescription] = useState('');
+  const [clubRegion, setClubRegion] = useState('');
+  const [clubMainCourt, setClubMainCourt] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmName, setDeleteConfirmName] = useState('');
+  const [deleting, setDeleting] = useState(false);
+
+  // Load existing club data
+  const loadClubData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const supabase = createClient();
+      const { data: club } = await supabase
+        .from('clubs')
+        .select('name, description, region, main_court, logo_url')
+        .eq('id', clubId)
+        .single();
+
+      if (club) {
+        setClubName(club.name || '');
+        setClubDescription(club.description || '');
+        setClubRegion(club.region || '');
+        setClubMainCourt(club.main_court || '');
+        setLogoUrl(club.logo_url || null);
+      }
+    } catch {
+      // ignore load error
+    } finally {
+      setLoading(false);
+    }
+  }, [clubId]);
+
+  useEffect(() => {
+    loadClubData();
+  }, [loadClubData]);
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -61,6 +98,31 @@ export default function ClubSettingsPage() {
   const handleSubmit = async (formData: FormData) => {
     await updateClub(clubId, formData);
   };
+
+  const handleDelete = async () => {
+    if (deleteConfirmName !== clubName) {
+      alert('클럽 이름이 일치하지 않습니다');
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteClub(clubId);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '클럽 삭제에 실패했습니다');
+      setDeleting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <>
+        <TopBar title="클럽 설정" backHref={`/clubs/${clubId}`} />
+        <div className="flex items-center justify-center py-16">
+          <RefreshCw className="w-6 h-6 text-primary animate-spin" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -131,22 +193,30 @@ export default function ClubSettingsPage() {
               name="name"
               label="클럽 이름"
               required
+              defaultValue={clubName}
+              key={`name-${clubName}`}
               onChange={(e) => setClubName(e.target.value)}
             />
             <Input
               id="description"
               name="description"
               label="클럽 소개"
+              defaultValue={clubDescription}
+              key={`desc-${clubDescription}`}
             />
             <Input
               id="region"
               name="region"
               label="활동 지역"
+              defaultValue={clubRegion}
+              key={`region-${clubRegion}`}
             />
             <Input
               id="main_court"
               name="main_court"
               label="주요 활동 테니스장"
+              defaultValue={clubMainCourt}
+              key={`court-${clubMainCourt}`}
             />
             <div className="pt-4">
               <Button type="submit" fullWidth size="lg">
@@ -170,11 +240,49 @@ export default function ClubSettingsPage() {
           <p className="text-sm text-muted-foreground mb-4">
             클럽을 삭제하면 모든 경기 기록, 멤버 정보, 통계 데이터가 영구적으로 삭제됩니다.
           </p>
-          <Button variant="destructive" fullWidth>
+          <Button variant="destructive" fullWidth onClick={() => setShowDeleteModal(true)}>
             클럽 삭제
           </Button>
         </Card>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="클럽 삭제 확인">
+        <p className="text-sm text-muted-foreground mb-4">
+          이 작업은 되돌릴 수 없습니다. 삭제를 확인하려면 클럽 이름을 정확히 입력해주세요.
+        </p>
+        <p className="text-sm font-semibold text-foreground mb-3">
+          클럽 이름: <span className="text-destructive">{clubName}</span>
+        </p>
+        <Input
+          id="delete_confirm"
+          label="클럽 이름 입력"
+          placeholder={clubName}
+          value={deleteConfirmName}
+          onChange={(e) => setDeleteConfirmName(e.target.value)}
+        />
+        <div className="flex gap-3 mt-5">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setShowDeleteModal(false);
+              setDeleteConfirmName('');
+            }}
+            fullWidth
+          >
+            취소
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={handleDelete}
+            disabled={deleting || deleteConfirmName !== clubName}
+            loading={deleting}
+            fullWidth
+          >
+            {deleting ? '삭제 중...' : '삭제하기'}
+          </Button>
+        </div>
+      </Modal>
     </>
   );
 }

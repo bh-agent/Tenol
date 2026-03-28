@@ -121,7 +121,7 @@ export default async function ProfilePage() {
                 <p className="text-xs text-muted-foreground mt-1">클럽에 가입하고 함께 테니스를 즐겨보세요</p>
               </div>
               <div className="flex gap-3 px-2">
-                <Link href="/clubs/create" className="flex-1">
+                <Link href="/clubs/new" className="flex-1">
                   <div className="h-11 rounded-xl border border-primary bg-primary/10 text-primary text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-primary/20 transition-all duration-200 active:scale-[0.97]">
                     <Plus className="w-4 h-4" />
                     클럽 만들기

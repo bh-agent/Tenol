@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from '@/components/ui/button';
-import { joinMatch, withdrawFromMatch, updateMatchStatus } from '@/lib/actions/matches';
+import { updateMatchStatus } from '@/lib/actions/matches';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -12,21 +12,9 @@ interface MatchActionsProps {
   status: string;
 }
 
-export function MatchActions({ matchId, clubId, canManage, status }: MatchActionsProps) {
+export function MatchActions({ matchId, canManage, status }: MatchActionsProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-
-  const handleJoin = async () => {
-    setLoading(true);
-    try {
-      await joinMatch(matchId);
-      router.refresh();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '오류가 발생했습니다');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleStatusChange = async (newStatus: string) => {
     setLoading(true);
@@ -40,36 +28,44 @@ export function MatchActions({ matchId, clubId, canManage, status }: MatchAction
     }
   };
 
+  if (!canManage) return null;
   if (status === 'cancelled' || status === 'completed') return null;
 
   return (
     <div className="flex gap-2">
-      <Button
-        onClick={handleJoin}
-        disabled={loading}
-        fullWidth
-        className="glow-primary-sm"
-      >
-        참가 신청
-      </Button>
-
-      {canManage && status === 'upcoming' && (
+      {status === 'upcoming' && (
         <Button
           variant="secondary"
           onClick={() => handleStatusChange('in_progress')}
           disabled={loading}
+          fullWidth
         >
-          시작
+          경기 시작
         </Button>
       )}
 
-      {canManage && status === 'in_progress' && (
+      {status === 'in_progress' && (
         <Button
           variant="secondary"
           onClick={() => handleStatusChange('completed')}
           disabled={loading}
+          fullWidth
         >
-          종료
+          경기 종료
+        </Button>
+      )}
+
+      {(status === 'upcoming' || status === 'in_progress') && (
+        <Button
+          variant="outline"
+          onClick={() => {
+            if (confirm('경기를 취소하시겠습니까?')) {
+              handleStatusChange('cancelled');
+            }
+          }}
+          disabled={loading}
+        >
+          취소
         </Button>
       )}
     </div>

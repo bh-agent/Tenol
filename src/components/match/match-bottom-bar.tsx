@@ -46,7 +46,7 @@ export function MatchBottomBar({ matchId, status, isParticipant, isFull }: Match
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm px-4 py-3 safe-area-bottom">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border glass px-4 py-3 safe-bottom">
       <div className="max-w-lg mx-auto">
         {isFull && !isParticipant ? (
           <Badge

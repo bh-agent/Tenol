@@ -28,7 +28,7 @@ export default function FeedLoading() {
       {/* Post card skeletons */}
       <div className="space-y-0">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="bg-[#141414] border-b border-[#2A2A2A]">
+          <div key={i} className="bg-surface border-b border-border">
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3">
               <Skeleton className="w-8 h-8 rounded-full" />

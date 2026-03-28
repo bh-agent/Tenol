@@ -5,6 +5,7 @@ import { requirePermission, requireMatchPermission } from '@/lib/utils/check-per
 import { redirect } from 'next/navigation';
 import {
   createMatchSchema,
+  updateMatchSchema,
   uuidSchema,
   guestApplySchema,
   offlineParticipantSchema,
@@ -205,6 +206,61 @@ export async function removeParticipant(participantId: string, matchId: string) 
     .eq('id', validParticipantId);
 
   if (error) throw new Error('참가자 삭제에 실패했습니다');
+}
+
+export async function updateMatch(matchId: string, formData: FormData) {
+  const validMatchId = uuidSchema.parse(matchId);
+  const { clubId } = await requireMatchPermission(validMatchId, 'match.create');
+
+  const validated = updateMatchSchema.parse({
+    title: formData.get('title'),
+    description: formData.get('description') || undefined,
+    location: formData.get('location') || undefined,
+    match_date: formData.get('match_date'),
+    start_time: formData.get('start_time') || undefined,
+    end_time: formData.get('end_time') || undefined,
+    court_count: Number(formData.get('court_count')) || 1,
+    max_participants: formData.get('max_participants') ? Number(formData.get('max_participants')) : undefined,
+    format: (formData.get('format') as string) || 'doubles',
+  });
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('matches')
+    .update({ ...validated, updated_at: new Date().toISOString() })
+    .eq('id', validMatchId);
+
+  if (error) throw new Error('경기 수정에 실패했습니다');
+
+  redirect(`/clubs/${clubId}/matches/${validMatchId}`);
+}
+
+export async function deleteMatch(matchId: string) {
+  const validMatchId = uuidSchema.parse(matchId);
+  const { clubId } = await requireMatchPermission(validMatchId, 'match.create');
+
+  const supabase = await createClient();
+
+  // Check match status - only upcoming or cancelled can be deleted
+  const { data: match } = await supabase
+    .from('matches')
+    .select('status')
+    .eq('id', validMatchId)
+    .single();
+
+  if (!match) throw new Error('경기를 찾을 수 없습니다');
+  if (match.status !== 'upcoming' && match.status !== 'cancelled') {
+    throw new Error('진행 중이거나 완료된 경기는 삭제할 수 없습니다');
+  }
+
+  const { error } = await supabase
+    .from('matches')
+    .delete()
+    .eq('id', validMatchId);
+
+  if (error) throw new Error('경기 삭제에 실패했습니다');
+
+  redirect(`/clubs/${clubId}`);
 }
 
 export async function updateMatchStatus(matchId: string, status: string) {

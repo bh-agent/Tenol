@@ -130,7 +130,7 @@ export default function LoginPage() {
             'group w-full h-14 rounded-2xl font-semibold text-[#1F1F1F] bg-white',
             'flex items-center justify-center gap-3',
             'transition-all duration-200 ease-out',
-            'hover:bg-gray-50 hover:shadow-[0_0_30px_rgba(255,255,255,0.08)]',
+            'hover:bg-white/90 hover:shadow-[0_0_30px_rgba(255,255,255,0.08)]',
             'active:scale-[0.97]'
           )}
         >

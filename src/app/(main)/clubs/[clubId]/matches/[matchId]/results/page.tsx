@@ -7,6 +7,7 @@ import { submitScore } from '@/lib/actions/games';
 import { createClient } from '@/lib/supabase/client';
 import { hasPermission } from '@/lib/utils/permissions';
 import type { ClubRole } from '@/types';
+import { EmptyState } from '@/components/ui/empty-state';
 import { Trophy, RefreshCw } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -127,13 +128,11 @@ export default function ResultsPage() {
             <RefreshCw className="w-6 h-6 text-primary animate-spin" />
           </div>
         ) : games.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-16 h-16 rounded-full bg-surface-elevated flex items-center justify-center mx-auto mb-3">
-              <Trophy className="w-8 h-8 text-muted-foreground" />
-            </div>
-            <p className="text-muted-foreground font-medium">아직 등록된 경기가 없습니다</p>
-            <p className="text-xs text-subtle mt-1">먼저 대진표를 생성해주세요</p>
-          </div>
+          <EmptyState
+            icon={Trophy}
+            title="아직 등록된 경기가 없어요"
+            description="먼저 대진표를 생성해주세요"
+          />
         ) : (
           games.map((game) => (
             <Card

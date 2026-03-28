@@ -48,7 +48,7 @@ export function Leaderboard({ entries, currentUserId, className }: LeaderboardPr
                 {rank === 1 ? (
                   <Crown className="w-5 h-5 text-yellow-500 mx-auto drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]" />
                 ) : rank === 2 ? (
-                  <Medal className="w-5 h-5 text-gray-400 mx-auto" />
+                  <Medal className="w-5 h-5 text-muted-foreground mx-auto" />
                 ) : rank === 3 ? (
                   <Medal className="w-5 h-5 text-amber-600 mx-auto" />
                 ) : (

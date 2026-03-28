@@ -17,7 +17,7 @@ export default async function ExploreClubsPage({
     <>
       <TopBar title="클럽 탐색" backHref="/clubs" />
 
-      <div className="px-4 pt-4 pb-2">
+      <div className="px-4 pt-4 pb-2 animate-fade-in">
         {/* Header */}
         <div className="mb-4">
           <h2 className="text-xl font-bold">
