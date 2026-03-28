@@ -384,111 +384,83 @@ function pairByNtrp(
 // ============================================================
 
 export function generateDrawV2(input: DrawInputV2): DrawResultV2 {
-  const {
-    participants,
-    courts,
-    gamesPerCourt,
-    mode,
-    startTime,
-    timeSlotMinutes,
-  } = input;
+  const { participants, courts, gamesPerCourt, mode, startTime, timeSlotMinutes } = input;
 
   const confirmed = participants.filter(p => p.status === 'confirmed');
   if (confirmed.length < 4) {
     throw new Error('경기를 위해 최소 4명의 참가자가 필요합니다');
   }
 
-  const males = confirmed.filter(p => getGender(p) === 'M');
-  const females = confirmed.filter(p => getGender(p) === 'F');
-  const unknownGender = confirmed.filter(p => getGender(p) === null);
-  const totalGames = courts.length * gamesPerCourt;
-
-  // If too many unknown genders, fall back to free mode
   let effectiveMode = mode;
-  if (mode !== 'free' && unknownGender.length > confirmed.length * 0.3) {
-    effectiveMode = 'free';
-  }
-  const totalTimeSlots = gamesPerCourt; // each time slot has courts.length simultaneous games
+  const unknownCount = confirmed.filter(p => getGender(p) === null).length;
+  if (mode !== 'free' && unknownCount > confirmed.length * 0.3) effectiveMode = 'free';
 
-  // Validate mode feasibility
-  if (effectiveMode === 'mixed_only' && (males.length < 2 || females.length < 2)) {
-    throw new Error('혼복을 위해 남녀 각 2명 이상이 필요합니다');
-  }
-  if (effectiveMode === 'gendered_only') {
-    if (males.length < 4 && females.length < 4) {
-      throw new Error('남복 또는 여복을 진행하려면 같은 성별 4명 이상이 필요합니다');
-    }
-  }
+  const totalGames = courts.length * gamesPerCourt;
+  const totalSlots = totalGames * 4; // total player-slots
+  const baseGames = Math.floor(totalSlots / confirmed.length);
+  const extraPlayers = totalSlots % confirmed.length;
+  const totalTimeSlots = gamesPerCourt;
 
-  // Target games per person
-  const targetGames = Math.round((totalGames * 4) / confirmed.length);
+  // Each player plays exactly baseGames or baseGames+1 games
+  // Assign quota: first `extraPlayers` (shuffled) get baseGames+1, rest get baseGames
+  const shuffledPlayers = shuffle([...confirmed]);
+  const quota = new Map<string, number>();
+  shuffledPlayers.forEach((p, i) => {
+    quota.set(getPlayerId(p), i < extraPlayers ? baseGames + 1 : baseGames);
+  });
 
-  // Plan game types across all slots
-  const gameTypeList = planGameTypes(totalGames, males.length, females.length, effectiveMode);
+  // Track game count per player
+  const gameCount = new Map<string, number>();
+  confirmed.forEach(p => gameCount.set(getPlayerId(p), 0));
 
-  // Initialize player states
-  const stateMap = new Map<string, PlayerState>();
-  for (const p of confirmed) {
-    stateMap.set(getPlayerId(p), {
-      participant: p,
-      gameCount: 0,
-      lastPlayedSlot: -1,
-      consecutiveSlots: 0,
-      gameTypes: { mixed: 0, mens: 0, womens: 0, free: 0 },
-    });
-  }
-
-  // ── Assign games slot by slot, court by court ──
-  // CRITICAL: Track excluded players per slot to prevent double-booking
   const games: GameSlot[] = [];
-  const sitOutsPerSlot: Map<number, Set<string>> = new Map();
 
-  let gameIdx = 0;
   for (let slot = 0; slot < totalTimeSlots; slot++) {
     const slotStart = addMinutes(startTime, slot * timeSlotMinutes);
     const slotEnd = addMinutes(startTime, (slot + 1) * timeSlotMinutes);
 
-    // Players already assigned to a court in THIS slot - prevents double-booking
-    const assignedThisSlot = new Set<string>();
+    // How many players needed this slot: courts.length * 4
+    const needed = Math.min(courts.length, totalGames - games.length) * 4;
+    if (needed <= 0) break;
 
-    for (let courtIdx = 0; courtIdx < courts.length; courtIdx++) {
-      if (gameIdx >= totalGames) break;
-
-      const gameType = gameTypeList[gameIdx];
-
-      const selected = selectPlayers(
-        gameType,
-        stateMap,
-        slot,
-        targetGames,
-        males,
-        females,
-        confirmed,
-        assignedThisSlot,  // CRITICAL: pass exclusion set
-      );
-
-      if (!selected) {
-        // Can't fill this game - skip
-        gameIdx++;
-        continue;
-      }
-
-      const { teamA, teamB } = pairByNtrp(selected, gameType);
-
-      // Update states for all 4 players and add to exclusion set
-      for (const p of selected) {
+    // Pick players for this slot: those with most remaining quota first
+    const available = confirmed
+      .filter(p => {
         const pid = getPlayerId(p);
-        const s = stateMap.get(pid)!;
-        s.gameCount++;
-        if (s.lastPlayedSlot === slot - 1) {
-          s.consecutiveSlots++;
-        } else {
-          s.consecutiveSlots = 1;
-        }
-        s.lastPlayedSlot = slot;
-        const gtKey = gameType === 'free' ? 'free' : gameType;
-        s.gameTypes[gtKey]++;
-        assignedThisSlot.add(pid);  // Remove from availability for next court
+        return (gameCount.get(pid) || 0) < (quota.get(pid) || 0);
+      })
+      .sort((a, b) => {
+        const aRemain = (quota.get(getPlayerId(a)) || 0) - (gameCount.get(getPlayerId(a)) || 0);
+        const bRemain = (quota.get(getPlayerId(b)) || 0) - (gameCount.get(getPlayerId(b)) || 0);
+        if (bRemain !== aRemain) return bRemain - aRemain; // more remaining = higher priority
+        return Math.random() - 0.5; // random tiebreaker
+      });
+
+    // If not enough players with quota, add players with least games
+    let slotPlayers = available.slice(0, needed);
+    if (slotPlayers.length < needed) {
+      const alreadyIds = new Set(slotPlayers.map(p => getPlayerId(p)));
+      const extras = confirmed
+        .filter(p => !alreadyIds.has(getPlayerId(p)))
+        .sort((a, b) => (gameCount.get(getPlayerId(a)) || 0) - (gameCount.get(getPlayerId(b)) || 0));
+      slotPlayers = [...slotPlayers, ...extras.slice(0, needed - slotPlayers.length)];
+    }
+
+    // Split into court groups of 4
+    const courtsThisSlot = Math.min(courts.length, Math.floor(slotPlayers.length / 4));
+    for (let courtIdx = 0; courtIdx < courtsThisSlot; courtIdx++) {
+      if (games.length >= totalGames) break;
+      const group = slotPlayers.slice(courtIdx * 4, courtIdx * 4 + 4);
+      if (group.length < 4) break;
+
+      // Determine game type based on gender of the 4 players and mode
+      const gameType = determineGameType(group, effectiveMode);
+
+      // Pair by NTRP
+      const { teamA, teamB } = pairByNtrp(group, gameType);
+
+      for (const p of group) {
+        gameCount.set(getPlayerId(p), (gameCount.get(getPlayerId(p)) || 0) + 1);
       }
 
       games.push({
@@ -501,282 +473,60 @@ export function generateDrawV2(input: DrawInputV2): DrawResultV2 {
         startTime: slotStart,
         endTime: slotEnd,
       });
-
-      gameIdx++;
-    }
-
-    // Compute sit-outs for this slot
-    const sittingOut = confirmed.filter(p => !assignedThisSlot.has(getPlayerId(p)));
-    if (sittingOut.length > 0) {
-      sitOutsPerSlot.set(slot, new Set(sittingOut.map(p => getPlayerId(p))));
     }
   }
 
-  // ── Post-processing: Fairness pass ──
-  // HARD CONSTRAINT: max game count difference between any two players is at most 1.
-  // base = floor(totalPlayerSlots / totalPlayers), remainder players play base+1.
-  // totalPlayerSlots = games.length * 4
-
-  // Rebuild count map from stateMap
-  const countMap = new Map<string, number>();
-  for (const p of confirmed) {
-    countMap.set(getPlayerId(p), stateMap.get(getPlayerId(p))!.gameCount);
-  }
-
-  // Helper: check if swapping overPlayer -> underPlayer in a game causes a same-slot conflict
-  function wouldCauseSlotConflict(game: GameSlot, underPlayerId: string): boolean {
-    // Find all other games in the same time slot
-    for (const otherGame of games) {
-      if (otherGame === game) continue;
-      if (otherGame.timeSlotIndex !== game.timeSlotIndex) continue;
-      const otherIds = [
-        getPlayerId(otherGame.teamA.player1),
-        getPlayerId(otherGame.teamA.player2),
-        getPlayerId(otherGame.teamB.player1),
-        getPlayerId(otherGame.teamB.player2),
-      ];
-      if (otherIds.includes(underPlayerId)) return true;
-    }
-    return false;
-  }
-
-  const MAX_SWAP_ITERATIONS = 300;
-  for (let iter = 0; iter < MAX_SWAP_ITERATIONS; iter++) {
-    // Sort players by game count desc
-    const sorted = [...confirmed].sort(
-      (a, b) => (countMap.get(getPlayerId(b)) || 0) - (countMap.get(getPlayerId(a)) || 0)
-    );
-    const maxCount = countMap.get(getPlayerId(sorted[0])) || 0;
-    const minCount = countMap.get(getPlayerId(sorted[sorted.length - 1])) || 0;
-
-    if (maxCount - minCount <= 1) break; // Already fair
-
-    // Find an over player (maxCount) and under player (minCount)
-    const overPlayerId = getPlayerId(sorted.find(p => (countMap.get(getPlayerId(p)) || 0) === maxCount)!);
-    const underPlayerId = getPlayerId(sorted.find(p => (countMap.get(getPlayerId(p)) || 0) === minCount)!);
-
-    if (!overPlayerId || !underPlayerId) break;
-
-    const overParticipant = confirmed.find(p => getPlayerId(p) === overPlayerId)!;
-    const underParticipant = confirmed.find(p => getPlayerId(p) === underPlayerId)!;
-
-    // Find a game where overPlayer plays but underPlayer does not, swap is gender-valid,
-    // and underPlayer isn't already playing in the same time slot
-    let swapped = false;
-    for (const game of games) {
-      const playerIds = [
-        getPlayerId(game.teamA.player1),
-        getPlayerId(game.teamA.player2),
-        getPlayerId(game.teamB.player1),
-        getPlayerId(game.teamB.player2),
-      ];
-
-      if (!playerIds.includes(overPlayerId)) continue;
-      if (playerIds.includes(underPlayerId)) continue;
-
-      // Check gender compatibility
-      const overGender = getGender(overParticipant);
-      const underGender = getGender(underParticipant);
-
-      if (game.gameType === 'mixed') {
-        if (overGender !== underGender) continue;
-      } else if (game.gameType === 'mens') {
-        if (underGender !== 'M') continue;
-      } else if (game.gameType === 'womens') {
-        if (underGender !== 'F') continue;
-      }
-
-      // CRITICAL: Check the under player isn't already playing in same time slot
-      if (wouldCauseSlotConflict(game, underPlayerId)) continue;
-
-      // Perform the swap
-      if (getPlayerId(game.teamA.player1) === overPlayerId) {
-        game.teamA.player1 = underParticipant;
-      } else if (getPlayerId(game.teamA.player2) === overPlayerId) {
-        game.teamA.player2 = underParticipant;
-      } else if (getPlayerId(game.teamB.player1) === overPlayerId) {
-        game.teamB.player1 = underParticipant;
-      } else if (getPlayerId(game.teamB.player2) === overPlayerId) {
-        game.teamB.player2 = underParticipant;
-      }
-
-      countMap.set(overPlayerId, (countMap.get(overPlayerId) || 0) - 1);
-      countMap.set(underPlayerId, (countMap.get(underPlayerId) || 0) + 1);
-
-      const overState = stateMap.get(overPlayerId)!;
-      const underState = stateMap.get(underPlayerId)!;
-      overState.gameCount--;
-      underState.gameCount++;
-      overState.gameTypes[game.gameType === 'free' ? 'free' : game.gameType]--;
-      underState.gameTypes[game.gameType === 'free' ? 'free' : game.gameType]++;
-
-      swapped = true;
-      break;
-    }
-
-    if (!swapped) break;
-  }
-
-  // ── Post-processing: Game type variety pass (mixed_all mode only) ──
-  // If a player played 3+ games and only has one game type category,
-  // swap them into the other category.
-  if (effectiveMode === 'mixed_all') {
-    const MAX_VARIETY_ITERATIONS = 200;
-    for (let iter = 0; iter < MAX_VARIETY_ITERATIONS; iter++) {
-      let fixedAny = false;
-
-      for (const p of confirmed) {
-        const pid = getPlayerId(p);
-        const s = stateMap.get(pid)!;
-        if (s.gameCount < 3) continue;
-
-        const hasMixed = s.gameTypes.mixed > 0;
-        const hasGendered = (s.gameTypes.mens + s.gameTypes.womens) > 0;
-
-        if (hasMixed && hasGendered) continue; // already has variety
-
-        // This player only has one type category. Try to swap them in.
-        const pGender = getGender(p);
-        if (!hasMixed) {
-          // Player needs a mixed game. Find a mixed game where we can swap them in.
-          for (const game of games) {
-            if (game.gameType !== 'mixed') continue;
-            const gamePlayers = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
-            const gamePlayerIds = gamePlayers.map(pp => getPlayerId(pp));
-            if (gamePlayerIds.includes(pid)) continue;
-
-            // Find a same-gender player in this game who has more variety
-            for (let gi = 0; gi < 4; gi++) {
-              const candidate = gamePlayers[gi];
-              const cid = getPlayerId(candidate);
-              if (getGender(candidate) !== pGender) continue;
-              const cs = stateMap.get(cid)!;
-              if (cs.gameTypes.mixed <= 1) continue; // candidate needs their mixed games too
-              if ((countMap.get(cid) || 0) <= (countMap.get(pid) || 0) - 1) continue; // don't break fairness
-
-              // Check slot conflict
-              if (wouldCauseSlotConflict(game, pid)) continue;
-
-              // Swap
-              if (getPlayerId(game.teamA.player1) === cid) game.teamA.player1 = p;
-              else if (getPlayerId(game.teamA.player2) === cid) game.teamA.player2 = p;
-              else if (getPlayerId(game.teamB.player1) === cid) game.teamB.player1 = p;
-              else if (getPlayerId(game.teamB.player2) === cid) game.teamB.player2 = p;
-
-              // Update states
-              s.gameTypes.mixed++;
-              const genderedType = pGender === 'M' ? 'mens' : 'womens';
-              if (s.gameTypes[genderedType] > 0) s.gameTypes[genderedType]--;
-              cs.gameTypes.mixed--;
-              if (cs.gameTypes[genderedType] !== undefined) cs.gameTypes[genderedType]++;
-
-              fixedAny = true;
-              break;
-            }
-            if (fixedAny) break;
-          }
-        } else if (!hasGendered) {
-          // Player needs a gendered game. Find a mens/womens game to swap into.
-          const targetType: GameType = pGender === 'M' ? 'mens' : pGender === 'F' ? 'womens' : 'mens';
-          for (const game of games) {
-            if (game.gameType !== targetType) continue;
-            const gamePlayers = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
-            const gamePlayerIds = gamePlayers.map(pp => getPlayerId(pp));
-            if (gamePlayerIds.includes(pid)) continue;
-
-            // Find a player in this game who has variety and can be swapped out
-            for (let gi = 0; gi < 4; gi++) {
-              const candidate = gamePlayers[gi];
-              const cid = getPlayerId(candidate);
-              const cs = stateMap.get(cid)!;
-              const cGenderedCount = cs.gameTypes[targetType];
-              if (cGenderedCount <= 1) continue;
-              if ((countMap.get(cid) || 0) <= (countMap.get(pid) || 0) - 1) continue;
-
-              if (wouldCauseSlotConflict(game, pid)) continue;
-
-              // Swap
-              if (getPlayerId(game.teamA.player1) === cid) game.teamA.player1 = p;
-              else if (getPlayerId(game.teamA.player2) === cid) game.teamA.player2 = p;
-              else if (getPlayerId(game.teamB.player1) === cid) game.teamB.player1 = p;
-              else if (getPlayerId(game.teamB.player2) === cid) game.teamB.player2 = p;
-
-              s.gameTypes[targetType]++;
-              if (s.gameTypes.mixed > 0) s.gameTypes.mixed--;
-              cs.gameTypes[targetType]--;
-              cs.gameTypes.mixed++;
-
-              fixedAny = true;
-              break;
-            }
-            if (fixedAny) break;
-          }
-        }
-        if (fixedAny) break; // restart outer loop to recheck
-      }
-      if (!fixedAny) break;
-    }
-  }
-
-  // ── Recompute sit-outs after post-processing swaps ──
-  sitOutsPerSlot.clear();
+  // Compute sit-outs per slot
+  const sitOutsPerSlot = new Map<number, MatchParticipant[]>();
   for (let slot = 0; slot < totalTimeSlots; slot++) {
-    const playingInSlot = new Set<string>();
-    for (const game of games) {
-      if (game.timeSlotIndex !== slot) continue;
-      const players = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
-      players.forEach(p => playingInSlot.add(getPlayerId(p)));
-    }
-    const sittingOut = confirmed.filter(p => !playingInSlot.has(getPlayerId(p)));
-    if (sittingOut.length > 0) {
-      sitOutsPerSlot.set(slot, new Set(sittingOut.map(p => getPlayerId(p))));
-    }
+    const playingIds = new Set<string>();
+    games.filter(g => g.timeSlotIndex === slot).forEach(g => {
+      [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2]
+        .forEach(p => playingIds.add(getPlayerId(p)));
+    });
+    const sitting = confirmed.filter(p => !playingIds.has(getPlayerId(p)));
+    if (sitting.length > 0) sitOutsPerSlot.set(slot, sitting);
   }
 
   // Build player summaries
   const summaryMap = new Map<string, PlayerSummary>();
-  for (const p of confirmed) {
-    summaryMap.set(getPlayerId(p), {
-      participant: p,
-      totalGames: 0,
-      games: [],
-    });
-  }
+  confirmed.forEach(p => summaryMap.set(getPlayerId(p), { participant: p, totalGames: 0, games: [] }));
 
   games.forEach((g, idx) => {
-    const allInGame = [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2];
-    for (const p of allInGame) {
-      const summary = summaryMap.get(getPlayerId(p));
-      if (summary) {
-        summary.totalGames++;
-        summary.games.push({
-          timeSlotIndex: g.timeSlotIndex,
-          courtName: g.courtName,
-          gameType: g.gameType,
-          gameOrder: idx + 1,
-        });
+    [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2].forEach(p => {
+      const s = summaryMap.get(getPlayerId(p));
+      if (s) {
+        s.totalGames++;
+        s.games.push({ timeSlotIndex: g.timeSlotIndex, courtName: g.courtName, gameType: g.gameType, gameOrder: idx + 1 });
       }
-    }
+    });
   });
-
-  // Build sit-outs array
-  const sitOuts: DrawResultV2['sitOuts'] = [];
-  for (let slot = 0; slot < totalTimeSlots; slot++) {
-    const sittingOutIds = sitOutsPerSlot.get(slot);
-    if (sittingOutIds && sittingOutIds.size > 0) {
-      sitOuts.push({
-        timeSlotIndex: slot,
-        players: confirmed.filter(p => sittingOutIds.has(getPlayerId(p))),
-      });
-    }
-  }
 
   return {
     games,
     playerSummary: Array.from(summaryMap.values()),
     totalTimeSlots,
-    sitOuts,
+    sitOuts: Array.from(sitOutsPerSlot.entries()).map(([slot, players]) => ({ timeSlotIndex: slot, players })),
   };
+}
+
+/** Determine game type based on actual player genders */
+function determineGameType(players: MatchParticipant[], mode: DrawMode): GameType {
+  if (mode === 'free') return 'free';
+
+  const males = players.filter(p => getGender(p) === 'M');
+  const females = players.filter(p => getGender(p) === 'F');
+
+  if (mode === 'mixed_only') return 'mixed';
+  if (mode === 'gendered_only') {
+    return males.length >= females.length ? 'mens' : 'womens';
+  }
+
+  // mixed_all: determine by composition
+  if (males.length === 2 && females.length === 2) return 'mixed';
+  if (males.length >= 3) return 'mens';
+  if (females.length >= 3) return 'womens';
+  return 'mixed'; // 2+2 default
 }
 
 // ============================================================

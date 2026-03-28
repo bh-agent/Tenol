@@ -162,7 +162,7 @@ export async function POST(request: Request) {
       gameInserts = v2Result.games.map((g) => ({
         draw_id: draw.id,
         court_number: g.courtIndex,
-        game_order: g.timeSlotIndex,
+        game_order: g.timeSlotIndex + 1,
         team_a_player1_id: g.teamA.player1.id,
         team_a_player2_id: g.teamA.player2.id,
         team_b_player1_id: g.teamB.player1.id,
