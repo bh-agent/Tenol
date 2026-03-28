@@ -42,6 +42,22 @@ export async function POST(request: Request) {
       ...p,
       profiles: Array.isArray(p.profiles) ? p.profiles[0] || null : p.profiles,
     }));
+
+    // Apply gender overrides if provided (for draw engine only, doesn't change DB)
+    const genderOverrides: Record<string, 'M' | 'F'> | undefined = (body as any).genderOverrides;
+    if (genderOverrides && typeof genderOverrides === 'object') {
+      for (const p of normalizedParticipants) {
+        if (genderOverrides[p.id]) {
+          // Override the gender the draw engine sees
+          if (p.profiles) {
+            p.profiles = { ...p.profiles, gender: genderOverrides[p.id] };
+          } else {
+            p.guest_gender = genderOverrides[p.id];
+          }
+        }
+      }
+    }
+
     (match as any).match_participants = normalizedParticipants;
 
     const isV2Mode = V2_DRAW_MODES.has(validated.drawType as string);

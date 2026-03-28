@@ -10,13 +10,14 @@ import { TopBar } from '@/components/layout/top-bar';
 import { NTRP_LEVELS } from '@/lib/constants';
 import { PlayerGameSummary } from '@/components/match/player-game-summary';
 import { GameRoundCard } from '@/components/match/game-round-card';
-import { addOfflineParticipant, removeParticipant } from '@/lib/actions/matches';
+import { addOfflineParticipant, removeParticipant, replaceParticipant, replaceWithOffline } from '@/lib/actions/matches';
 import { deleteDraw, updateGamePlayers, createManualDraw } from '@/lib/actions/games';
 import { createClient } from '@/lib/supabase/client';
 import { hasPermission } from '@/lib/utils/permissions';
 import { cn } from '@/lib/utils/cn';
 import type { ClubRole } from '@/types';
 import { EmptyState } from '@/components/ui/empty-state';
+import { SubstitutePlayerModal } from '@/components/match/substitute-player-modal';
 import {
   Shuffle,
   Check,
@@ -28,6 +29,8 @@ import {
   RotateCcw,
   ChevronDown,
   PenLine,
+  ArrowRightLeft,
+  Replace,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -227,6 +230,13 @@ export default function DrawPage() {
   >({});
   const [savingManual, setSavingManual] = useState(false);
 
+  // Gender overrides (draw engine only - doesn't change profile)
+  const [genderOverrides, setGenderOverrides] = useState<Record<string, 'M' | 'F'>>({});
+
+  // Substitute player
+  const [substituteTarget, setSubstituteTarget] = useState<Participant | null>(null);
+  const [substituting, setSubstituting] = useState(false);
+
   // Edit game modal
   const [editGame, setEditGame] = useState<GameData | null>(null);
   const [editPlayers, setEditPlayers] = useState<{
@@ -322,9 +332,11 @@ export default function DrawPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const males = participants.filter((p) => p.gender === 'M');
-  const females = participants.filter((p) => p.gender === 'F');
-  const unknown = participants.filter((p) => !p.gender);
+  // Effective gender considers overrides
+  const getEffectiveGender = (p: Participant) => genderOverrides[p.id] || p.gender;
+  const males = participants.filter((p) => getEffectiveGender(p) === 'M');
+  const females = participants.filter((p) => getEffectiveGender(p) === 'F');
+  const unknown = participants.filter((p) => !getEffectiveGender(p));
 
   // ── Handlers ──
 
@@ -340,6 +352,8 @@ export default function DrawPage() {
         { length: matchCourtCount },
         (_, i) => courtNames[i + 1] || `${i + 1}코트`
       );
+      // Pass gender overrides so the API can apply them before draw generation
+      const overrides = Object.keys(genderOverrides).length > 0 ? genderOverrides : undefined;
       const res = await fetch('/api/draw/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -351,6 +365,7 @@ export default function DrawPage() {
           timeSlotMinutes: Number(gameDuration),
           startTime,
           courtNames: courtNameArray,
+          genderOverrides: overrides,
         }),
       });
       const result = await res.json();
@@ -423,6 +438,44 @@ export default function DrawPage() {
       alert(e instanceof Error ? e.message : '대진표 재생성에 실패했습니다');
     } finally {
       setRegenerating(null);
+    }
+  };
+
+  // ── Gender override toggle ──
+
+  const toggleGenderOverride = (p: Participant) => {
+    const currentGender = getEffectiveGender(p);
+    const newGender = currentGender === 'M' ? 'F' : 'M';
+    setGenderOverrides(prev => ({ ...prev, [p.id]: newGender }));
+  };
+
+  // ── Substitute player handlers ──
+
+  const handleSubstituteMember = async (member: { userId: string }) => {
+    if (!substituteTarget) return;
+    setSubstituting(true);
+    try {
+      await replaceParticipant(matchId, substituteTarget.id, member.userId);
+      setSubstituteTarget(null);
+      await loadData();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '대체에 실패했습니다');
+    } finally {
+      setSubstituting(false);
+    }
+  };
+
+  const handleSubstituteOffline = async (name: string, gender: 'M' | 'F', ntrp?: number) => {
+    if (!substituteTarget) return;
+    setSubstituting(true);
+    try {
+      await replaceWithOffline(matchId, substituteTarget.id, name, gender, ntrp);
+      setSubstituteTarget(null);
+      await loadData();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '대체에 실패했습니다');
+    } finally {
+      setSubstituting(false);
     }
   };
 
@@ -518,35 +571,60 @@ export default function DrawPage() {
 
   // ── Participant chip renderer ──
 
-  const renderParticipantChip = (p: Participant) => (
-    <div
-      key={p.id}
-      className={cn(
-        'flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1.5 border transition-colors',
-        p.gender === 'M'
-          ? 'bg-info/10 border-info/20 text-info'
-          : p.gender === 'F'
-            ? 'bg-pink-500/10 border-pink-500/20 text-pink-400'
-            : 'bg-surface-elevated border-border text-muted-foreground'
-      )}
-    >
-      <span className="text-sm font-medium text-foreground">{p.name}</span>
-      {p.ntrp && (
-        <span className="text-[10px] text-primary font-semibold">{p.ntrp}</span>
-      )}
-      {!p.user_id && (
-        <span className="text-[10px] text-muted-foreground">(비회원)</span>
-      )}
-      {canManageDraw && (
-        <button
-          onClick={() => handleRemoveParticipant(p.id, p.name)}
-          className="p-0.5 rounded-full hover:bg-destructive/20 transition-colors cursor-pointer"
-        >
-          <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
-        </button>
-      )}
-    </div>
-  );
+  const renderParticipantChip = (p: Participant) => {
+    const effectiveGender = getEffectiveGender(p);
+    const isOverridden = genderOverrides[p.id] !== undefined;
+
+    return (
+      <div
+        key={p.id}
+        className={cn(
+          'flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1.5 border transition-colors',
+          effectiveGender === 'M'
+            ? 'bg-info/10 border-info/20 text-info'
+            : effectiveGender === 'F'
+              ? 'bg-pink-500/10 border-pink-500/20 text-pink-400'
+              : 'bg-surface-elevated border-border text-muted-foreground',
+          isOverridden && 'ring-1 ring-yellow-500/40'
+        )}
+      >
+        <span className="text-sm font-medium text-foreground">{p.name}</span>
+        {p.ntrp && (
+          <span className="text-[10px] text-primary font-semibold">{p.ntrp}</span>
+        )}
+        {!p.user_id && (
+          <span className="text-[10px] text-muted-foreground">(비회원)</span>
+        )}
+        {isOverridden && (
+          <span className="text-[10px] text-yellow-400 font-semibold">(이동)</span>
+        )}
+        {canManageDraw && (
+          <>
+            <button
+              onClick={() => toggleGenderOverride(p)}
+              title="성별 그룹 이동"
+              className="p-0.5 rounded-full hover:bg-yellow-500/20 transition-colors cursor-pointer"
+            >
+              <ArrowRightLeft className="w-3.5 h-3.5 text-muted-foreground hover:text-yellow-400" />
+            </button>
+            <button
+              onClick={() => setSubstituteTarget(p)}
+              title="대체 선수"
+              className="p-0.5 rounded-full hover:bg-primary/20 transition-colors cursor-pointer"
+            >
+              <Replace className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+            </button>
+            <button
+              onClick={() => handleRemoveParticipant(p.id, p.name)}
+              className="p-0.5 rounded-full hover:bg-destructive/20 transition-colors cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+            </button>
+          </>
+        )}
+      </div>
+    );
+  };
 
   // Player select options for edit modal
   const playerOptions = participants.map((p) => ({
@@ -1078,6 +1156,19 @@ export default function DrawPage() {
           </Button>
         </div>
       </Modal>
+
+      {/* ── Substitute player modal ── */}
+      <SubstitutePlayerModal
+        isOpen={!!substituteTarget}
+        onClose={() => setSubstituteTarget(null)}
+        clubId={clubId}
+        matchId={matchId}
+        excludeParticipantIds={participants.filter(p => p.user_id).map(p => p.user_id!)}
+        targetPlayerName={substituteTarget?.name || ''}
+        onSelectMember={handleSubstituteMember}
+        onAddOffline={handleSubstituteOffline}
+        loading={substituting}
+      />
 
       {/* ── Edit game modal ── */}
       <Modal isOpen={!!editGame} onClose={() => setEditGame(null)} title="경기 수정">

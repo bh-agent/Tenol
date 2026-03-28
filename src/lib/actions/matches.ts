@@ -229,6 +229,148 @@ export async function removeParticipant(participantId: string, matchId: string) 
   if (error) throw new Error('참가자 삭제에 실패했습니다');
 }
 
+/**
+ * 참가자 대체 (기존 클럽 멤버로 교체)
+ * - match_participants에서 oldParticipant를 교체
+ * - 기존 대진표(games)에서 해당 선수가 배정된 모든 경기를 새 선수로 교체
+ */
+export async function replaceParticipant(matchId: string, oldParticipantId: string, newUserId: string) {
+  const validMatchId = uuidSchema.parse(matchId);
+  const validOldId = uuidSchema.parse(oldParticipantId);
+  const validNewUserId = uuidSchema.parse(newUserId);
+  await requireMatchPermission(validMatchId, 'match.create');
+
+  const supabase = await createClient();
+
+  // Check if the new user is already a participant
+  const { data: existing } = await supabase
+    .from('match_participants')
+    .select('id')
+    .eq('match_id', validMatchId)
+    .eq('user_id', validNewUserId)
+    .maybeSingle();
+
+  if (existing) {
+    throw new Error('이미 참가 중인 멤버입니다');
+  }
+
+  // Create new participant
+  const { data: newParticipant, error: insertErr } = await supabase
+    .from('match_participants')
+    .insert({
+      match_id: validMatchId,
+      user_id: validNewUserId,
+      participant_type: 'member',
+      status: 'confirmed',
+    })
+    .select('id')
+    .single();
+
+  if (insertErr) throw new Error('대체 선수 추가에 실패했습니다');
+
+  // Find all games where oldParticipant is assigned and swap
+  const { data: draws } = await supabase
+    .from('draws')
+    .select('id')
+    .eq('match_id', validMatchId);
+
+  if (draws && draws.length > 0) {
+    const drawIds = draws.map(d => d.id);
+    const { data: games } = await supabase
+      .from('games')
+      .select('id, team_a_player1_id, team_a_player2_id, team_b_player1_id, team_b_player2_id')
+      .in('draw_id', drawIds);
+
+    if (games) {
+      for (const game of games) {
+        const updates: Record<string, string> = {};
+        if (game.team_a_player1_id === validOldId) updates.team_a_player1_id = newParticipant.id;
+        if (game.team_a_player2_id === validOldId) updates.team_a_player2_id = newParticipant.id;
+        if (game.team_b_player1_id === validOldId) updates.team_b_player1_id = newParticipant.id;
+        if (game.team_b_player2_id === validOldId) updates.team_b_player2_id = newParticipant.id;
+
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('games').update(updates).eq('id', game.id);
+        }
+      }
+    }
+  }
+
+  // Delete old participant
+  await supabase
+    .from('match_participants')
+    .delete()
+    .eq('id', validOldId);
+}
+
+/**
+ * 참가자 대체 (비회원/오프라인 선수로 교체)
+ */
+export async function replaceWithOffline(
+  matchId: string,
+  oldParticipantId: string,
+  name: string,
+  gender: 'M' | 'F',
+  ntrp?: number
+) {
+  const validMatchId = uuidSchema.parse(matchId);
+  const validOldId = uuidSchema.parse(oldParticipantId);
+  await requireMatchPermission(validMatchId, 'match.create');
+
+  const supabase = await createClient();
+
+  // Create new offline participant
+  const { data: newParticipant, error: insertErr } = await supabase
+    .from('match_participants')
+    .insert({
+      match_id: validMatchId,
+      user_id: null,
+      guest_name: name,
+      guest_gender: gender,
+      participant_type: 'guest',
+      status: 'confirmed',
+      ntrp_override: ntrp || null,
+    })
+    .select('id')
+    .single();
+
+  if (insertErr) throw new Error('대체 선수 추가에 실패했습니다');
+
+  // Find all games where oldParticipant is assigned and swap
+  const { data: draws } = await supabase
+    .from('draws')
+    .select('id')
+    .eq('match_id', validMatchId);
+
+  if (draws && draws.length > 0) {
+    const drawIds = draws.map(d => d.id);
+    const { data: games } = await supabase
+      .from('games')
+      .select('id, team_a_player1_id, team_a_player2_id, team_b_player1_id, team_b_player2_id')
+      .in('draw_id', drawIds);
+
+    if (games) {
+      for (const game of games) {
+        const updates: Record<string, string> = {};
+        if (game.team_a_player1_id === validOldId) updates.team_a_player1_id = newParticipant.id;
+        if (game.team_a_player2_id === validOldId) updates.team_a_player2_id = newParticipant.id;
+        if (game.team_b_player1_id === validOldId) updates.team_b_player1_id = newParticipant.id;
+        if (game.team_b_player2_id === validOldId) updates.team_b_player2_id = newParticipant.id;
+
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('games').update(updates).eq('id', game.id);
+        }
+      }
+    }
+  }
+
+  // Delete old participant
+  await supabase
+    .from('match_participants')
+    .delete()
+    .eq('id', validOldId);
+}
+
 export async function updateMatch(matchId: string, formData: FormData) {
   const validMatchId = uuidSchema.parse(matchId);
   const { clubId } = await requireMatchPermission(validMatchId, 'match.create');
