@@ -446,89 +446,64 @@ export function generateDrawV2(input: DrawInputV2): DrawResultV2 {
       slotPlayers = [...slotPlayers, ...extras.slice(0, needed - slotPlayers.length)];
     }
 
-    // Split into court groups respecting game type rules
+    // Build court groups with proper game types
     const courtsThisSlot = Math.min(courts.length, totalGames - games.length);
     if (courtsThisSlot <= 0) break;
 
-    // Separate slot players by gender for controlled assignment
-    const slotMales = slotPlayers.filter(p => getGender(p) === 'M');
-    const slotFemales = slotPlayers.filter(p => getGender(p) === 'F');
-    const slotUnknown = slotPlayers.filter(p => getGender(p) === null);
-
-    // Build court groups based on mode
+    const mPool = slotPlayers.filter(p => getGender(p) === 'M');
+    const fPool = slotPlayers.filter(p => getGender(p) === 'F');
+    const allPool = [...slotPlayers];
     const courtGroups: MatchParticipant[][] = [];
 
     if (effectiveMode === 'free') {
-      // Just split evenly
-      for (let c = 0; c < courtsThisSlot; c++) {
-        courtGroups.push(slotPlayers.slice(c * 4, c * 4 + 4));
+      for (let c = 0; c < courtsThisSlot && allPool.length >= 4; c++) {
+        courtGroups.push(allPool.splice(0, 4));
       }
     } else if (effectiveMode === 'mixed_only') {
-      // Every court: 2M + 2F
-      for (let c = 0; c < courtsThisSlot; c++) {
-        const m = slotMales.splice(0, 2);
-        const f = slotFemales.splice(0, 2);
-        if (m.length === 2 && f.length === 2) courtGroups.push([...m, ...f]);
+      for (let c = 0; c < courtsThisSlot && mPool.length >= 2 && fPool.length >= 2; c++) {
+        courtGroups.push([...mPool.splice(0, 2), ...fPool.splice(0, 2)]);
       }
     } else if (effectiveMode === 'gendered_only') {
-      // Courts alternate: mens then womens
-      let courtIdx = 0;
-      while (courtIdx < courtsThisSlot && slotMales.length >= 4) {
-        courtGroups.push(slotMales.splice(0, 4));
-        courtIdx++;
-      }
-      while (courtIdx < courtsThisSlot && slotFemales.length >= 4) {
-        courtGroups.push(slotFemales.splice(0, 4));
-        courtIdx++;
+      // Alternate mens and womens
+      let mTurn = true;
+      for (let c = 0; c < courtsThisSlot; c++) {
+        if (mTurn && mPool.length >= 4) { courtGroups.push(mPool.splice(0, 4)); }
+        else if (fPool.length >= 4) { courtGroups.push(fPool.splice(0, 4)); }
+        else if (mPool.length >= 4) { courtGroups.push(mPool.splice(0, 4)); }
+        mTurn = !mTurn;
       }
     } else {
-      // mixed_all: try to create proper types
-      // Strategy: for each court, try mixed(2M+2F) first, then mens(4M) or womens(4F)
-      const mPool = [...slotMales];
-      const fPool = [...slotFemales];
-      const assigned = new Set<string>();
+      // mixed_all: PRE-PLAN slot type based on alternating pattern
+      // Even slots → gendered (남복+여복), Odd slots → mixed (혼복+혼복)
+      // This creates balanced distribution like the user's example
+      const useGendered = slot % 2 === 0;
 
-      for (let c = 0; c < courtsThisSlot; c++) {
-        const availM = mPool.filter(p => !assigned.has(getPlayerId(p)));
-        const availF = fPool.filter(p => !assigned.has(getPlayerId(p)));
-
-        let group: MatchParticipant[] = [];
-
-        // Decide type for this court based on remaining availability
-        // Alternate: try mixed first, then gendered if not enough
-        const canMixed = availM.length >= 2 && availF.length >= 2;
-        const canMens = availM.length >= 4;
-        const canWomens = availF.length >= 4;
-
-        // Prefer variety: alternate between mixed and gendered
-        const existingTypes = courtGroups.map(g => {
-          const gm = g.filter(p => getGender(p) === 'M').length;
-          const gf = g.filter(p => getGender(p) === 'F').length;
-          if (gm === 2 && gf === 2) return 'mixed';
-          if (gm >= 3) return 'mens';
-          return 'womens';
-        });
-        const hasMixedThisSlot = existingTypes.includes('mixed');
-        const hasGenderedThisSlot = existingTypes.includes('mens') || existingTypes.includes('womens');
-
-        if (canMixed && (!hasMixedThisSlot || !canMens && !canWomens)) {
-          // Mixed: 2M + 2F
-          group = [...availM.slice(0, 2), ...availF.slice(0, 2)];
-        } else if (canMens && (!hasGenderedThisSlot || !canMixed)) {
-          group = availM.slice(0, 4);
-        } else if (canWomens) {
-          group = availF.slice(0, 4);
-        } else if (canMixed) {
-          group = [...availM.slice(0, 2), ...availF.slice(0, 2)];
-        } else {
-          // Fallback: take anyone available
-          const remaining = [...availM, ...availF, ...slotUnknown.filter(p => !assigned.has(getPlayerId(p)))];
-          group = remaining.slice(0, 4);
+      if (useGendered && mPool.length >= 4 && fPool.length >= 4 && courtsThisSlot >= 2) {
+        // Gendered slot: 남복 + 여복
+        courtGroups.push(mPool.splice(0, 4));
+        courtGroups.push(fPool.splice(0, 4));
+      } else if (!useGendered && mPool.length >= 2 && fPool.length >= 2) {
+        // Mixed slot: 혼복 + 혼복
+        for (let c = 0; c < courtsThisSlot && mPool.length >= 2 && fPool.length >= 2; c++) {
+          courtGroups.push([...mPool.splice(0, 2), ...fPool.splice(0, 2)]);
         }
-
-        if (group.length === 4) {
-          courtGroups.push(group);
-          group.forEach(p => assigned.add(getPlayerId(p)));
+      } else {
+        // Fallback: fill as many courts as possible with what's available
+        // Try mixed first (most flexible)
+        while (courtGroups.length < courtsThisSlot && mPool.length >= 2 && fPool.length >= 2) {
+          courtGroups.push([...mPool.splice(0, 2), ...fPool.splice(0, 2)]);
+        }
+        // Then gendered
+        while (courtGroups.length < courtsThisSlot && mPool.length >= 4) {
+          courtGroups.push(mPool.splice(0, 4));
+        }
+        while (courtGroups.length < courtsThisSlot && fPool.length >= 4) {
+          courtGroups.push(fPool.splice(0, 4));
+        }
+        // Last resort: any combination
+        const leftover = [...mPool, ...fPool];
+        while (courtGroups.length < courtsThisSlot && leftover.length >= 4) {
+          courtGroups.push(leftover.splice(0, 4));
         }
       }
     }
