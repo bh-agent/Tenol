@@ -3,6 +3,8 @@
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { createClient } from '@/lib/supabase/client';
+import { MentionAutocomplete } from '@/components/media/mention-autocomplete';
+import { useMentionInput } from '@/lib/hooks/use-mention-input';
 import { ImagePlus, X, ChevronLeft, ChevronRight, Camera, Film, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useRef, useState } from 'react';
@@ -19,19 +21,22 @@ interface MultiUploadProps {
   maxFiles?: number;
   userAvatar?: string | null;
   userName?: string;
+  clubId?: string;
 }
 
 const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/quicktime', 'video/webm'];
 const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_VIDEO_TYPES];
 
-export function MultiUpload({ storagePath, onUpload, maxFiles = 10, userAvatar, userName }: MultiUploadProps) {
+export function MultiUpload({ storagePath, onUpload, maxFiles = 10, userAvatar, userName, clubId }: MultiUploadProps) {
   const [files, setFiles] = useState<FilePreview[]>([]);
   const [caption, setCaption] = useState('');
   const [uploading, setUploading] = useState(false);
   const [currentPreview, setCurrentPreview] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const mention = useMentionInput(textareaRef, setCaption);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
@@ -122,9 +127,10 @@ export function MultiUpload({ storagePath, onUpload, maxFiles = 10, userAvatar, 
     setCurrentPreview(0);
   };
 
-  // Auto-resize textarea
+  // Auto-resize textarea + mention detection
   const handleCaptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setCaption(e.target.value);
+    mention.handleInputChange(e.target.value);
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
@@ -302,14 +308,27 @@ export function MultiUpload({ storagePath, onUpload, maxFiles = 10, userAvatar, 
               size="sm"
             />
           )}
-          <div className="flex-1">
+          <div className="flex-1 relative">
             <textarea
               ref={textareaRef}
               value={caption}
               onChange={handleCaptionChange}
+              onKeyDown={(e) => {
+                if (mention.handleKeyDown(e)) {
+                  e.preventDefault();
+                }
+              }}
               placeholder="문구를 작성하세요..."
               rows={1}
               className="w-full text-sm text-foreground bg-transparent placeholder:text-muted-foreground resize-none focus:outline-none min-h-[60px] max-h-[120px]"
+            />
+            <MentionAutocomplete
+              query={mention.autocompleteQuery}
+              clubId={clubId}
+              isOpen={mention.isAutocompleteOpen}
+              onSelect={mention.handleSelect}
+              onClose={mention.handleClose}
+              position="above"
             />
           </div>
         </div>

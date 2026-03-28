@@ -1,6 +1,8 @@
 'use client';
 
 import { Avatar } from '@/components/ui/avatar';
+import { MentionAutocomplete } from '@/components/media/mention-autocomplete';
+import { useMentionInput } from '@/lib/hooks/use-mention-input';
 import { cn } from '@/lib/utils/cn';
 import { createClient } from '@/lib/supabase/client';
 import { addComment, deleteComment } from '@/lib/actions/social';
@@ -52,6 +54,8 @@ export function CommentSheet({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+
+  const mention = useMentionInput(inputRef, setBody);
 
   // Drag-to-dismiss state
   const dragStartY = useRef<number | null>(null);
@@ -312,8 +316,15 @@ export function CommentSheet({
           {currentUserId && (
             <form
               onSubmit={handleSubmit}
-              className="flex items-center gap-3 px-4 py-3 border-t border-border safe-bottom bg-surface"
+              className="relative flex items-center gap-3 px-4 py-3 border-t border-border safe-bottom bg-surface"
             >
+              <MentionAutocomplete
+                query={mention.autocompleteQuery}
+                isOpen={mention.isAutocompleteOpen}
+                onSelect={mention.handleSelect}
+                onClose={mention.handleClose}
+                position="above"
+              />
               <Avatar
                 size="sm"
                 fallback="나"
@@ -323,7 +334,15 @@ export function CommentSheet({
                 ref={inputRef}
                 type="text"
                 value={body}
-                onChange={(e) => setBody(e.target.value)}
+                onChange={(e) => {
+                  setBody(e.target.value);
+                  mention.handleInputChange(e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (mention.handleKeyDown(e)) {
+                    e.preventDefault();
+                  }
+                }}
                 placeholder="댓글 달기..."
                 className="flex-1 min-w-0 bg-surface-elevated text-sm text-foreground placeholder:text-muted-foreground rounded-full px-4 py-2.5 border border-border focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
               />
