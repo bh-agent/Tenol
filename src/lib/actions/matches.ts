@@ -175,18 +175,39 @@ export async function addOfflineParticipant(matchId: string, name: string, gende
   await requireMatchPermission(validMatchId, 'match.create');
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc('join_match_atomically', {
-    p_match_id: validMatchId,
-    p_user_id: null,
-    p_participant_type: 'guest',
-    p_status: 'confirmed',
-    p_guest_name: validated.name,
-    p_guest_gender: validated.gender,
-    p_ntrp_override: validated.ntrpLevel || null,
+
+  // 비회원은 user_id가 null이므로 RPC 대신 직접 insert
+  // (RPC 함수의 p_user_id가 UUID 타입이라 null 전달 불가)
+  // 먼저 capacity 체크
+  const { data: match } = await supabase
+    .from('matches')
+    .select('max_participants')
+    .eq('id', validMatchId)
+    .single();
+
+  if (match?.max_participants) {
+    const { count } = await supabase
+      .from('match_participants')
+      .select('*', { count: 'exact', head: true })
+      .eq('match_id', validMatchId)
+      .in('status', ['confirmed', 'pending']);
+
+    if ((count ?? 0) >= match.max_participants) {
+      throw new Error('참가 인원이 가득 찼습니다');
+    }
+  }
+
+  const { error } = await supabase.from('match_participants').insert({
+    match_id: validMatchId,
+    user_id: null,
+    guest_name: validated.name,
+    guest_gender: validated.gender,
+    participant_type: 'guest',
+    status: 'confirmed',
+    ntrp_override: validated.ntrpLevel || null,
   });
 
   if (error) {
-    if (error.message?.includes('MATCH_FULL')) throw new Error('참가 인원이 가득 찼습니다');
     throw new Error('참가자 추가에 실패했습니다');
   }
 }
