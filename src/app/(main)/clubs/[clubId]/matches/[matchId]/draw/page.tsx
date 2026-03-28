@@ -100,13 +100,6 @@ const DRAW_MODE_OPTIONS: {
   },
 ];
 
-const GAME_DURATION_OPTIONS = [
-  { value: '30', label: '30분' },
-  { value: '40', label: '40분' },
-  { value: '50', label: '50분' },
-  { value: '60', label: '60분' },
-];
-
 // ── Draw mode → API draw type mapping ──
 
 function mapDrawModeToApiType(mode: DrawMode): string {
@@ -261,12 +254,16 @@ export default function DrawPage() {
       setMyRole((membership?.role as ClubRole) || null);
     }
 
-    // Get match info for court_count
+    // Get match info for court_count and start_time
     const { data: matchData } = await supabase
       .from('matches')
-      .select('court_count')
+      .select('court_count, start_time')
       .eq('id', matchId)
       .single();
+    if (matchData?.start_time) {
+      // Set default start time from match's start_time (format: "HH:MM:SS" or "HH:MM")
+      setStartTime(matchData.start_time.substring(0, 5));
+    }
     if (matchData?.court_count) {
       setMatchCourtCount(matchData.court_count);
       // Init court names
@@ -644,28 +641,15 @@ export default function DrawPage() {
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
                 />
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">
-                    경기 시간
-                  </label>
-                  <div className="grid grid-cols-2 gap-1">
-                    {GAME_DURATION_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        type="button"
-                        onClick={() => setGameDuration(opt.value)}
-                        className={cn(
-                          'h-11 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer',
-                          gameDuration === opt.value
-                            ? 'border-primary bg-primary/10 text-primary'
-                            : 'border-border text-muted-foreground hover:border-foreground/30'
-                        )}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <Input
+                  id="gameDuration"
+                  label="경기 시간 (분)"
+                  type="number"
+                  min={10}
+                  max={120}
+                  value={gameDuration}
+                  onChange={(e) => setGameDuration(e.target.value)}
+                />
               </div>
 
               {/* Court names - expandable */}
