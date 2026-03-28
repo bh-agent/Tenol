@@ -446,17 +446,100 @@ export function generateDrawV2(input: DrawInputV2): DrawResultV2 {
       slotPlayers = [...slotPlayers, ...extras.slice(0, needed - slotPlayers.length)];
     }
 
-    // Split into court groups of 4
-    const courtsThisSlot = Math.min(courts.length, Math.floor(slotPlayers.length / 4));
-    for (let courtIdx = 0; courtIdx < courtsThisSlot; courtIdx++) {
+    // Split into court groups respecting game type rules
+    const courtsThisSlot = Math.min(courts.length, totalGames - games.length);
+    if (courtsThisSlot <= 0) break;
+
+    // Separate slot players by gender for controlled assignment
+    const slotMales = slotPlayers.filter(p => getGender(p) === 'M');
+    const slotFemales = slotPlayers.filter(p => getGender(p) === 'F');
+    const slotUnknown = slotPlayers.filter(p => getGender(p) === null);
+
+    // Build court groups based on mode
+    const courtGroups: MatchParticipant[][] = [];
+
+    if (effectiveMode === 'free') {
+      // Just split evenly
+      for (let c = 0; c < courtsThisSlot; c++) {
+        courtGroups.push(slotPlayers.slice(c * 4, c * 4 + 4));
+      }
+    } else if (effectiveMode === 'mixed_only') {
+      // Every court: 2M + 2F
+      for (let c = 0; c < courtsThisSlot; c++) {
+        const m = slotMales.splice(0, 2);
+        const f = slotFemales.splice(0, 2);
+        if (m.length === 2 && f.length === 2) courtGroups.push([...m, ...f]);
+      }
+    } else if (effectiveMode === 'gendered_only') {
+      // Courts alternate: mens then womens
+      let courtIdx = 0;
+      while (courtIdx < courtsThisSlot && slotMales.length >= 4) {
+        courtGroups.push(slotMales.splice(0, 4));
+        courtIdx++;
+      }
+      while (courtIdx < courtsThisSlot && slotFemales.length >= 4) {
+        courtGroups.push(slotFemales.splice(0, 4));
+        courtIdx++;
+      }
+    } else {
+      // mixed_all: try to create proper types
+      // Strategy: for each court, try mixed(2M+2F) first, then mens(4M) or womens(4F)
+      const mPool = [...slotMales];
+      const fPool = [...slotFemales];
+      const assigned = new Set<string>();
+
+      for (let c = 0; c < courtsThisSlot; c++) {
+        const availM = mPool.filter(p => !assigned.has(getPlayerId(p)));
+        const availF = fPool.filter(p => !assigned.has(getPlayerId(p)));
+
+        let group: MatchParticipant[] = [];
+
+        // Decide type for this court based on remaining availability
+        // Alternate: try mixed first, then gendered if not enough
+        const canMixed = availM.length >= 2 && availF.length >= 2;
+        const canMens = availM.length >= 4;
+        const canWomens = availF.length >= 4;
+
+        // Prefer variety: alternate between mixed and gendered
+        const existingTypes = courtGroups.map(g => {
+          const gm = g.filter(p => getGender(p) === 'M').length;
+          const gf = g.filter(p => getGender(p) === 'F').length;
+          if (gm === 2 && gf === 2) return 'mixed';
+          if (gm >= 3) return 'mens';
+          return 'womens';
+        });
+        const hasMixedThisSlot = existingTypes.includes('mixed');
+        const hasGenderedThisSlot = existingTypes.includes('mens') || existingTypes.includes('womens');
+
+        if (canMixed && (!hasMixedThisSlot || !canMens && !canWomens)) {
+          // Mixed: 2M + 2F
+          group = [...availM.slice(0, 2), ...availF.slice(0, 2)];
+        } else if (canMens && (!hasGenderedThisSlot || !canMixed)) {
+          group = availM.slice(0, 4);
+        } else if (canWomens) {
+          group = availF.slice(0, 4);
+        } else if (canMixed) {
+          group = [...availM.slice(0, 2), ...availF.slice(0, 2)];
+        } else {
+          // Fallback: take anyone available
+          const remaining = [...availM, ...availF, ...slotUnknown.filter(p => !assigned.has(getPlayerId(p)))];
+          group = remaining.slice(0, 4);
+        }
+
+        if (group.length === 4) {
+          courtGroups.push(group);
+          group.forEach(p => assigned.add(getPlayerId(p)));
+        }
+      }
+    }
+
+    // Create game for each court group
+    for (let courtIdx = 0; courtIdx < courtGroups.length; courtIdx++) {
       if (games.length >= totalGames) break;
-      const group = slotPlayers.slice(courtIdx * 4, courtIdx * 4 + 4);
-      if (group.length < 4) break;
+      const group = courtGroups[courtIdx];
+      if (group.length < 4) continue;
 
-      // Determine game type based on gender of the 4 players and mode
       const gameType = determineGameType(group, effectiveMode);
-
-      // Pair by NTRP
       const { teamA, teamB } = pairByNtrp(group, gameType);
 
       for (const p of group) {
