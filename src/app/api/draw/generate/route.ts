@@ -110,11 +110,16 @@ export async function POST(request: Request) {
     const roundNumber = isV2Mode ? 1 : validated.roundNumber;
 
     // Delete existing draw for this round if exists
-    await supabase
+    const { error: deleteError } = await supabase
       .from('draws')
       .delete()
       .eq('match_id', validated.matchId)
       .eq('round_number', roundNumber);
+
+    if (deleteError) {
+      console.error('[draw/generate] Delete existing draw error:', deleteError);
+      // Continue anyway - might not exist
+    }
 
     // Create draw record
     const { data: draw, error: drawError } = await supabase
@@ -129,7 +134,8 @@ export async function POST(request: Request) {
       .single();
 
     if (drawError) {
-      return NextResponse.json({ error: '대진표 생성에 실패했습니다' }, { status: 500 });
+      console.error('[draw/generate] Draw insert error:', drawError);
+      return NextResponse.json({ error: `대진표 DB 저장 실패: ${drawError.message} (code: ${drawError.code})` }, { status: 500 });
     }
 
     // Create game records
@@ -163,7 +169,8 @@ export async function POST(request: Request) {
       .insert(gameInserts);
 
     if (gamesError) {
-      return NextResponse.json({ error: '게임 생성에 실패했습니다' }, { status: 500 });
+      console.error('[draw/generate] Games insert error:', gamesError);
+      return NextResponse.json({ error: `게임 DB 저장 실패: ${gamesError.message} (code: ${gamesError.code})` }, { status: 500 });
     }
 
     // 대진표 생성 알림 전송 (참가자들에게)
