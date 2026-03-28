@@ -1,4 +1,110 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
-  <rect width="192" height="192" rx="38" fill="#00A86B"/>
-  <text x="96" y="128" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="120" font-weight="700" fill="#ffffff">T</text>
+  <defs>
+    <filter id="grain192" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="2" stitchTiles="stitch" result="noise"/>
+      <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
+      <feComponentTransfer in="grayNoise" result="alphaGrain">
+        <feFuncA type="linear" slope="0.05" intercept="0"/>
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" in2="alphaGrain" mode="overlay"/>
+    </filter>
+
+    <filter id="lineGlow192" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="1.5" result="soft"/>
+      <feMerge>
+        <feMergeNode in="soft"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <linearGradient id="bgGrad192" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0%" stop-color="#111111"/>
+      <stop offset="40%" stop-color="#0C0C0C"/>
+      <stop offset="100%" stop-color="#080B09"/>
+    </linearGradient>
+
+    <radialGradient id="courtSurface192" cx="0.5" cy="0.45" r="0.45">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.035"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="lineV192" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.45"/>
+      <stop offset="25%" stop-color="#00E676" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#69F0AE" stop-opacity="1"/>
+      <stop offset="75%" stop-color="#00E676" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.45"/>
+    </linearGradient>
+
+    <linearGradient id="lineH192" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.4"/>
+      <stop offset="20%" stop-color="#00E676" stop-opacity="0.85"/>
+      <stop offset="50%" stop-color="#69F0AE" stop-opacity="1"/>
+      <stop offset="80%" stop-color="#00E676" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.4"/>
+    </linearGradient>
+
+    <linearGradient id="dimV192" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.25"/>
+      <stop offset="50%" stop-color="#00E676" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.25"/>
+    </linearGradient>
+
+    <linearGradient id="dimH192" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.2"/>
+      <stop offset="50%" stop-color="#00E676" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.2"/>
+    </linearGradient>
+
+    <linearGradient id="tBar192" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0"/>
+      <stop offset="18%" stop-color="#00E676" stop-opacity="0.75"/>
+      <stop offset="50%" stop-color="#B9F6CA" stop-opacity="1"/>
+      <stop offset="82%" stop-color="#00E676" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0"/>
+    </linearGradient>
+
+    <clipPath id="iconClip192">
+      <rect width="192" height="192" rx="42"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#iconClip192)">
+    <rect width="192" height="192" fill="url(#bgGrad192)"/>
+    <rect width="192" height="192" fill="url(#courtSurface192)"/>
+
+    <g filter="url(#lineGlow192)">
+      <!-- Outer court boundary -->
+      <rect x="33" y="36" width="2" height="120" fill="url(#lineV192)" rx="1"/>
+      <rect x="157" y="36" width="2" height="120" fill="url(#lineV192)" rx="1"/>
+      <rect x="33" y="36" width="126" height="2" fill="url(#lineH192)" rx="1"/>
+      <rect x="33" y="154" width="126" height="2" fill="url(#lineH192)" rx="1"/>
+
+      <!-- Singles sidelines -->
+      <rect x="49" y="36" width="1.5" height="120" fill="url(#dimV192)" rx="0.75"/>
+      <rect x="141.5" y="36" width="1.5" height="120" fill="url(#dimV192)" rx="0.75"/>
+
+      <!-- THE T: Net line (horizontal bar) -->
+      <rect x="33" y="93.5" width="126" height="5" fill="url(#tBar192)" rx="2.5"/>
+
+      <!-- THE T: Center service line (vertical stem) -->
+      <rect x="94.5" y="56" width="3" height="80" fill="url(#lineV192)" rx="1.5"/>
+
+      <!-- Service lines -->
+      <rect x="49" y="56" width="94" height="1.5" fill="url(#dimH192)" rx="0.75"/>
+      <rect x="49" y="134.5" width="94" height="1.5" fill="url(#dimH192)" rx="0.75"/>
+    </g>
+
+    <!-- Corner accents -->
+    <rect x="33" y="36" width="8" height="2" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="33" y="36" width="2" height="8" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="151" y="36" width="8" height="2" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="157" y="36" width="2" height="8" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="33" y="154" width="8" height="2" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="33" y="148" width="2" height="8" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="151" y="154" width="8" height="2" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="157" y="148" width="2" height="8" fill="#B9F6CA" opacity="0.55" rx="1"/>
+
+    <rect width="192" height="192" fill="transparent" filter="url(#grain192)"/>
+  </g>
 </svg>

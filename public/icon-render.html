@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tenol Icon Preview</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      gap: 48px;
+      padding: 48px 24px;
+    }
+    .preview-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 40px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .preview-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .preview-item img {
+      border-radius: 22%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .preview-item span {
+      font-size: 13px;
+      color: #888;
+      letter-spacing: 0.02em;
+    }
+    h1 {
+      font-size: 18px;
+      font-weight: 500;
+      color: #333;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tenol Icon System</h1>
+  <div class="preview-row">
+    <div class="preview-item">
+      <img src="/icons/icon-512.svg" width="512" height="512" alt="Tenol Icon 512">
+      <span>512 x 512</span>
+    </div>
+  </div>
+  <div class="preview-row">
+    <div class="preview-item">
+      <img src="/icons/icon-192.svg" width="192" height="192" alt="Tenol Icon 192">
+      <span>192 x 192</span>
+    </div>
+    <div class="preview-item">
+      <img src="/icons/apple-touch-icon.svg" width="180" height="180" alt="Apple Touch Icon">
+      <span>180 x 180 (Apple)</span>
+    </div>
+    <div class="preview-item">
+      <img src="/icons/icon-512.svg" width="64" height="64" alt="Tenol Icon 64">
+      <span>64 x 64 (scaled)</span>
+    </div>
+    <div class="preview-item">
+      <img src="/icons/icon-512.svg" width="32" height="32" alt="Tenol Icon 32">
+      <span>32 x 32 (scaled)</span>
+    </div>
+  </div>
+</body>
+</html>

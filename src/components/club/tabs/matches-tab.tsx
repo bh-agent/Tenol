@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { SearchInput } from '@/components/search/search-input';
 import { FilterChips } from '@/components/search/filter-chips';
 import { SearchEmpty } from '@/components/search/search-empty';
-import { formatDate, formatMatchStatus, formatTime } from '@/lib/utils/format';
+import { formatDate, formatMatchStatus, formatTime, formatDDayWithStatus } from '@/lib/utils/format';
 import { Calendar, MapPin, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -115,10 +115,15 @@ export function MatchesTab({ clubId, matches, canCreateMatch }: MatchesTabProps)
           />
         ) : (
           <div className="text-center py-12 text-muted-foreground">
-            <div className="w-16 h-16 rounded-full bg-surface-elevated flex items-center justify-center mx-auto mb-3">
-              <Calendar className="w-8 h-8 opacity-50" />
+            <div className="w-16 h-16 rounded-2xl bg-primary-dim flex items-center justify-center mx-auto mb-5">
+              <Calendar className="w-7 h-7 text-primary" />
             </div>
-            <p className="font-medium">아직 등록된 경기가 없어요</p>
+            <p className="text-lg font-semibold text-foreground mb-1.5">예정된 경기가 없어요</p>
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
+              {canCreateMatch
+                ? '새 경기를 만들어보세요! 멤버들과 함께 코트에서 만나요.'
+                : '운영진이 경기를 등록하면 여기에 표시됩니다.'}
+            </p>
           </div>
         )
       ) : (
@@ -133,10 +138,24 @@ export function MatchesTab({ clubId, matches, canCreateMatch }: MatchesTabProps)
                 <Card className="hover:border-primary/30 transition-all active:scale-[0.99] mb-3">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <h4 className="font-medium text-foreground">{match.title}</h4>
                         <Badge variant={statusVariant[match.status] || 'default'}>
                           {formatMatchStatus(match.status)}
+                        </Badge>
+                        <Badge
+                          variant={
+                            match.status === 'completed' || match.status === 'cancelled'
+                              ? 'default'
+                              : formatDDayWithStatus(match.match_date, match.status) === '오늘'
+                                ? 'success'
+                                : match.status === 'in_progress'
+                                  ? 'success'
+                                  : 'warning'
+                          }
+                          className="text-[10px] px-1.5 py-0"
+                        >
+                          {formatDDayWithStatus(match.match_date, match.status)}
                         </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">

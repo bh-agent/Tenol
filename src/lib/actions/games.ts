@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import {
   submitScoreSchema,
   updateGamePlayersSchema,
+  deleteDrawSchema,
 } from '@/lib/validations';
 
 // 권한은 RLS + 프론트에서 체크하되, 서버에서도 game의 match -> club 경로로 검증
@@ -32,6 +33,25 @@ async function getClubIdFromGame(gameId: string): Promise<string> {
   if (!match) throw new Error('경기를 찾을 수 없습니다');
 
   return match.club_id;
+}
+
+// draw.manage 권한 필요 - 대진표 삭제 (CASCADE로 games도 삭제됨)
+export async function deleteDraw(drawId: string, matchId: string) {
+  const validated = deleteDrawSchema.parse({ drawId, matchId });
+
+  const { requireMatchPermission } = await import('@/lib/utils/check-permission');
+  await requireMatchPermission(validated.matchId, 'draw.manage');
+
+  const supabase = await createClient();
+
+  // draws 삭제 (games는 ON DELETE CASCADE로 자동 삭제)
+  const { error } = await supabase
+    .from('draws')
+    .delete()
+    .eq('id', validated.drawId)
+    .eq('match_id', validated.matchId);
+
+  if (error) throw new Error('대진표 삭제에 실패했습니다');
 }
 
 // result.input 권한 필요 (회장, 운영진, 멤버)

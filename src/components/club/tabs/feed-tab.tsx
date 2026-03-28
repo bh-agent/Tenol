@@ -46,13 +46,15 @@ export function FeedTab({ clubId, media: initialMedia, canUpload }: FeedTabProps
 
       {initialMedia.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
-          <div className="w-16 h-16 rounded-full bg-surface-elevated flex items-center justify-center mx-auto mb-3">
-            <Camera className="w-8 h-8 opacity-50" />
+          <div className="w-16 h-16 rounded-2xl bg-primary-dim flex items-center justify-center mx-auto mb-5">
+            <Camera className="w-7 h-7 text-primary" />
           </div>
-          <p className="font-medium">아직 올린 사진이 없어요</p>
-          {canUpload && (
-            <p className="text-xs mt-1 text-muted-foreground">클럽 활동 사진을 공유해보세요!</p>
-          )}
+          <p className="text-lg font-semibold text-foreground mb-1.5">아직 사진이 없어요</p>
+          <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">
+            {canUpload
+              ? '첫 번째 사진을 올려보세요! 클럽 활동의 순간을 함께 나눠요.'
+              : '멤버들이 사진을 올리면 여기에 표시됩니다.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-4 stagger">

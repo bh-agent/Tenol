@@ -26,7 +26,7 @@ export function NotificationList({ notifications, hasUnread }: NotificationListP
     return (
       <EmptyState
         icon={Bell}
-        title="알림이 없습니다"
+        title="새로운 알림이 없어요"
         description="클럽 활동, 경기 초대 등의 알림이 여기에 표시됩니다"
       />
     );

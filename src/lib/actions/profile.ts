@@ -119,3 +119,24 @@ export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
 }
+
+/**
+ * 계정 삭제 - 프로필 삭제 후 로그아웃
+ * CASCADE 설정으로 관련 데이터도 함께 삭제됨
+ */
+export async function deleteAccount() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('인증이 필요합니다');
+
+  // 프로필 삭제 (CASCADE로 관련 데이터 정리)
+  const { error } = await supabase
+    .from('profiles')
+    .delete()
+    .eq('id', user.id);
+
+  if (error) throw new Error('계정 삭제에 실패했습니다');
+
+  // 로그아웃
+  await supabase.auth.signOut();
+}

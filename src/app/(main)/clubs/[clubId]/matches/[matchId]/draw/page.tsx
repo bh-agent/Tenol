@@ -8,12 +8,14 @@ import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
 import { TopBar } from '@/components/layout/top-bar';
 import { DRAW_TYPES, NTRP_LEVELS } from '@/lib/constants';
+import { PlayerGameSummary } from '@/components/match/player-game-summary';
 import { addOfflineParticipant, removeParticipant } from '@/lib/actions/matches';
+import { deleteDraw } from '@/lib/actions/games';
 import { createClient } from '@/lib/supabase/client';
 import { hasPermission } from '@/lib/utils/permissions';
 import { cn } from '@/lib/utils/cn';
 import type { ClubRole } from '@/types';
-import { Shuffle, Check, RefreshCw, UserPlus, X, Users } from 'lucide-react';
+import { Shuffle, Check, RefreshCw, UserPlus, X, Users, Trash2, RotateCcw } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -70,6 +72,10 @@ export default function DrawPage() {
   const [addGender, setAddGender] = useState<string>('');
   const [addNtrp, setAddNtrp] = useState('');
   const [adding, setAdding] = useState(false);
+
+  const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [regenerating, setRegenerating] = useState<string | null>(null);
 
   const canManageDraw = hasPermission(myRole, 'draw.manage');
 
@@ -175,6 +181,38 @@ export default function DrawPage() {
       await loadData();
     } catch (e) {
       alert(e instanceof Error ? e.message : '제거에 실패했습니다');
+    }
+  };
+
+  const handleDeleteDraw = async (drawId: string) => {
+    setDeleting(true);
+    try {
+      await deleteDraw(drawId, matchId);
+      setShowDeleteModal(null);
+      await loadData();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '대진표 삭제에 실패했습니다');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleRegenerate = async (draw: DrawData) => {
+    if (!confirm('대진표를 재생성하시겠습니까? 기존 게임 기록과 점수가 모두 삭제됩니다.')) return;
+    setRegenerating(draw.id);
+    try {
+      const res = await fetch('/api/draw/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId, drawType: draw.draw_type, roundNumber: draw.round_number }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error);
+      await loadData();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '대진표 재생성에 실패했습니다');
+    } finally {
+      setRegenerating(null);
     }
   };
 
@@ -345,11 +383,36 @@ export default function DrawPage() {
                       {DRAW_TYPES.find((d) => d.value === draw.draw_type)?.label || draw.draw_type}
                     </Badge>
                   </h3>
-                  {draw.is_finalized && (
-                    <Badge variant="success">
-                      <Check className="w-3 h-3 mr-1" />확정
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {canManageDraw && (
+                      <>
+                        <button
+                          onClick={() => handleRegenerate(draw)}
+                          disabled={regenerating === draw.id}
+                          className="flex items-center gap-1 text-xs text-primary font-medium px-2.5 py-1.5 rounded-lg hover:bg-primary/10 transition-colors cursor-pointer disabled:opacity-40"
+                        >
+                          {regenerating === draw.id ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          )}
+                          재생성
+                        </button>
+                        <button
+                          onClick={() => setShowDeleteModal(draw.id)}
+                          className="flex items-center gap-1 text-xs text-destructive font-medium px-2.5 py-1.5 rounded-lg hover:bg-destructive/10 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          삭제
+                        </button>
+                      </>
+                    )}
+                    {draw.is_finalized && (
+                      <Badge variant="success">
+                        <Check className="w-3 h-3 mr-1" />확정
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 {Object.entries(courts).map(([courtNum, games]) => (
                   <Card key={courtNum} padding="sm" variant="glass">
@@ -390,11 +453,44 @@ export default function DrawPage() {
                     </div>
                   </Card>
                 ))}
+
+                {/* Player Game Summary */}
+                {(draw.games || []).length > 0 && (
+                  <PlayerGameSummary
+                    games={draw.games || []}
+                    participantMap={participantMap}
+                  />
+                )}
               </div>
             );
           })
         )}
       </div>
+
+      {/* Delete draw confirmation modal */}
+      <Modal isOpen={!!showDeleteModal} onClose={() => setShowDeleteModal(null)} title="대진표 삭제">
+        <p className="text-sm text-muted-foreground mb-5">
+          이 라운드의 대진표를 삭제하시겠습니까? 모든 게임 기록이 삭제됩니다.
+        </p>
+        <div className="flex gap-3">
+          <Button
+            variant="secondary"
+            onClick={() => setShowDeleteModal(null)}
+            fullWidth
+          >
+            취소
+          </Button>
+          <Button
+            variant="destructive"
+            onClick={() => showDeleteModal && handleDeleteDraw(showDeleteModal)}
+            disabled={deleting}
+            loading={deleting}
+            fullWidth
+          >
+            {deleting ? '삭제 중...' : '삭제하기'}
+          </Button>
+        </div>
+      </Modal>
 
       {/* Add offline participant modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="참가자 추가">

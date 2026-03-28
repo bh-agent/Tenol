@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { TopBar } from '@/components/layout/top-bar';
 import { NotificationList } from '@/components/notifications/notification-list';
+import { RefreshButton } from '@/components/ui/refresh-button';
 import { getNotifications } from '@/lib/queries/notifications';
 import { Bell } from 'lucide-react';
 
@@ -11,7 +12,7 @@ export default async function NotificationsPage() {
 
   return (
     <>
-      <TopBar title="알림" backHref="/clubs" />
+      <TopBar title="알림" backHref="/clubs" rightAction={<RefreshButton />} />
 
       <div className="px-4 pt-4 pb-2 animate-fade-in">
         {/* Header */}

@@ -2,6 +2,7 @@
 
 import { cn } from '@/lib/utils/cn';
 import { markAsRead } from '@/lib/actions/notifications';
+import { formatRelativeTime } from '@/lib/utils/format';
 import type { Notification } from '@/types';
 import {
   UserCheck,
@@ -36,20 +37,6 @@ function getNotificationHref(notification: Notification): string | null {
   return null;
 }
 
-function formatTimeAgo(dateStr: string): string {
-  const now = new Date();
-  const date = new Date(dateStr);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-
-  if (diffMin < 1) return '방금 전';
-  if (diffMin < 60) return `${diffMin}분 전`;
-  if (diffHour < 24) return `${diffHour}시간 전`;
-  if (diffDay < 7) return `${diffDay}일 전`;
-  return date.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
-}
 
 interface NotificationItemProps {
   notification: Notification;
@@ -106,7 +93,7 @@ export function NotificationItem({ notification }: NotificationItemProps) {
           {notification.body}
         </p>
         <p className="text-xs text-muted-foreground mt-1">
-          {formatTimeAgo(notification.created_at)}
+          {formatRelativeTime(notification.created_at)}
         </p>
       </div>
     </button>

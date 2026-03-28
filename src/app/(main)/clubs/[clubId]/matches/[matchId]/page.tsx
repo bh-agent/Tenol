@@ -6,13 +6,15 @@ import { Card } from '@/components/ui/card';
 import { TopBar } from '@/components/layout/top-bar';
 import { getMatch } from '@/lib/queries/matches';
 import { getMyRole } from '@/lib/queries/clubs';
-import { formatDate, formatTime, formatMatchStatus } from '@/lib/utils/format';
+import { formatDate, formatTime, formatMatchStatus, formatDDayWithStatus } from '@/lib/utils/format';
 import { hasPermission } from '@/lib/utils/permissions';
-import { MapPin, Clock, Users, LayoutGrid, Trophy, ChevronRight } from 'lucide-react';
+import { MapPin, Clock, Users, LayoutGrid, Trophy, ChevronRight, AlertTriangle, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { MatchActions } from '@/components/match/match-actions';
 import { GuestActions } from '@/components/match/guest-actions';
+import { MatchBottomBar } from '@/components/match/match-bottom-bar';
+import { createClient } from '@/lib/supabase/server';
 
 export default async function MatchDetailPage({
   params,
@@ -32,8 +34,26 @@ export default async function MatchDetailPage({
   const canManageDraw = hasPermission(myRole, 'draw.manage');
   const canInputResult = hasPermission(myRole, 'result.input');
 
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   const confirmed = match.match_participants?.filter((p: any) => p.status === 'confirmed') || [];
   const pending = match.match_participants?.filter((p: any) => p.status === 'pending') || [];
+
+  const isParticipant = user ? confirmed.some((p: any) => p.user_id === user.id) : false;
+  const isFull = match.max_participants ? confirmed.length >= match.max_participants : false;
+
+  // Doubles need minimum 4 for a draw
+  const isDoubles = match.format === 'doubles' || match.format === 'mixed_doubles';
+  const minForDraw = isDoubles ? 4 : 2;
+  const canGenerateDraw = confirmed.length >= minForDraw;
+  const needsMore = !canGenerateDraw;
+
+  const progressPercent = match.max_participants
+    ? Math.min(100, Math.round((confirmed.length / match.max_participants) * 100))
+    : 0;
+
+  const dDay = formatDDayWithStatus(match.match_date, match.status);
 
   const statusVariant: Record<string, 'primary' | 'success' | 'default' | 'destructive'> = {
     upcoming: 'primary',
@@ -51,12 +71,23 @@ export default async function MatchDetailPage({
         <Card variant="glow" padding="lg">
           <div className="space-y-4">
             {/* Status badges */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge variant={statusVariant[match.status] || 'default'}>
                 {formatMatchStatus(match.status)}
               </Badge>
               <Badge variant="outline">
                 {match.format === 'doubles' ? '복식' : match.format === 'singles' ? '단식' : '혼합 복식'}
+              </Badge>
+              <Badge
+                variant={
+                  match.status === 'completed' || match.status === 'cancelled'
+                    ? 'default'
+                    : dDay === '오늘' || match.status === 'in_progress'
+                      ? 'success'
+                      : 'warning'
+                }
+              >
+                {dDay}
               </Badge>
             </div>
 
@@ -156,11 +187,46 @@ export default async function MatchDetailPage({
 
         {/* Confirmed Participants */}
         <Card variant="glass" padding="lg">
-          <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
-            <Users className="w-4 h-4 text-primary" />
-            참가자 ({confirmed.length}명
-            {match.max_participants && `/${match.max_participants}`})
-          </h3>
+          <div className="space-y-3 mb-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <Users className="w-4 h-4 text-primary" />
+                참가자 ({confirmed.length}명
+                {match.max_participants && `/${match.max_participants}`})
+              </h3>
+              {canGenerateDraw ? (
+                <Badge variant="success" className="flex items-center gap-1">
+                  <CheckCircle className="w-3 h-3" />
+                  대진표 생성 가능
+                </Badge>
+              ) : needsMore && isDoubles ? (
+                <Badge variant="warning" className="flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  최소 4명 필요
+                </Badge>
+              ) : needsMore ? (
+                <Badge variant="warning" className="flex items-center gap-1">
+                  <AlertTriangle className="w-3 h-3" />
+                  최소 2명 필요
+                </Badge>
+              ) : null}
+            </div>
+
+            {/* Progress bar */}
+            {match.max_participants && (
+              <div className="space-y-1">
+                <div className="h-2 rounded-full bg-surface-elevated overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground text-right">
+                  {confirmed.length}/{match.max_participants}명 ({progressPercent}%)
+                </p>
+              </div>
+            )}
+          </div>
           <div className="space-y-1.5">
             {confirmed.map((p: any) => (
               <div key={p.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-elevated transition-colors">
@@ -187,7 +253,19 @@ export default async function MatchDetailPage({
             ))}
           </div>
         </Card>
+
+        {/* Bottom spacer for sticky bar */}
+        {(match.status === 'upcoming' || match.status === 'in_progress') && (
+          <div className="h-20" />
+        )}
       </div>
+
+      <MatchBottomBar
+        matchId={matchId}
+        status={match.status}
+        isParticipant={isParticipant}
+        isFull={isFull}
+      />
     </>
   );
 }

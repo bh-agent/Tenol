@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { FilterChips } from '@/components/search/filter-chips';
 import { SearchEmpty } from '@/components/search/search-empty';
 import { cn } from '@/lib/utils/cn';
-import { formatDate, formatTime, formatMatchStatus } from '@/lib/utils/format';
+import { formatDate, formatTime, formatMatchStatus, formatDDayWithStatus } from '@/lib/utils/format';
 import { CalendarClock, History, MapPin, Trophy, Filter } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
@@ -31,10 +31,24 @@ function MatchCard({ item }: { item: any }) {
       <Card className="hover:border-primary/30 transition-all active:scale-[0.99]">
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h4 className="font-medium text-foreground">{match.title}</h4>
               <Badge variant={statusVariant[match.status] || 'default'}>
                 {formatMatchStatus(match.status)}
+              </Badge>
+              <Badge
+                variant={
+                  match.status === 'completed' || match.status === 'cancelled'
+                    ? 'default'
+                    : formatDDayWithStatus(match.match_date, match.status) === '오늘'
+                      ? 'success'
+                      : match.status === 'in_progress'
+                        ? 'success'
+                        : 'warning'
+                }
+                className="text-[10px] px-1.5 py-0"
+              >
+                {formatDDayWithStatus(match.match_date, match.status)}
               </Badge>
             </div>
           </div>
@@ -208,19 +222,19 @@ export function MyMatchesTabs({ upcoming, history }: MyMatchesTabsProps) {
             <div className="text-center py-16">
               {activeTab === 'upcoming' ? (
                 <>
-                  <div className="w-16 h-16 rounded-full bg-surface-elevated flex items-center justify-center mx-auto mb-3">
-                    <CalendarClock className="w-8 h-8 text-muted-foreground opacity-50" />
+                  <div className="w-16 h-16 rounded-2xl bg-primary-dim flex items-center justify-center mx-auto mb-5">
+                    <CalendarClock className="w-7 h-7 text-primary" />
                   </div>
-                  <p className="text-foreground font-medium">예정된 경기가 없어요</p>
-                  <p className="text-sm text-muted-foreground mt-1">클럽에서 경기에 참가해보세요</p>
+                  <p className="text-lg font-semibold text-foreground mb-1.5">예정된 경기가 없어요</p>
+                  <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">새 경기를 만들어보세요! 클럽에서 멤버들과 함께 경기에 참가해보세요.</p>
                 </>
               ) : (
                 <>
-                  <div className="w-16 h-16 rounded-full bg-surface-elevated flex items-center justify-center mx-auto mb-3">
-                    <Trophy className="w-8 h-8 text-muted-foreground opacity-50" />
+                  <div className="w-16 h-16 rounded-2xl bg-primary-dim flex items-center justify-center mx-auto mb-5">
+                    <Trophy className="w-7 h-7 text-primary" />
                   </div>
-                  <p className="text-foreground font-medium">경기 기록이 없어요</p>
-                  <p className="text-sm text-muted-foreground mt-1">경기를 완료하면 여기에 기록됩니다</p>
+                  <p className="text-lg font-semibold text-foreground mb-1.5">경기 기록이 없어요</p>
+                  <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">경기를 완료하면 여기에 기록이 쌓여요. 첫 경기를 시작해보세요!</p>
                 </>
               )}
             </div>

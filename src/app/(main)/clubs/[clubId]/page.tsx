@@ -8,7 +8,8 @@ import { getClubMatches } from '@/lib/queries/matches';
 import { getClubMedia } from '@/lib/queries/media';
 import { formatRole } from '@/lib/utils/format';
 import { hasPermission } from '@/lib/utils/permissions';
-import { Settings, MapPin, Users, Trophy, BarChart3 } from 'lucide-react';
+import { RefreshButton } from '@/components/ui/refresh-button';
+import { Settings, MapPin, Users, Trophy, BarChart3, Calendar, Swords } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ClubInviteCode } from '@/components/club/club-invite-code';
@@ -47,14 +48,17 @@ export default async function ClubDetailPage({
         title={club.name}
         backHref="/clubs"
         rightAction={
-          canEditClub ? (
-            <Link
-              href={`/clubs/${clubId}/settings`}
-              className="p-2 rounded-full hover:bg-surface-elevated transition-colors"
-            >
-              <Settings className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
-            </Link>
-          ) : null
+          <div className="flex items-center gap-1">
+            <RefreshButton />
+            {canEditClub && (
+              <Link
+                href={`/clubs/${clubId}/settings`}
+                className="p-2 rounded-full hover:bg-surface-elevated transition-colors"
+              >
+                <Settings className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
+              </Link>
+            )}
+          </div>
         }
       />
 
@@ -108,6 +112,32 @@ export default async function ClubDetailPage({
             )}
           </div>
         </Card>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="px-4 pt-2 pb-0 animate-fade-in">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-elevated border border-border text-sm text-muted-foreground">
+            <Swords className="w-3.5 h-3.5 text-primary/70" />
+            경기 {matches.length}회
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-elevated border border-border text-sm text-muted-foreground">
+            <Users className="w-3.5 h-3.5 text-primary/70" />
+            멤버 {members.length}명
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-elevated border border-border text-sm text-muted-foreground">
+            <Calendar className="w-3.5 h-3.5 text-primary/70" />
+            이번 달 {(() => {
+              const now = new Date();
+              const y = now.getFullYear();
+              const m = now.getMonth();
+              return matches.filter((match: any) => {
+                const d = new Date(match.match_date);
+                return d.getFullYear() === y && d.getMonth() === m;
+              }).length;
+            })()}회
+          </span>
+        </div>
       </div>
 
       {/* Quick Links */}

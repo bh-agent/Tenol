@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { TopBar } from '@/components/layout/top-bar';
 import { NotificationBell } from '@/components/notifications/notification-bell';
+import { RefreshButton } from '@/components/ui/refresh-button';
 import { getMyMatches } from '@/lib/queries/matches';
 import { MyMatchesTabs } from '@/components/match/my-matches-tabs';
 import { Trophy } from 'lucide-react';
@@ -28,9 +29,12 @@ export default async function MyMatchesPage() {
       <TopBar
         title="내 경기"
         rightAction={
-          <Suspense fallback={null}>
-            <NotificationBell />
-          </Suspense>
+          <div className="flex items-center gap-1">
+            <RefreshButton />
+            <Suspense fallback={null}>
+              <NotificationBell />
+            </Suspense>
+          </div>
         }
       />
 

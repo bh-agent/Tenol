@@ -8,7 +8,7 @@ import { TopBar } from '@/components/layout/top-bar';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs } from '@/lib/queries/clubs';
 import { getPlayerStats } from '@/lib/queries/stats';
-import { BarChart3, Users, ChevronRight, Crown, Shield } from 'lucide-react';
+import { BarChart3, Users, ChevronRight, Crown, Shield, Plus, Search } from 'lucide-react';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -98,9 +98,31 @@ export default async function ProfilePage() {
           </div>
 
           {clubs.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-sm text-muted-foreground">아직 가입한 클럽이 없어요</p>
-              <p className="text-xs text-subtle mt-1">클럽을 탐색해보세요</p>
+            <div className="text-center py-8 space-y-4">
+              {/* 테니스 라켓 일러스트 (CSS-only) */}
+              <div className="flex justify-center">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Users className="w-8 h-8 text-primary/60" />
+                </div>
+              </div>
+              <div>
+                <p className="text-base font-semibold text-foreground">아직 클럽이 없어요</p>
+                <p className="text-xs text-muted-foreground mt-1">클럽에 가입하고 함께 테니스를 즐겨보세요</p>
+              </div>
+              <div className="flex gap-3 px-2">
+                <Link href="/clubs/create" className="flex-1">
+                  <div className="h-11 rounded-xl border border-primary bg-primary/10 text-primary text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-primary/20 transition-all duration-200 active:scale-[0.97]">
+                    <Plus className="w-4 h-4" />
+                    클럽 만들기
+                  </div>
+                </Link>
+                <Link href="/clubs" className="flex-1">
+                  <div className="h-11 rounded-xl border border-border bg-surface-elevated text-foreground text-sm font-medium flex items-center justify-center gap-1.5 hover:border-primary/30 transition-all duration-200 active:scale-[0.97]">
+                    <Search className="w-4 h-4" />
+                    클럽 탐색하기
+                  </div>
+                </Link>
+              </div>
             </div>
           ) : (
             <div className="space-y-1.5">

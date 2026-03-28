@@ -77,6 +77,15 @@ export default function OnboardingPage() {
     }
   };
 
+  const handleGenderSelect = (g: string) => {
+    setGender(g);
+    // 닉네임이 이미 입력되어 있으면 자동으로 다음 단계로
+    if (displayName.trim()) {
+      setError('');
+      setTimeout(() => setStep(2), 300);
+    }
+  };
+
   const handleNext = () => {
     setError('');
     if (step === 1) {
@@ -125,8 +134,13 @@ export default function OnboardingPage() {
         }}
       />
 
+      {/* Welcome message */}
+      <div className="relative z-10 px-6 pt-10 pb-1 text-center">
+        <h2 className="text-lg font-bold text-gradient">테놀에 오신 것을 환영합니다!</h2>
+      </div>
+
       {/* Top bar with progress */}
-      <div className="relative z-10 px-6 pt-14 pb-4">
+      <div className="relative z-10 px-6 pt-4 pb-4">
         {/* Step indicator dots */}
         <div className="flex items-center justify-center gap-2 mb-8">
           {Array.from({ length: TOTAL_STEPS }, (_, i) => (
@@ -184,7 +198,7 @@ export default function OnboardingPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => setGender('M')}
+                      onClick={() => handleGenderSelect('M')}
                       className={cn(
                         'h-12 rounded-xl border text-sm font-medium transition-all duration-200',
                         gender === 'M'
@@ -196,7 +210,7 @@ export default function OnboardingPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setGender('F')}
+                      onClick={() => handleGenderSelect('F')}
                       className={cn(
                         'h-12 rounded-xl border text-sm font-medium transition-all duration-200',
                         gender === 'F'
@@ -318,6 +332,17 @@ export default function OnboardingPage() {
                   )}
                 </div>
 
+                {/* NTRP 레벨 간단 가이드 */}
+                <div className="rounded-xl bg-surface-elevated/50 border border-border p-3 space-y-1.5">
+                  <p className="text-xs font-medium text-foreground mb-1">레벨 가이드</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">1.0-2.0</span> 입문자</p>
+                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">2.5-3.0</span> 초급</p>
+                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">3.5-4.0</span> 중급</p>
+                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">4.5-5.0</span> 상급</p>
+                  </div>
+                </div>
+
                 <p className="text-xs text-subtle text-center leading-relaxed">
                   잘 모르겠다면 건너뛰어도 괜찮아요.<br />
                   나중에 프로필에서 수정할 수 있습니다.
@@ -374,6 +399,27 @@ export default function OnboardingPage() {
             </Button>
           )}
         </div>
+
+        {/* 건너뛰기 옵션 (step 2: 사진/자기소개, step 3: NTRP) */}
+        {step >= 2 && step < TOTAL_STEPS && (
+          <button
+            type="button"
+            onClick={handleNext}
+            className="mt-3 w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            건너뛰기
+          </button>
+        )}
+        {step === TOTAL_STEPS && (
+          <button
+            type="button"
+            onClick={() => { setNtrp(''); handleSubmit(); }}
+            disabled={submitting}
+            className="mt-3 w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+          >
+            건너뛰기
+          </button>
+        )}
 
         <p className="mt-4 text-xs text-subtle text-center">
           프로필은 나중에 언제든 수정할 수 있어요

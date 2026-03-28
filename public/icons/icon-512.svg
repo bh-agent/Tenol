@@ -1,4 +1,169 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="102" fill="#00A86B"/>
-  <text x="256" y="340" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="320" font-weight="700" fill="#ffffff">T</text>
+  <defs>
+    <!-- Noise texture for tactile grain -->
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" result="noise"/>
+      <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
+      <feComponentTransfer in="grayNoise" result="alphaGrain">
+        <feFuncA type="linear" slope="0.06" intercept="0"/>
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" in2="alphaGrain" mode="overlay"/>
+    </filter>
+
+    <!-- Subtle inner shadow for depth -->
+    <filter id="innerDepth" x="-5%" y="-5%" width="110%" height="110%">
+      <feGaussianBlur stdDeviation="12" result="shadow"/>
+      <feComposite in="shadow" in2="SourceGraphic" operator="in" result="inner"/>
+      <feFlood flood-color="#000000" flood-opacity="0.4" result="black"/>
+      <feComposite in="black" in2="inner" operator="in" result="innerShadow"/>
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="innerShadow"/>
+      </feMerge>
+    </filter>
+
+    <!-- Line glow - subtle, not the primary effect -->
+    <filter id="lineGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="3" result="soft"/>
+      <feMerge>
+        <feMergeNode in="soft"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Background gradient - rich dark with subtle color shift -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0%" stop-color="#111111"/>
+      <stop offset="35%" stop-color="#0C0C0C"/>
+      <stop offset="65%" stop-color="#0A0A0A"/>
+      <stop offset="100%" stop-color="#080B09"/>
+    </linearGradient>
+
+    <!-- Court surface gradient - very subtle green tint -->
+    <radialGradient id="courtSurface" cx="0.5" cy="0.45" r="0.45">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.03"/>
+      <stop offset="60%" stop-color="#00E676" stop-opacity="0.015"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Primary line gradient - multi-stop for rich color -->
+    <linearGradient id="lineGradV" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.4"/>
+      <stop offset="20%" stop-color="#00E676" stop-opacity="0.85"/>
+      <stop offset="50%" stop-color="#69F0AE" stop-opacity="1"/>
+      <stop offset="80%" stop-color="#00E676" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.4"/>
+    </linearGradient>
+
+    <linearGradient id="lineGradH" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.35"/>
+      <stop offset="15%" stop-color="#00E676" stop-opacity="0.8"/>
+      <stop offset="50%" stop-color="#69F0AE" stop-opacity="1"/>
+      <stop offset="85%" stop-color="#00E676" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.35"/>
+    </linearGradient>
+
+    <!-- Service box line gradient - dimmer -->
+    <linearGradient id="lineGradDimV" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.2"/>
+      <stop offset="30%" stop-color="#00E676" stop-opacity="0.5"/>
+      <stop offset="50%" stop-color="#4CAF50" stop-opacity="0.6"/>
+      <stop offset="70%" stop-color="#00E676" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.2"/>
+    </linearGradient>
+
+    <linearGradient id="lineGradDimH" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.15"/>
+      <stop offset="25%" stop-color="#00E676" stop-opacity="0.45"/>
+      <stop offset="50%" stop-color="#4CAF50" stop-opacity="0.55"/>
+      <stop offset="75%" stop-color="#00E676" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.15"/>
+    </linearGradient>
+
+    <!-- T crossbar accent gradient -->
+    <linearGradient id="tBarGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0"/>
+      <stop offset="15%" stop-color="#00E676" stop-opacity="0.7"/>
+      <stop offset="35%" stop-color="#B9F6CA" stop-opacity="1"/>
+      <stop offset="65%" stop-color="#B9F6CA" stop-opacity="1"/>
+      <stop offset="85%" stop-color="#00E676" stop-opacity="0.7"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Clip path for icon shape -->
+    <clipPath id="iconClip">
+      <rect width="512" height="512" rx="112"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#iconClip)">
+    <!-- Background -->
+    <rect width="512" height="512" fill="url(#bgGrad)"/>
+
+    <!-- Ambient court surface light -->
+    <rect width="512" height="512" fill="url(#courtSurface)"/>
+
+    <!-- === TENNIS COURT GEOMETRY === -->
+    <!-- All lines arranged so the center vertical + net horizontal form a "T" -->
+    <!-- Court is rotated: bird's eye, with the net running horizontally -->
+
+    <g filter="url(#lineGlow)">
+      <!-- Outer court boundary - the full rectangle -->
+      <!-- Left baseline -->
+      <rect x="88" y="96" width="2.5" height="320" fill="url(#lineGradV)" rx="1.25"/>
+      <!-- Right baseline -->
+      <rect x="421.5" y="96" width="2.5" height="320" fill="url(#lineGradV)" rx="1.25"/>
+      <!-- Top sideline (doubles) -->
+      <rect x="88" y="96" width="336" height="2.5" fill="url(#lineGradH)" rx="1.25"/>
+      <!-- Bottom sideline (doubles) -->
+      <rect x="88" y="413.5" width="336" height="2.5" fill="url(#lineGradH)" rx="1.25"/>
+
+      <!-- Singles sidelines - slightly inset -->
+      <!-- Left singles -->
+      <rect x="130" y="96" width="1.8" height="320" fill="url(#lineGradDimV)" rx="0.9"/>
+      <!-- Right singles -->
+      <rect x="380.2" y="96" width="1.8" height="320" fill="url(#lineGradDimV)" rx="0.9"/>
+
+      <!-- === THE "T" === -->
+      <!-- NET LINE (horizontal bar of T) - the brightest, boldest line -->
+      <rect x="88" y="253" width="336" height="6" fill="url(#tBarGrad)" rx="3"/>
+
+      <!-- CENTER SERVICE LINE (vertical stem of T) -->
+      <!-- This runs from net to each service line, forming the T stem -->
+      <rect x="254" y="150" width="4" fill="url(#lineGradV)" height="212" rx="2"/>
+
+      <!-- Service lines (horizontal) - define the T crossbar endpoints -->
+      <!-- Top service line -->
+      <rect x="130" y="150" width="252" height="1.8" fill="url(#lineGradDimH)" rx="0.9"/>
+      <!-- Bottom service line -->
+      <rect x="130" y="360" width="252" height="1.8" fill="url(#lineGradDimH)" rx="0.9"/>
+    </g>
+
+    <!-- Layered depth: faint perspective lines radiating from center -->
+    <!-- These suggest overhead floodlight casting, adding dimensionality -->
+    <line x1="256" y1="256" x2="40" y2="40" stroke="#00E676" stroke-opacity="0.018" stroke-width="1"/>
+    <line x1="256" y1="256" x2="472" y2="40" stroke="#00E676" stroke-opacity="0.018" stroke-width="1"/>
+    <line x1="256" y1="256" x2="40" y2="472" stroke="#00E676" stroke-opacity="0.018" stroke-width="1"/>
+    <line x1="256" y1="256" x2="472" y2="472" stroke="#00E676" stroke-opacity="0.018" stroke-width="1"/>
+
+    <!-- Corner accent marks - architectural detail -->
+    <rect x="88" y="96" width="16" height="2.5" fill="#B9F6CA" opacity="0.6" rx="1.25"/>
+    <rect x="88" y="96" width="2.5" height="16" fill="#B9F6CA" opacity="0.6" rx="1.25"/>
+
+    <rect x="407.5" y="96" width="16" height="2.5" fill="#B9F6CA" opacity="0.6" rx="1.25"/>
+    <rect x="421.5" y="96" width="2.5" height="16" fill="#B9F6CA" opacity="0.6" rx="1.25"/>
+
+    <rect x="88" y="413.5" width="16" height="2.5" fill="#B9F6CA" opacity="0.6" rx="1.25"/>
+    <rect x="88" y="399.5" width="2.5" height="16" fill="#B9F6CA" opacity="0.6" rx="1.25"/>
+
+    <rect x="407.5" y="413.5" width="16" height="2.5" fill="#B9F6CA" opacity="0.6" rx="1.25"/>
+    <rect x="421.5" y="399.5" width="2.5" height="16" fill="#B9F6CA" opacity="0.6" rx="1.25"/>
+
+    <!-- Center mark on baselines -->
+    <rect x="254.5" y="96" width="3" height="12" fill="#00E676" opacity="0.4" rx="1.5"/>
+    <rect x="254.5" y="404" width="3" height="12" fill="#00E676" opacity="0.4" rx="1.5"/>
+
+    <!-- Grain overlay for tactile feel -->
+    <rect width="512" height="512" fill="transparent" filter="url(#grain)"/>
+  </g>
 </svg>

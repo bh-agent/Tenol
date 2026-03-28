@@ -1,4 +1,110 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
-  <rect width="180" height="180" rx="36" fill="#00A86B"/>
-  <text x="90" y="120" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="112" font-weight="700" fill="#ffffff">T</text>
+  <defs>
+    <filter id="grainApple" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="2" stitchTiles="stitch" result="noise"/>
+      <feColorMatrix type="saturate" values="0" in="noise" result="grayNoise"/>
+      <feComponentTransfer in="grayNoise" result="alphaGrain">
+        <feFuncA type="linear" slope="0.05" intercept="0"/>
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" in2="alphaGrain" mode="overlay"/>
+    </filter>
+
+    <filter id="lineGlowApple" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="1.2" result="soft"/>
+      <feMerge>
+        <feMergeNode in="soft"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <linearGradient id="bgGradApple" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0%" stop-color="#111111"/>
+      <stop offset="40%" stop-color="#0C0C0C"/>
+      <stop offset="100%" stop-color="#080B09"/>
+    </linearGradient>
+
+    <radialGradient id="courtSurfaceApple" cx="0.5" cy="0.45" r="0.45">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.035"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="lineVApple" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.45"/>
+      <stop offset="25%" stop-color="#00E676" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#69F0AE" stop-opacity="1"/>
+      <stop offset="75%" stop-color="#00E676" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.45"/>
+    </linearGradient>
+
+    <linearGradient id="lineHApple" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.4"/>
+      <stop offset="20%" stop-color="#00E676" stop-opacity="0.85"/>
+      <stop offset="50%" stop-color="#69F0AE" stop-opacity="1"/>
+      <stop offset="80%" stop-color="#00E676" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.4"/>
+    </linearGradient>
+
+    <linearGradient id="dimVApple" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.25"/>
+      <stop offset="50%" stop-color="#00E676" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.25"/>
+    </linearGradient>
+
+    <linearGradient id="dimHApple" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.2"/>
+      <stop offset="50%" stop-color="#00E676" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.2"/>
+    </linearGradient>
+
+    <linearGradient id="tBarApple" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0"/>
+      <stop offset="18%" stop-color="#00E676" stop-opacity="0.75"/>
+      <stop offset="50%" stop-color="#B9F6CA" stop-opacity="1"/>
+      <stop offset="82%" stop-color="#00E676" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0"/>
+    </linearGradient>
+
+    <clipPath id="iconClipApple">
+      <rect width="180" height="180" rx="40"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#iconClipApple)">
+    <rect width="180" height="180" fill="url(#bgGradApple)"/>
+    <rect width="180" height="180" fill="url(#courtSurfaceApple)"/>
+
+    <g filter="url(#lineGlowApple)">
+      <!-- Outer court boundary -->
+      <rect x="30" y="33" width="2" height="114" fill="url(#lineVApple)" rx="1"/>
+      <rect x="148" y="33" width="2" height="114" fill="url(#lineVApple)" rx="1"/>
+      <rect x="30" y="33" width="120" height="2" fill="url(#lineHApple)" rx="1"/>
+      <rect x="30" y="145" width="120" height="2" fill="url(#lineHApple)" rx="1"/>
+
+      <!-- Singles sidelines -->
+      <rect x="45" y="33" width="1.5" height="114" fill="url(#dimVApple)" rx="0.75"/>
+      <rect x="133.5" y="33" width="1.5" height="114" fill="url(#dimVApple)" rx="0.75"/>
+
+      <!-- THE T: Net line (horizontal bar) -->
+      <rect x="30" y="87.5" width="120" height="5" fill="url(#tBarApple)" rx="2.5"/>
+
+      <!-- THE T: Center service line (vertical stem) -->
+      <rect x="88.5" y="52" width="3" height="76" fill="url(#lineVApple)" rx="1.5"/>
+
+      <!-- Service lines -->
+      <rect x="45" y="52" width="90" height="1.5" fill="url(#dimHApple)" rx="0.75"/>
+      <rect x="45" y="126.5" width="90" height="1.5" fill="url(#dimHApple)" rx="0.75"/>
+    </g>
+
+    <!-- Corner accents -->
+    <rect x="30" y="33" width="7" height="2" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="30" y="33" width="2" height="7" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="143" y="33" width="7" height="2" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="148" y="33" width="2" height="7" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="30" y="145" width="7" height="2" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="30" y="140" width="2" height="7" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="143" y="145" width="7" height="2" fill="#B9F6CA" opacity="0.55" rx="1"/>
+    <rect x="148" y="140" width="2" height="7" fill="#B9F6CA" opacity="0.55" rx="1"/>
+
+    <rect width="180" height="180" fill="transparent" filter="url(#grainApple)"/>
+  </g>
 </svg>

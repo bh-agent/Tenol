@@ -15,8 +15,8 @@ export const metadata: Metadata = {
     title: '테놀',
   },
   icons: {
-    icon: '/icons/icon-192.svg',
-    apple: '/icons/apple-touch-icon.svg',
+    icon: '/icons/icon-192.png',
+    apple: '/icons/apple-touch-icon.png',
   },
 };
 

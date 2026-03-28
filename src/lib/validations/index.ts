@@ -143,11 +143,16 @@ export const completeOnboardingSchema = z.object({
 export const avatarUrlSchema = z.string().url();
 
 // ============================================================
-// Draw Generate (API route) Schema
+// Draw Schemas
 // ============================================================
 
 export const generateDrawSchema = z.object({
   matchId: uuidSchema,
   drawType: drawTypeSchema,
   roundNumber: z.number().int().min(1).max(50).default(1),
+});
+
+export const deleteDrawSchema = z.object({
+  drawId: uuidSchema,
+  matchId: uuidSchema,
 });

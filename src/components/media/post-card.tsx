@@ -4,6 +4,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
+import { ImageViewer } from './image-viewer';
 import { updateMedia, deleteMedia } from '@/lib/actions/media';
 import { ChevronLeft, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import Image from 'next/image';
@@ -32,6 +33,7 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted, onUpdated }:
   const [imageIndex, setImageIndex] = useState(0);
   const [showMenu, setShowMenu] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const [editCaption, setEditCaption] = useState(post.caption || '');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -143,12 +145,17 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted, onUpdated }:
               className="w-full h-full object-cover"
             />
           ) : (
-            <Image
-              src={files[imageIndex]?.url || ''}
-              alt={post.caption || ''}
-              fill
-              className="object-cover"
-            />
+            <button
+              onClick={() => setViewerOpen(true)}
+              className="w-full h-full cursor-zoom-in"
+            >
+              <Image
+                src={files[imageIndex]?.url || ''}
+                alt={post.caption || ''}
+                fill
+                className="object-cover"
+              />
+            </button>
           )}
 
           {/* Navigation Arrows */}
@@ -198,6 +205,14 @@ export function PostCard({ post, currentUserId, isAdmin, onDeleted, onUpdated }:
           <p className="text-sm mt-2 text-foreground">{post.caption}</p>
         )}
       </Card>
+
+      {/* Fullscreen Image Viewer */}
+      <ImageViewer
+        images={files}
+        initialIndex={imageIndex}
+        isOpen={viewerOpen}
+        onClose={() => setViewerOpen(false)}
+      />
 
       {/* Edit Modal */}
       <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title="게시물 수정">
