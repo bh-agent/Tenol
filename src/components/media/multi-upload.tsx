@@ -141,7 +141,7 @@ export function MultiUpload({ storagePath, onUpload, maxFiles = 10, userAvatar, 
         >
           <div className="relative bg-surface border border-border rounded-2xl overflow-hidden">
             {/* Visual area */}
-            <div className="aspect-square max-h-[280px] flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-surface to-surface-elevated">
+            <div className="aspect-square max-h-[280px] w-full flex flex-col items-center justify-center gap-4 bg-gradient-to-b from-surface to-surface-elevated">
               <div className="w-20 h-20 rounded-full bg-primary/10 border-2 border-dashed border-primary/40 flex items-center justify-center group-hover:border-primary group-hover:bg-primary/15 transition-all duration-300">
                 <Camera className="w-8 h-8 text-primary/70 group-hover:text-primary transition-colors" />
               </div>
@@ -152,7 +152,7 @@ export function MultiUpload({ storagePath, onUpload, maxFiles = 10, userAvatar, 
             </div>
 
             {/* Bottom bar */}
-            <div className="flex items-center gap-3 px-4 py-3 border-t border-border">
+            <div className="flex items-center justify-center gap-4 px-4 py-3 border-t border-border">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Camera className="w-4 h-4" />
                 <span>사진</span>
@@ -162,7 +162,7 @@ export function MultiUpload({ storagePath, onUpload, maxFiles = 10, userAvatar, 
                 <Film className="w-4 h-4" />
                 <span>동영상</span>
               </div>
-              <div className="flex-1" />
+              <div className="w-px h-3 bg-border" />
               <span className="text-xs text-primary font-medium">선택하기</span>
             </div>
           </div>
