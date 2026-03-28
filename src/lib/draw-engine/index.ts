@@ -88,11 +88,14 @@ export type DrawInput = {
 // ============================================================
 
 function getNtrp(p: MatchParticipant): number {
-  return p.ntrp_override || p.profiles?.ntrp_level || 3.0;
+  const profiles = Array.isArray((p as any).profiles) ? (p as any).profiles[0] : p.profiles;
+  return p.ntrp_override || profiles?.ntrp_level || 3.0;
 }
 
 function getGender(p: MatchParticipant): 'M' | 'F' | null {
-  return (p.profiles?.gender as 'M' | 'F' | null) || (p as any).guest_gender || null;
+  // Handle both normalized profiles and raw Supabase join result
+  const profiles = Array.isArray((p as any).profiles) ? (p as any).profiles[0] : p.profiles;
+  return (profiles?.gender as 'M' | 'F' | null) || p.guest_gender || null;
 }
 
 function shuffle<T>(array: T[]): T[] {
@@ -437,14 +440,21 @@ export function generateDrawV2(input: DrawInputV2): DrawResultV2 {
 
   const males = confirmed.filter(p => getGender(p) === 'M');
   const females = confirmed.filter(p => getGender(p) === 'F');
+  const unknownGender = confirmed.filter(p => getGender(p) === null);
   const totalGames = courts.length * gamesPerCourt;
+
+  // If too many unknown genders, fall back to free mode
+  let effectiveMode = mode;
+  if (mode !== 'free' && unknownGender.length > confirmed.length * 0.3) {
+    effectiveMode = 'free';
+  }
   const totalTimeSlots = gamesPerCourt; // each time slot has courts.length simultaneous games
 
   // Validate mode feasibility
-  if (mode === 'mixed_only' && (males.length < 2 || females.length < 2)) {
+  if (effectiveMode === 'mixed_only' && (males.length < 2 || females.length < 2)) {
     throw new Error('혼복을 위해 남녀 각 2명 이상이 필요합니다');
   }
-  if (mode === 'gendered_only') {
+  if (effectiveMode === 'gendered_only') {
     if (males.length < 4 && females.length < 4) {
       throw new Error('남복 또는 여복을 진행하려면 같은 성별 4명 이상이 필요합니다');
     }
@@ -454,7 +464,7 @@ export function generateDrawV2(input: DrawInputV2): DrawResultV2 {
   const targetGames = Math.round((totalGames * 4) / confirmed.length);
 
   // Plan game types across all slots
-  const gameTypeList = planGameTypes(totalGames, males.length, females.length, mode);
+  const gameTypeList = planGameTypes(totalGames, males.length, females.length, effectiveMode);
 
   // Initialize player states
   const stateMap = new Map<string, PlayerState>();

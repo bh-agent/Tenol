@@ -37,6 +37,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: '경기를 찾을 수 없습니다' }, { status: 404 });
     }
 
+    // Normalize profiles from Supabase join (may be array)
+    const normalizedParticipants = ((match.match_participants as any[]) || []).map((p: any) => ({
+      ...p,
+      profiles: Array.isArray(p.profiles) ? p.profiles[0] || null : p.profiles,
+    }));
+    (match as any).match_participants = normalizedParticipants;
+
     const isV2Mode = V2_DRAW_MODES.has(validated.drawType as string);
     const isV1DrawType = V1_DRAW_TYPES.has(validated.drawType as string);
 
