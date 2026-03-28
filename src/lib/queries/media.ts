@@ -146,7 +146,7 @@ export async function getLatestCommentsForFeed(mediaIds: string[]) {
 }
 
 /**
- * 특정 사용자가 업로드한 모든 미디어 (개인 + 클럽)
+ * 특정 사용자가 업로드한 개인 미디어만 (클럽 미디어 제외)
  */
 export async function getUserMedia(userId: string) {
   const supabase = await createClient();
@@ -160,6 +160,7 @@ export async function getUserMedia(userId: string) {
       profiles:uploaded_by (id, display_name, avatar_url)
     `)
     .eq('uploaded_by', userId)
+    .eq('feed_type', 'personal')
     .order('created_at', { ascending: false });
 
   if (!data) return [];

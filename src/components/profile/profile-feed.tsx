@@ -51,6 +51,7 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
       .from('media')
       .select('id, file_url, file_urls, file_type, caption, created_at, uploaded_by')
       .eq('uploaded_by', userId)
+      .eq('feed_type', 'personal')
       .order('created_at', { ascending: false });
 
     setPosts(data || []);

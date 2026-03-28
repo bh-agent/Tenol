@@ -20,7 +20,6 @@ import {
   Pencil,
   Trash2,
   MessageCircle,
-  Bookmark,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -313,9 +312,6 @@ export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: P
               className="hover:opacity-70 transition-opacity cursor-pointer p-0 bg-transparent border-none"
             />
           </div>
-          <button className="hover:opacity-70 transition-opacity" aria-label="저장">
-            <Bookmark size={24} className="text-muted-foreground" strokeWidth={1.5} />
-          </button>
         </div>
 
         {/* ── Like Count ── */}
