@@ -528,6 +528,98 @@ export function generateDrawV2(input: DrawInputV2): DrawResultV2 {
     }
   }
 
+  // ── Post-processing fairness pass ──
+  // Ensure max game count difference between any two players is at most 1.
+  // base = floor(totalSlots / totalPlayers), extra = totalSlots % totalPlayers
+  // => `extra` players play base+1, rest play base.
+  const totalSlots = totalGames * 4;
+  const base = Math.floor(totalSlots / confirmed.length);
+  const extra = totalSlots % confirmed.length;
+
+  // Build a mutable count map from stateMap
+  const countMap = new Map<string, number>();
+  for (const p of confirmed) {
+    countMap.set(getPlayerId(p), stateMap.get(getPlayerId(p))!.gameCount);
+  }
+
+  // Determine which players are over/under
+  // Target: `extra` players with highest current counts get base+1; rest get base.
+  // If someone has > base+1 or < base, we need to swap.
+  const MAX_SWAP_ITERATIONS = 200;
+  for (let iter = 0; iter < MAX_SWAP_ITERATIONS; iter++) {
+    // Find an over-player (count > base + 1) or count == base+1 when they should be base
+    // Simpler: find anyone with count > base+1, swap with anyone count < base
+    let overPlayer: string | null = null;
+    let underPlayer: string | null = null;
+
+    // Sort players by game count desc
+    const sorted = [...confirmed].sort(
+      (a, b) => (countMap.get(getPlayerId(b)) || 0) - (countMap.get(getPlayerId(a)) || 0)
+    );
+    const maxCount = countMap.get(getPlayerId(sorted[0])) || 0;
+    const minCount = countMap.get(getPlayerId(sorted[sorted.length - 1])) || 0;
+
+    if (maxCount - minCount <= 1) break; // Already fair
+
+    // Find an over player (maxCount) and under player (minCount)
+    overPlayer = getPlayerId(sorted.find(p => (countMap.get(getPlayerId(p)) || 0) === maxCount)!);
+    underPlayer = getPlayerId(sorted.find(p => (countMap.get(getPlayerId(p)) || 0) === minCount)!);
+
+    if (!overPlayer || !underPlayer) break;
+
+    const overParticipant = confirmed.find(p => getPlayerId(p) === overPlayer)!;
+    const underParticipant = confirmed.find(p => getPlayerId(p) === underPlayer)!;
+
+    // Find a game where overPlayer plays but underPlayer does not, and the swap is gender-valid
+    let swapped = false;
+    for (const game of games) {
+      const players = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
+      const playerIds = players.map(p => getPlayerId(p));
+
+      if (!playerIds.includes(overPlayer)) continue;
+      if (playerIds.includes(underPlayer)) continue;
+
+      // Check gender compatibility for the swap
+      const overGender = getGender(overParticipant);
+      const underGender = getGender(underParticipant);
+
+      if (game.gameType === 'mixed') {
+        // Mixed: must swap same gender
+        if (overGender !== underGender) continue;
+      } else if (game.gameType === 'mens') {
+        if (underGender !== 'M') continue;
+      } else if (game.gameType === 'womens') {
+        if (underGender !== 'F') continue;
+      }
+      // free: any swap is fine
+
+      // Perform the swap in the game
+      if (getPlayerId(game.teamA.player1) === overPlayer) {
+        game.teamA.player1 = underParticipant;
+      } else if (getPlayerId(game.teamA.player2) === overPlayer) {
+        game.teamA.player2 = underParticipant;
+      } else if (getPlayerId(game.teamB.player1) === overPlayer) {
+        game.teamB.player1 = underParticipant;
+      } else if (getPlayerId(game.teamB.player2) === overPlayer) {
+        game.teamB.player2 = underParticipant;
+      }
+
+      countMap.set(overPlayer, (countMap.get(overPlayer) || 0) - 1);
+      countMap.set(underPlayer, (countMap.get(underPlayer) || 0) + 1);
+
+      // Update stateMap too
+      const overState = stateMap.get(overPlayer)!;
+      const underState = stateMap.get(underPlayer)!;
+      overState.gameCount--;
+      underState.gameCount++;
+
+      swapped = true;
+      break;
+    }
+
+    if (!swapped) break; // Can't fix further (gender constraints)
+  }
+
   // Build player summaries
   const summaryMap = new Map<string, PlayerSummary>();
   for (const p of confirmed) {

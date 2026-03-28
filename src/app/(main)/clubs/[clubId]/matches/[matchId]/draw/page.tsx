@@ -11,7 +11,7 @@ import { NTRP_LEVELS } from '@/lib/constants';
 import { PlayerGameSummary } from '@/components/match/player-game-summary';
 import { GameRoundCard } from '@/components/match/game-round-card';
 import { addOfflineParticipant, removeParticipant } from '@/lib/actions/matches';
-import { deleteDraw, updateGamePlayers } from '@/lib/actions/games';
+import { deleteDraw, updateGamePlayers, createManualDraw } from '@/lib/actions/games';
 import { createClient } from '@/lib/supabase/client';
 import { hasPermission } from '@/lib/utils/permissions';
 import { cn } from '@/lib/utils/cn';
@@ -27,6 +27,7 @@ import {
   Trash2,
   RotateCcw,
   ChevronDown,
+  PenLine,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -123,6 +124,12 @@ function mapDrawTypeFromApi(apiType: string): string {
       return '자유';
     case 'free':
       return '자유';
+    case 'mixed_all':
+      return '혼복+남복+여복';
+    case 'mixed_only':
+      return '혼복';
+    case 'gendered_only':
+      return '남복+여복';
     default:
       return apiType;
   }
@@ -133,23 +140,20 @@ function mapDrawTypeFromApi(apiType: string): string {
 function computeTimeSlots(
   startTime: string,
   durationMinutes: number,
-  maxGameOrder: number
+  maxGameOrder: number,
+  minGameOrder: number = 0
 ): Record<number, { startTime: string; endTime: string }> {
   const slots: Record<number, { startTime: string; endTime: string }> = {};
   const [startH, startM] = startTime.split(':').map(Number);
-  let totalMinutes = startH * 60 + startM;
 
-  for (let order = 1; order <= maxGameOrder; order++) {
-    const sH = Math.floor(totalMinutes / 60);
-    const sM = totalMinutes % 60;
-    const eTotal = totalMinutes + durationMinutes;
-    const eH = Math.floor(eTotal / 60);
-    const eM = eTotal % 60;
+  for (let order = minGameOrder; order <= maxGameOrder; order++) {
+    const offsetIdx = order - minGameOrder;
+    const totalStart = startH * 60 + startM + offsetIdx * durationMinutes;
+    const totalEnd = totalStart + durationMinutes;
     slots[order] = {
-      startTime: `${String(sH).padStart(2, '0')}:${String(sM).padStart(2, '0')}`,
-      endTime: `${String(eH).padStart(2, '0')}:${String(eM).padStart(2, '0')}`,
+      startTime: `${String(Math.floor(totalStart / 60) % 24).padStart(2, '0')}:${String(totalStart % 60).padStart(2, '0')}`,
+      endTime: `${String(Math.floor(totalEnd / 60) % 24).padStart(2, '0')}:${String(totalEnd % 60).padStart(2, '0')}`,
     };
-    totalMinutes = eTotal;
   }
   return slots;
 }
@@ -215,6 +219,13 @@ export default function DrawPage() {
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [regenerating, setRegenerating] = useState<string | null>(null);
+
+  // Manual draw mode
+  const [manualMode, setManualMode] = useState(false);
+  const [manualGames, setManualGames] = useState<
+    Record<string, { team_a_player1_id: string; team_a_player2_id: string; team_b_player1_id: string; team_b_player2_id: string }>
+  >({});
+  const [savingManual, setSavingManual] = useState(false);
 
   // Edit game modal
   const [editGame, setEditGame] = useState<GameData | null>(null);
@@ -441,6 +452,67 @@ export default function DrawPage() {
       alert(e instanceof Error ? e.message : '선수 배정 수정에 실패했습니다');
     } finally {
       setSavingEdit(false);
+    }
+  };
+
+  // ── Manual draw mode ──
+
+  const initManualMode = () => {
+    const initial: Record<string, { team_a_player1_id: string; team_a_player2_id: string; team_b_player1_id: string; team_b_player2_id: string }> = {};
+    for (let slot = 1; slot <= gamesPerCourt; slot++) {
+      for (let court = 1; court <= matchCourtCount; court++) {
+        const key = `${slot}-${court}`;
+        initial[key] = { team_a_player1_id: '', team_a_player2_id: '', team_b_player1_id: '', team_b_player2_id: '' };
+      }
+    }
+    setManualGames(initial);
+    setManualMode(true);
+  };
+
+  const handleSaveManualDraw = async () => {
+    // Build game inserts from manual grid
+    const gameInserts: {
+      court_number: number;
+      game_order: number;
+      team_a_player1_id: string | null;
+      team_a_player2_id: string | null;
+      team_b_player1_id: string | null;
+      team_b_player2_id: string | null;
+    }[] = [];
+
+    for (let slot = 1; slot <= gamesPerCourt; slot++) {
+      for (let court = 1; court <= matchCourtCount; court++) {
+        const key = `${slot}-${court}`;
+        const g = manualGames[key];
+        if (!g) continue;
+        // Skip empty games (no players assigned)
+        const hasPlayers = g.team_a_player1_id || g.team_a_player2_id || g.team_b_player1_id || g.team_b_player2_id;
+        if (!hasPlayers) continue;
+        gameInserts.push({
+          court_number: court - 1, // 0-indexed like V2 engine
+          game_order: slot - 1, // 0-indexed like V2 engine
+          team_a_player1_id: g.team_a_player1_id || null,
+          team_a_player2_id: g.team_a_player2_id || null,
+          team_b_player1_id: g.team_b_player1_id || null,
+          team_b_player2_id: g.team_b_player2_id || null,
+        });
+      }
+    }
+
+    if (gameInserts.length === 0) {
+      alert('최소 1개의 경기에 선수를 배정해주세요');
+      return;
+    }
+
+    setSavingManual(true);
+    try {
+      await createManualDraw(matchId, 'free', gameInserts);
+      setManualMode(false);
+      await loadData();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '대진표 저장에 실패했습니다');
+    } finally {
+      setSavingManual(false);
     }
   };
 
@@ -680,18 +752,139 @@ export default function DrawPage() {
                 )}
               </div>
 
-              {/* Generate button */}
-              <Button onClick={handleGenerate} disabled={generating || participants.length < 4} fullWidth>
-                {generating ? (
-                  <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <Shuffle className="w-4 h-4 mr-2" />
-                )}
-                {generating ? '생성 중...' : `대진표 생성 (${participants.length}명)`}
-              </Button>
+              {/* Generate buttons */}
+              <div className="grid grid-cols-2 gap-3">
+                <Button onClick={handleGenerate} disabled={generating || participants.length < 4} fullWidth>
+                  {generating ? (
+                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                  ) : (
+                    <Shuffle className="w-4 h-4 mr-2" />
+                  )}
+                  {generating ? '생성 중...' : '자동 생성'}
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={initManualMode}
+                  disabled={participants.length < 2}
+                  fullWidth
+                >
+                  <PenLine className="w-4 h-4 mr-2" />
+                  수동으로 만들기
+                </Button>
+              </div>
               {participants.length < 4 && (
                 <p className="text-xs text-muted-foreground text-center">복식 경기를 위해 최소 4명이 필요합니다</p>
               )}
+            </div>
+          </Card>
+        )}
+
+        {/* ── Manual Draw Editor ── */}
+        {manualMode && canManageDraw && (
+          <Card variant="glass" padding="lg">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <PenLine className="w-4 h-4 text-primary" />
+                수동 대진표
+              </h3>
+              <button
+                onClick={() => setManualMode(false)}
+                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-4">
+              {matchCourtCount}코트 · {gamesPerCourt}타임 · 각 경기에 선수를 직접 배정하세요
+            </p>
+            <div className="space-y-5">
+              {Array.from({ length: gamesPerCourt }, (_, slotIdx) => {
+                const slotNum = slotIdx + 1;
+                const slotStart = (() => {
+                  const [h, m] = startTime.split(':').map(Number);
+                  const total = h * 60 + m + slotIdx * Number(gameDuration);
+                  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+                })();
+                const slotEnd = (() => {
+                  const [h, m] = startTime.split(':').map(Number);
+                  const total = h * 60 + m + (slotIdx + 1) * Number(gameDuration);
+                  return `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+                })();
+
+                return (
+                  <div key={slotNum} className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-semibold text-foreground">{slotNum}경기</span>
+                      <span className="text-xs text-muted-foreground">{slotStart} ~ {slotEnd}</span>
+                    </div>
+                    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${matchCourtCount}, 1fr)` }}>
+                      {Array.from({ length: matchCourtCount }, (_, courtIdx) => {
+                        const courtNum = courtIdx + 1;
+                        const key = `${slotNum}-${courtNum}`;
+                        const g = manualGames[key] || { team_a_player1_id: '', team_a_player2_id: '', team_b_player1_id: '', team_b_player2_id: '' };
+
+                        return (
+                          <div key={key} className="rounded-xl border border-border bg-surface-elevated p-3 space-y-2">
+                            <p className="text-xs font-semibold text-muted-foreground">{courtNames[courtNum] || `${courtNum}코트`}</p>
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] font-semibold text-primary">팀 A</p>
+                              <Select
+                                id={`m-${key}-a1`}
+                                options={playerOptions}
+                                value={g.team_a_player1_id}
+                                onChange={(e) => setManualGames(prev => ({ ...prev, [key]: { ...prev[key], team_a_player1_id: e.target.value } }))}
+                                placeholder="선수 1"
+                              />
+                              <Select
+                                id={`m-${key}-a2`}
+                                options={[{ value: '', label: '-' }, ...playerOptions]}
+                                value={g.team_a_player2_id}
+                                onChange={(e) => setManualGames(prev => ({ ...prev, [key]: { ...prev[key], team_a_player2_id: e.target.value } }))}
+                                placeholder="선수 2"
+                              />
+                            </div>
+                            <div className="text-center text-[10px] text-muted-foreground font-bold">VS</div>
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] font-semibold text-foreground">팀 B</p>
+                              <Select
+                                id={`m-${key}-b1`}
+                                options={playerOptions}
+                                value={g.team_b_player1_id}
+                                onChange={(e) => setManualGames(prev => ({ ...prev, [key]: { ...prev[key], team_b_player1_id: e.target.value } }))}
+                                placeholder="선수 1"
+                              />
+                              <Select
+                                id={`m-${key}-b2`}
+                                options={[{ value: '', label: '-' }, ...playerOptions]}
+                                value={g.team_b_player2_id}
+                                onChange={(e) => setManualGames(prev => ({ ...prev, [key]: { ...prev[key], team_b_player2_id: e.target.value } }))}
+                                placeholder="선수 2"
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex gap-3 mt-5">
+              <Button
+                variant="secondary"
+                onClick={() => setManualMode(false)}
+                fullWidth
+              >
+                취소
+              </Button>
+              <Button
+                onClick={handleSaveManualDraw}
+                disabled={savingManual}
+                loading={savingManual}
+                fullWidth
+              >
+                {savingManual ? '저장 중...' : '대진표 저장'}
+              </Button>
             </div>
           </Card>
         )}
@@ -712,19 +905,23 @@ export default function DrawPage() {
             const sortedOrders = Object.keys(gamesByOrder)
               .map(Number)
               .sort((a, b) => a - b);
+            const minOrder = sortedOrders.length > 0 ? Math.min(...sortedOrders) : 0;
             const maxOrder = sortedOrders.length > 0 ? Math.max(...sortedOrders) : 0;
-            const timeSlots = computeTimeSlots(startTime, Number(gameDuration), maxOrder);
+            const timeSlots = computeTimeSlots(startTime, Number(gameDuration), maxOrder, minOrder);
 
             return (
               <div key={draw.id} className="space-y-4">
                 {/* Draw header with admin actions */}
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-foreground flex items-center gap-2">
-                    <span className="text-gradient">{draw.round_number}라운드</span>
-                    <Badge variant="outline">
-                      {mapDrawTypeFromApi(draw.draw_type)}
-                    </Badge>
-                  </h3>
+                  <div className="flex flex-col gap-1">
+                    <p className="text-sm text-muted-foreground">
+                      {mapDrawTypeFromApi(draw.draw_type)} · {matchCourtCount}코트 · {(draw.games || []).length}경기 · {(() => {
+                        const firstSlot = timeSlots[sortedOrders[0]];
+                        const lastSlot = timeSlots[sortedOrders[sortedOrders.length - 1]];
+                        return `${firstSlot?.startTime || '--:--'}~${lastSlot?.endTime || '--:--'}`;
+                      })()}
+                    </p>
+                  </div>
                   <div className="flex items-center gap-2">
                     {canManageDraw && (
                       <>
@@ -801,7 +998,7 @@ export default function DrawPage() {
       {/* ── Delete draw confirmation modal ── */}
       <Modal isOpen={!!showDeleteModal} onClose={() => setShowDeleteModal(null)} title="대진표 삭제">
         <p className="text-sm text-muted-foreground mb-5">
-          이 라운드의 대진표를 삭제하시겠습니까? 모든 게임 기록이 삭제됩니다.
+          이 대진표를 삭제하시겠습니까? 모든 게임 기록이 삭제됩니다.
         </p>
         <div className="flex gap-3">
           <Button

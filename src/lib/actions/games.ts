@@ -136,6 +136,65 @@ export async function submitScore(
   }
 }
 
+// draw.manage 권한 필요 - 수동 대진표 생성
+export async function createManualDraw(
+  matchId: string,
+  drawType: string,
+  games: {
+    court_number: number;
+    game_order: number;
+    team_a_player1_id: string | null;
+    team_a_player2_id: string | null;
+    team_b_player1_id: string | null;
+    team_b_player2_id: string | null;
+  }[]
+) {
+  const { requireMatchPermission } = await import('@/lib/utils/check-permission');
+  const { userId } = await requireMatchPermission(matchId, 'draw.manage');
+
+  const supabase = await createClient();
+
+  // Delete existing draw for round 1
+  await supabase
+    .from('draws')
+    .delete()
+    .eq('match_id', matchId)
+    .eq('round_number', 1);
+
+  // Create draw record
+  const { data: draw, error: drawError } = await supabase
+    .from('draws')
+    .insert({
+      match_id: matchId,
+      round_number: 1,
+      draw_type: drawType,
+      created_by: userId,
+    })
+    .select()
+    .single();
+
+  if (drawError) throw new Error('대진표 생성에 실패했습니다');
+
+  // Insert games
+  const gameInserts = games.map((g) => ({
+    draw_id: draw.id,
+    court_number: g.court_number,
+    game_order: g.game_order,
+    team_a_player1_id: g.team_a_player1_id,
+    team_a_player2_id: g.team_a_player2_id,
+    team_b_player1_id: g.team_b_player1_id,
+    team_b_player2_id: g.team_b_player2_id,
+  }));
+
+  const { error: gamesError } = await supabase
+    .from('games')
+    .insert(gameInserts);
+
+  if (gamesError) throw new Error('게임 저장에 실패했습니다');
+
+  return { drawId: draw.id, gameCount: games.length };
+}
+
 // draw.manage 권한 필요 (회장, 운영진, 멤버)
 export async function updateGamePlayers(
   gameId: string,
