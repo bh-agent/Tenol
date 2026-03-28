@@ -120,58 +120,11 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
     router.refresh();
   };
 
-  // 프로필 완성도 계산
-  const completeness = (() => {
-    let score = 0;
-    if (profile.avatar_url) score += 20;
-    if (profile.display_name) score += 20;
-    if (profile.gender) score += 15;
-    if (profile.ntrp_level) score += 15;
-    if (profile.bio) score += 15;
-    if (profile.region) score += 15;
-    return score;
-  })();
-
-  // SVG 원형 진행률 계산 (circumference = 2 * PI * r)
-  const circleRadius = 58;
-  const circumference = 2 * Math.PI * circleRadius;
-  const strokeDashoffset = circumference - (completeness / 100) * circumference;
-
   return (
     <>
       <div className="flex flex-col items-center text-center">
-        {/* 프로필 사진 + 카메라 버튼 + 완성도 링 */}
+        {/* 프로필 사진 + 카메라 버튼 */}
         <div className="relative">
-          {/* 완성도 진행 링 (100% 미만일 때만 표시) */}
-          {completeness < 100 && (
-            <svg
-              className="absolute -inset-2 w-[calc(100%+16px)] h-[calc(100%+16px)] -rotate-90"
-              viewBox="0 0 128 128"
-            >
-              <circle
-                cx="64"
-                cy="64"
-                r={circleRadius}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                className="text-surface-elevated"
-              />
-              <circle
-                cx="64"
-                cy="64"
-                r={circleRadius}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeDasharray={circumference}
-                strokeDashoffset={strokeDashoffset}
-                strokeLinecap="round"
-                className="text-primary transition-all duration-700"
-                style={{ filter: 'drop-shadow(0 0 4px rgba(0, 230, 118, 0.3))' }}
-              />
-            </svg>
-          )}
           <div className="ring-2 ring-primary/30 ring-offset-2 ring-offset-background rounded-full">
             <Avatar
               src={profile.avatar_url}
@@ -197,19 +150,6 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
         </div>
         {avatarUploading && (
           <p className="text-xs text-muted-foreground mt-1">업로드 중...</p>
-        )}
-
-        {/* 완성도 표시 (100% 미만일 때만) */}
-        {completeness < 100 && (
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-xs font-medium text-primary">{completeness}%</span>
-            <button
-              onClick={() => setShowEdit(true)}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors"
-            >
-              프로필을 완성해주세요
-            </button>
-          </div>
         )}
 
         {/* 닉네임 + 수정 버튼 */}

@@ -37,6 +37,7 @@ type FeedTab = 'posts' | 'mentions';
 export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
   const [posts, setPosts] = useState<FeedItem[]>([]);
   const [mentionedPosts, setMentionedPosts] = useState<FeedItem[]>([]);
+  const [mentionsLoaded, setMentionsLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mentionsLoading, setMentionsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<FeedTab>('posts');
@@ -90,6 +91,7 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
     }));
     setMentionedPosts(normalized);
     setMentionsLoading(false);
+    setMentionsLoaded(true);
   }, [userId]);
 
   useEffect(() => {
@@ -97,10 +99,10 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
   }, [loadPosts]);
 
   useEffect(() => {
-    if (activeTab === 'mentions' && mentionedPosts.length === 0 && !mentionsLoading) {
+    if (activeTab === 'mentions' && !mentionsLoaded && !mentionsLoading) {
       loadMentionedPosts();
     }
-  }, [activeTab, mentionedPosts.length, mentionsLoading, loadMentionedPosts]);
+  }, [activeTab, mentionsLoaded, mentionsLoading, loadMentionedPosts]);
 
   const handleUpload = async (
     files: { url: string; type: 'image' | 'video' }[],
