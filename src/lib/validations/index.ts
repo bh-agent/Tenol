@@ -28,7 +28,11 @@ export const matchStatusSchema = z.enum(['upcoming', 'in_progress', 'completed',
 
 export const matchFormatSchema = z.enum(['doubles', 'singles', 'mixed_doubles']);
 
-export const drawTypeSchema = z.enum(['random', 'ntrp_balanced', 'mixed_gender', 'mixed_doubles', 'mens_doubles', 'womens_doubles', 'free']);
+export const drawTypeSchema = z.enum([
+  'random', 'ntrp_balanced', 'mixed_gender',  // legacy
+  'mixed_doubles', 'mens_doubles', 'womens_doubles', 'free',  // v1 new
+  'mixed_all', 'mixed_only', 'gendered_only',  // v2 modes
+]);
 
 export const feedTypeSchema = z.enum(['club', 'personal']);
 
@@ -171,6 +175,8 @@ export const generateDrawSchema = z.object({
   timeSlotMinutes: z.number().int().min(5).max(120).optional(),
   startTime: z.string().regex(/^\d{2}:\d{2}$/).optional(),
   courtNames: z.array(z.string().max(50)).optional(),
+  // V2 fields (used when drawType is a DrawMode: mixed_all, mixed_only, gendered_only, free)
+  courts: z.array(z.object({ name: z.string().max(50) })).optional(),
 });
 
 export const deleteDrawSchema = z.object({

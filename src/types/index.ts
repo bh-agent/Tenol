@@ -83,7 +83,8 @@ export type MatchParticipant = {
 };
 
 export type LegacyDrawType = 'random' | 'ntrp_balanced' | 'mixed_gender' | 'manual';
-export type DrawType = LegacyDrawType | 'mixed_doubles' | 'mens_doubles' | 'womens_doubles' | 'free';
+export type DrawModeV2 = 'mixed_all' | 'mixed_only' | 'gendered_only' | 'free';
+export type DrawType = LegacyDrawType | 'mixed_doubles' | 'mens_doubles' | 'womens_doubles' | 'free' | DrawModeV2;
 
 export type Draw = {
   id: string;

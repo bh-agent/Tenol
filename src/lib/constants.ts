@@ -36,3 +36,10 @@ export const NEW_DRAW_TYPES = [
   { value: 'womens_doubles', label: '여복 (여성 복식)' },
   { value: 'free', label: '성별 무관' },
 ] as const;
+
+export const DRAW_MODES = [
+  { value: 'mixed_all', label: '혼복 + 남복 + 여복 섞기', description: '성별 비율에 따라 자동 배분' },
+  { value: 'mixed_only', label: '혼복만', description: '모든 경기 남녀 혼합' },
+  { value: 'gendered_only', label: '남복 + 여복만', description: '같은 성별끼리만' },
+  { value: 'free', label: '자유 배정', description: '성별 무관, NTRP 밸런스만' },
+] as const;

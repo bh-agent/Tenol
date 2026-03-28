@@ -27,7 +27,6 @@ import {
   Trash2,
   RotateCcw,
   ChevronDown,
-  UserX,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
@@ -69,15 +68,36 @@ type Participant = {
   gender: string | null;
 };
 
-type DrawType = 'mixed_doubles' | 'mens_doubles' | 'womens_doubles' | 'free';
+// New draw mode: determines how the draw engine groups players
+type DrawMode = 'mixed_all' | 'mixed_only' | 'gendered_only' | 'free';
 
 // ── Constants ──────────────────────────────────────────────
 
-const DRAW_TYPE_OPTIONS: { value: DrawType; label: string; icon: string }[] = [
-  { value: 'mixed_doubles', label: '혼복', icon: '\u{1F46B}' },
-  { value: 'mens_doubles', label: '남복', icon: '\u{1F466}' },
-  { value: 'womens_doubles', label: '여복', icon: '\u{1F467}' },
-  { value: 'free', label: '자유', icon: '\u{1F3BE}' },
+const DRAW_MODE_OPTIONS: {
+  value: DrawMode;
+  label: string;
+  description: string;
+}[] = [
+  {
+    value: 'mixed_all',
+    label: '혼복 + 남복 + 여복',
+    description: '성별에 따라 자동 배분',
+  },
+  {
+    value: 'mixed_only',
+    label: '혼복만',
+    description: '혼합복식만 진행',
+  },
+  {
+    value: 'gendered_only',
+    label: '남복 + 여복',
+    description: '동성끼리만 진행',
+  },
+  {
+    value: 'free',
+    label: '자유',
+    description: '성별 무관 자유 배정',
+  },
 ];
 
 const GAME_DURATION_OPTIONS = [
@@ -87,28 +107,36 @@ const GAME_DURATION_OPTIONS = [
   { value: '60', label: '60분' },
 ];
 
-// ── Draw type mapping (new UI values → existing API values) ──
+// ── Draw mode → API draw type mapping ──
 
-function mapDrawTypeToApi(dt: DrawType): string {
-  switch (dt) {
-    case 'mixed_doubles':
-      return 'mixed_gender';
-    case 'mens_doubles':
-      return 'ntrp_balanced';
-    case 'womens_doubles':
-      return 'ntrp_balanced';
+function mapDrawModeToApiType(mode: DrawMode): string {
+  switch (mode) {
+    case 'mixed_all':
+      return 'mixed_doubles';
+    case 'mixed_only':
+      return 'mixed_doubles';
+    case 'gendered_only':
+      return 'mens_doubles';
     case 'free':
-      return 'random';
+      return 'free';
   }
 }
 
 function mapDrawTypeFromApi(apiType: string): string {
   switch (apiType) {
+    case 'mixed_doubles':
+      return '혼복';
+    case 'mens_doubles':
+      return '남복';
+    case 'womens_doubles':
+      return '여복';
     case 'mixed_gender':
       return '혼복';
     case 'ntrp_balanced':
       return 'NTRP 밸런스';
     case 'random':
+      return '자유';
+    case 'free':
       return '자유';
     default:
       return apiType;
@@ -152,6 +180,21 @@ function getGamesByOrder(games: GameData[]): Record<number, GameData[]> {
   return orders;
 }
 
+// ── Helper: find sit-out players per time slot ─────────────
+
+function getSitOutPlayersForSlot(
+  gamesInSlot: GameData[],
+  allParticipants: Participant[]
+): Participant[] {
+  const playingIds = new Set<string>();
+  gamesInSlot.forEach((g) => {
+    [g.team_a_player1_id, g.team_a_player2_id, g.team_b_player1_id, g.team_b_player2_id]
+      .filter(Boolean)
+      .forEach((id) => playingIds.add(id as string));
+  });
+  return allParticipants.filter((p) => !playingIds.has(p.id));
+}
+
 // ── Component ──────────────────────────────────────────────
 
 export default function DrawPage() {
@@ -168,9 +211,10 @@ export default function DrawPage() {
   const [matchCourtCount, setMatchCourtCount] = useState(2);
 
   // Draw generation config
-  const [drawTypeConfig, setDrawTypeConfig] = useState<DrawType>('mixed_doubles');
+  const [drawMode, setDrawMode] = useState<DrawMode>('mixed_all');
   const [startTime, setStartTime] = useState('08:00');
   const [gameDuration, setGameDuration] = useState('30');
+  const [gamesPerCourt, setGamesPerCourt] = useState(3);
   const [courtNames, setCourtNames] = useState<Record<number, string>>({});
   const [showCourtNames, setShowCourtNames] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -231,7 +275,6 @@ export default function DrawPage() {
         names[i] = `${i}코트`;
       }
       setCourtNames((prev) => {
-        // Keep existing names if already set
         const merged = { ...names };
         Object.keys(prev).forEach((k) => {
           const num = Number(k);
@@ -292,7 +335,11 @@ export default function DrawPage() {
     }
     setGenerating(true);
     try {
-      const apiDrawType = mapDrawTypeToApi(drawTypeConfig);
+      const apiDrawType = mapDrawModeToApiType(drawMode);
+      const courtNameArray = Array.from(
+        { length: matchCourtCount },
+        (_, i) => courtNames[i + 1] || `${i + 1}코트`
+      );
       const res = await fetch('/api/draw/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -300,6 +347,10 @@ export default function DrawPage() {
           matchId,
           drawType: apiDrawType,
           roundNumber: (draws.length || 0) + 1,
+          gamesPerCourt,
+          timeSlotMinutes: Number(gameDuration),
+          startTime,
+          courtNames: courtNameArray,
         }),
       });
       const result = await res.json();
@@ -399,18 +450,6 @@ export default function DrawPage() {
     } finally {
       setSavingEdit(false);
     }
-  };
-
-  // ── Derived: find sit-out players per draw ──
-
-  const getSitOutPlayers = (draw: DrawData): Participant[] => {
-    const playingIds = new Set<string>();
-    (draw.games || []).forEach((g) => {
-      [g.team_a_player1_id, g.team_a_player2_id, g.team_b_player1_id, g.team_b_player2_id]
-        .filter(Boolean)
-        .forEach((id) => playingIds.add(id as string));
-    });
-    return participants.filter((p) => !playingIds.has(p.id));
   };
 
   // ── Participant chip renderer ──
@@ -516,7 +555,7 @@ export default function DrawPage() {
           )}
         </Card>
 
-        {/* ── Draw Generation Config Panel ── */}
+        {/* ── Draw Config Panel ── */}
         {canManageDraw && (
           <Card variant="glow" padding="lg">
             <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
@@ -524,32 +563,79 @@ export default function DrawPage() {
               대진표 생성
             </h3>
             <div className="space-y-4">
-              {/* Draw type selector - radio buttons with icons */}
+              {/* Mode selector - 4 radio cards */}
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-2">
-                  대진 유형
+                  대진 모드
                 </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {DRAW_TYPE_OPTIONS.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setDrawTypeConfig(opt.value)}
-                      className={cn(
-                        'flex flex-col items-center gap-1 py-2.5 px-2 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer',
-                        drawTypeConfig === opt.value
-                          ? 'border-primary bg-primary/10 text-primary shadow-[0_0_8px_rgba(0,230,118,0.15)]'
-                          : 'border-border text-muted-foreground hover:border-foreground/30'
-                      )}
-                    >
-                      <span className="text-lg">{opt.icon}</span>
-                      <span className="text-xs">{opt.label}</span>
-                    </button>
-                  ))}
+                <div className="grid grid-cols-1 gap-2">
+                  {DRAW_MODE_OPTIONS.map((opt) => {
+                    const isSelected = drawMode === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setDrawMode(opt.value)}
+                        className={cn(
+                          'flex items-start gap-3 p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer',
+                          isSelected
+                            ? 'border-primary bg-primary/10 shadow-[0_0_8px_rgba(0,230,118,0.15)]'
+                            : 'border-border hover:border-foreground/30'
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0',
+                            isSelected
+                              ? 'border-primary'
+                              : 'border-muted-foreground/40'
+                          )}
+                        >
+                          {isSelected && (
+                            <div className="w-2 h-2 rounded-full bg-primary" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div
+                            className={cn(
+                              'text-sm font-semibold',
+                              isSelected ? 'text-primary' : 'text-foreground'
+                            )}
+                          >
+                            {opt.label}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {opt.description}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Time settings */}
+              {/* Settings grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">
+                    코트 수
+                  </label>
+                  <div className="h-11 rounded-xl border border-border bg-muted flex items-center justify-center text-sm font-medium text-foreground">
+                    {matchCourtCount}코트
+                  </div>
+                </div>
+                <Input
+                  id="gamesPerCourt"
+                  label="코트 당 경기 수"
+                  type="number"
+                  value={String(gamesPerCourt)}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    if (!isNaN(v) && v >= 1 && v <= 50) setGamesPerCourt(v);
+                  }}
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <Input
                   id="startTime"
@@ -603,6 +689,7 @@ export default function DrawPage() {
                       <Input
                         key={num}
                         id={`court-${num}`}
+                        label={`${num}번 코트`}
                         placeholder={`${num}코트`}
                         value={courtNames[num] || ''}
                         onChange={(e) =>
@@ -648,11 +735,10 @@ export default function DrawPage() {
               .sort((a, b) => a - b);
             const maxOrder = sortedOrders.length > 0 ? Math.max(...sortedOrders) : 0;
             const timeSlots = computeTimeSlots(startTime, Number(gameDuration), maxOrder);
-            const sitOuts = getSitOutPlayers(draw);
 
             return (
               <div key={draw.id} className="space-y-4">
-                {/* Round header with admin actions */}
+                {/* Draw header with admin actions */}
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
                     <span className="text-gradient">{draw.round_number}라운드</span>
@@ -692,57 +778,32 @@ export default function DrawPage() {
                   </div>
                 </div>
 
-                {/* Game rounds - grouped by game_order */}
+                {/* Time-slot based game display */}
                 <div className="space-y-4">
-                  {sortedOrders.map((order) => (
-                    <GameRoundCard
-                      key={order}
-                      gameOrder={order}
-                      games={gamesByOrder[order]}
-                      participantMap={participantMap}
-                      courtNames={courtNames}
-                      timeSlot={timeSlots[order]}
-                      canManage={canManageDraw}
-                      canInputScore={canInputScore}
-                      onEditGame={handleEditGame}
-                      onScoreSaved={loadData}
-                    />
-                  ))}
-                </div>
+                  {sortedOrders.map((order) => {
+                    const slotGames = gamesByOrder[order];
+                    const slot = timeSlots[order];
+                    const sitOuts = getSitOutPlayersForSlot(slotGames, participants);
+                    const sitOutNames = sitOuts.map((p) => p.name);
 
-                {/* Sit-out players */}
-                {sitOuts.length > 0 && (
-                  <Card variant="glass" padding="sm">
-                    <div className="flex items-center gap-2 mb-2 px-1">
-                      <UserX className="w-3.5 h-3.5 text-muted-foreground" />
-                      <span className="text-xs font-semibold text-muted-foreground">
-                        이번 라운드 대기 ({sitOuts.length}명)
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5 px-1">
-                      {sitOuts.map((p) => (
-                        <div
-                          key={p.id}
-                          className="flex items-center gap-1.5 rounded-full px-3 py-1.5 bg-muted/50 border border-border/50"
-                        >
-                          <div
-                            className={cn(
-                              'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold',
-                              p.gender === 'M'
-                                ? 'bg-info/20 text-info'
-                                : p.gender === 'F'
-                                  ? 'bg-pink-500/20 text-pink-400'
-                                  : 'bg-muted text-muted-foreground'
-                            )}
-                          >
-                            {p.name.charAt(0)}
-                          </div>
-                          <span className="text-sm text-muted-foreground">{p.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
-                )}
+                    return (
+                      <GameRoundCard
+                        key={order}
+                        timeSlotIndex={order}
+                        startTime={slot?.startTime || '--:--'}
+                        endTime={slot?.endTime || '--:--'}
+                        games={slotGames}
+                        participantMap={participantMap}
+                        courtNames={courtNames}
+                        canManage={canManageDraw}
+                        canInputScore={canInputScore}
+                        sitOutNames={sitOutNames.length > 0 ? sitOutNames : undefined}
+                        onEditGame={handleEditGame}
+                        onScoreSaved={loadData}
+                      />
+                    );
+                  })}
+                </div>
 
                 {/* Player Game Summary */}
                 {(draw.games || []).length > 0 && (

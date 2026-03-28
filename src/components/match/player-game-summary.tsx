@@ -32,20 +32,63 @@ type Participant = {
   gender: string | null;
 };
 
+type GameTypeKey = 'mixed' | 'mens' | 'womens' | 'free';
+
 interface PlayerGameSummaryProps {
   games: GameData[];
   participantMap: Record<string, Participant>;
   courtNames?: Record<number, string>;
 }
 
+type Appearance = {
+  gameOrder: number;
+  courtNumber: number;
+  gameType: GameTypeKey;
+};
+
 type PlayerSummary = {
   participantId: string;
   name: string;
   gender: string | null;
   gameCount: number;
-  // Each entry: { gameOrder, courtNumber }
-  appearances: { gameOrder: number; courtNumber: number }[];
+  appearances: Appearance[];
+  gameTypeCounts: Record<GameTypeKey, number>;
 };
+
+const GAME_TYPE_LABELS: Record<GameTypeKey, string> = {
+  mixed: '혼복',
+  mens: '남복',
+  womens: '여복',
+  free: '자유',
+};
+
+const GAME_TYPE_COLORS: Record<GameTypeKey, string> = {
+  mixed: '#00E676',
+  mens: '#40C4FF',
+  womens: '#FF80AB',
+  free: '#999999',
+};
+
+function inferGameType(
+  game: GameData,
+  participantMap: Record<string, Participant>
+): GameTypeKey {
+  const ids = [
+    game.team_a_player1_id,
+    game.team_a_player2_id,
+    game.team_b_player1_id,
+    game.team_b_player2_id,
+  ].filter(Boolean) as string[];
+
+  const genders = ids.map((id) => participantMap[id]?.gender).filter(Boolean);
+  const males = genders.filter((g) => g === 'M').length;
+  const females = genders.filter((g) => g === 'F').length;
+
+  if (males > 0 && females > 0) return 'mixed';
+  if (males > 0 && females === 0) return 'mens';
+  if (females > 0 && males === 0) return 'womens';
+  return 'free';
+}
 
 export function PlayerGameSummary({ games, participantMap, courtNames }: PlayerGameSummaryProps) {
   if (games.length === 0) return null;
@@ -53,7 +96,9 @@ export function PlayerGameSummary({ games, participantMap, courtNames }: PlayerG
   const getCourtName = (courtNum: number) =>
     courtNames?.[courtNum] || `${courtNum}코트`;
 
-  // Build per-player summary using game_order
+  const getGameTypeLabel = (gt: GameTypeKey) => GAME_TYPE_LABELS[gt];
+
+  // Build per-player summary
   const summaryMap: Record<string, PlayerSummary> = {};
 
   games.forEach((game) => {
@@ -64,6 +109,8 @@ export function PlayerGameSummary({ games, participantMap, courtNames }: PlayerG
       game.team_b_player2_id,
     ].filter(Boolean) as string[];
 
+    const gameType = inferGameType(game, participantMap);
+
     playerIds.forEach((pid) => {
       if (!summaryMap[pid]) {
         const p = participantMap[pid];
@@ -73,23 +120,23 @@ export function PlayerGameSummary({ games, participantMap, courtNames }: PlayerG
           gender: p?.gender || null,
           gameCount: 0,
           appearances: [],
+          gameTypeCounts: { mixed: 0, mens: 0, womens: 0, free: 0 },
         };
       }
       summaryMap[pid].gameCount++;
+      summaryMap[pid].gameTypeCounts[gameType]++;
       summaryMap[pid].appearances.push({
         gameOrder: game.game_order,
         courtNumber: game.court_number,
+        gameType,
       });
     });
   });
 
-  // Sort by first game appearance (game_order)
-  const summaries = Object.values(summaryMap).sort((a, b) => {
-    const aFirst = Math.min(...a.appearances.map((ap) => ap.gameOrder));
-    const bFirst = Math.min(...b.appearances.map((ap) => ap.gameOrder));
-    if (aFirst !== bFirst) return aFirst - bFirst;
-    return a.name.localeCompare(b.name, 'ko');
-  });
+  // Sort by name (Korean)
+  const summaries = Object.values(summaryMap).sort((a, b) =>
+    a.name.localeCompare(b.name, 'ko')
+  );
 
   if (summaries.length === 0) return null;
 
@@ -108,19 +155,27 @@ export function PlayerGameSummary({ games, participantMap, courtNames }: PlayerG
           <thead>
             <tr className="border-b border-border">
               <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">이름</th>
-              <th className="text-center py-2 px-2 text-xs font-semibold text-muted-foreground">경기 수</th>
-              <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">참여 경기</th>
-              <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">코트</th>
+              <th className="text-center py-2 px-2 text-xs font-semibold text-muted-foreground">총 경기</th>
+              <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">참여 순서</th>
+              <th className="text-left py-2 px-2 text-xs font-semibold text-muted-foreground">게임 유형</th>
             </tr>
           </thead>
           <tbody>
             {summaries.map((s) => {
               const isMuchMore = s.gameCount > avgGames + threshold;
               const isMuchLess = s.gameCount < avgGames - threshold;
-              // Sort appearances by game order
               const sorted = [...s.appearances].sort((a, b) => a.gameOrder - b.gameOrder);
-              const gameOrderLabels = sorted.map((ap) => `${ap.gameOrder}번째`).join(', ');
-              const courtLabels = sorted.map((ap) => getCourtName(ap.courtNumber)).join(', ');
+
+              // Build appearance labels: "1번째(A코트,혼복) 3번째(B코트,남복)"
+              const appearanceLabels = sorted.map(
+                (ap) =>
+                  `${ap.gameOrder}번째(${getCourtName(ap.courtNumber)},${getGameTypeLabel(ap.gameType)})`
+              );
+
+              // Build game type distribution: "혼복3 남복2"
+              const typeDistLabels = (Object.keys(s.gameTypeCounts) as GameTypeKey[])
+                .filter((k) => s.gameTypeCounts[k] > 0)
+                .map((k) => ({ key: k, count: s.gameTypeCounts[k] }));
 
               return (
                 <tr
@@ -145,14 +200,27 @@ export function PlayerGameSummary({ games, participantMap, courtNames }: PlayerG
                     <Badge
                       variant={isMuchMore ? 'warning' : isMuchLess ? 'destructive' : 'primary'}
                     >
-                      {s.gameCount}
+                      {s.gameCount}경기
                     </Badge>
                   </td>
-                  <td className="py-2.5 px-2 text-muted-foreground text-xs">
-                    {gameOrderLabels}
+                  <td className="py-2.5 px-2 text-muted-foreground text-xs leading-relaxed">
+                    {appearanceLabels.join(' ')}
                   </td>
-                  <td className="py-2.5 px-2 text-muted-foreground text-xs">
-                    {courtLabels}
+                  <td className="py-2.5 px-2">
+                    <div className="flex flex-wrap gap-1">
+                      {typeDistLabels.map(({ key, count }) => (
+                        <span
+                          key={key}
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-semibold"
+                          style={{
+                            backgroundColor: GAME_TYPE_COLORS[key] + '20',
+                            color: GAME_TYPE_COLORS[key],
+                          }}
+                        >
+                          {GAME_TYPE_LABELS[key]}{count}
+                        </span>
+                      ))}
+                    </div>
                   </td>
                 </tr>
               );
