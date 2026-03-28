@@ -1,0 +1,142 @@
+'use server';
+
+import { createClient } from '@/lib/supabase/server';
+import {
+  submitScoreSchema,
+  updateGamePlayersSchema,
+} from '@/lib/validations';
+
+// 권한은 RLS + 프론트에서 체크하되, 서버에서도 game의 match -> club 경로로 검증
+async function getClubIdFromGame(gameId: string): Promise<string> {
+  const supabase = await createClient();
+
+  const { data: game } = await supabase
+    .from('games')
+    .select('draw_id')
+    .eq('id', gameId)
+    .single();
+  if (!game) throw new Error('게임을 찾을 수 없습니다');
+
+  const { data: draw } = await supabase
+    .from('draws')
+    .select('match_id')
+    .eq('id', game.draw_id)
+    .single();
+  if (!draw) throw new Error('대진표를 찾을 수 없습니다');
+
+  const { data: match } = await supabase
+    .from('matches')
+    .select('club_id')
+    .eq('id', draw.match_id)
+    .single();
+  if (!match) throw new Error('경기를 찾을 수 없습니다');
+
+  return match.club_id;
+}
+
+// result.input 권한 필요 (회장, 운영진, 멤버)
+export async function submitScore(
+  gameId: string,
+  scoreA: number,
+  scoreB: number
+) {
+  const validated = submitScoreSchema.parse({ gameId, scoreA, scoreB });
+
+  const { requirePermission } = await import('@/lib/utils/check-permission');
+  const clubId = await getClubIdFromGame(validated.gameId);
+  await requirePermission(clubId, 'result.input');
+
+  const supabase = await createClient();
+  const winner = validated.scoreA > validated.scoreB ? 'team_a' : validated.scoreB > validated.scoreA ? 'team_b' : null;
+
+  // 게임 정보 조회 (알림 전송용)
+  const { data: gameData } = await supabase
+    .from('games')
+    .select('draw_id, team_a_player1_id, team_a_player2_id, team_b_player1_id, team_b_player2_id')
+    .eq('id', validated.gameId)
+    .single();
+
+  const { error } = await supabase
+    .from('games')
+    .update({
+      score_team_a: validated.scoreA,
+      score_team_b: validated.scoreB,
+      winner,
+      status: 'completed',
+      completed_at: new Date().toISOString(),
+    })
+    .eq('id', validated.gameId);
+
+  if (error) throw new Error('점수 저장에 실패했습니다');
+
+  // 점수 입력 알림 전송
+  if (gameData) {
+    const playerIds = [
+      gameData.team_a_player1_id,
+      gameData.team_a_player2_id,
+      gameData.team_b_player1_id,
+      gameData.team_b_player2_id,
+    ].filter(Boolean) as string[];
+
+    const { data: participants } = await supabase
+      .from('match_participants')
+      .select('id, user_id')
+      .in('id', playerIds);
+
+    const { data: draw } = await supabase
+      .from('draws')
+      .select('match_id')
+      .eq('id', gameData.draw_id)
+      .single();
+
+    if (participants && draw) {
+      const { data: match } = await supabase
+        .from('matches')
+        .select('title, club_id')
+        .eq('id', draw.match_id)
+        .single();
+
+      if (match) {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { createNotification } = await import('@/lib/actions/notifications');
+
+        for (const p of participants) {
+          if (p.user_id && p.user_id !== user?.id) {
+            await createNotification(
+              p.user_id,
+              'score_updated',
+              '점수가 입력되었습니다',
+              `"${match.title}" 경기의 점수가 업데이트되었습니다. (${validated.scoreA}:${validated.scoreB})`,
+              { match_id: draw.match_id, club_id: match.club_id }
+            );
+          }
+        }
+      }
+    }
+  }
+}
+
+// draw.manage 권한 필요 (회장, 운영진, 멤버)
+export async function updateGamePlayers(
+  gameId: string,
+  data: {
+    team_a_player1_id?: string | null;
+    team_a_player2_id?: string | null;
+    team_b_player1_id?: string | null;
+    team_b_player2_id?: string | null;
+  }
+) {
+  const validated = updateGamePlayersSchema.parse({ gameId, data });
+
+  const { requirePermission } = await import('@/lib/utils/check-permission');
+  const clubId = await getClubIdFromGame(validated.gameId);
+  await requirePermission(clubId, 'draw.manage');
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('games')
+    .update(validated.data)
+    .eq('id', validated.gameId);
+
+  if (error) throw new Error('선수 배정 수정에 실패했습니다');
+}

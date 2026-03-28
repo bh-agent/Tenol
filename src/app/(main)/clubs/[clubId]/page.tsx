@@ -1,0 +1,141 @@
+export const dynamic = 'force-dynamic';
+
+import { TopBar } from '@/components/layout/top-bar';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { getClub, getClubMembers, getMyRole } from '@/lib/queries/clubs';
+import { getClubMatches } from '@/lib/queries/matches';
+import { getClubMedia } from '@/lib/queries/media';
+import { formatRole } from '@/lib/utils/format';
+import { hasPermission } from '@/lib/utils/permissions';
+import { Settings, MapPin, Users, Trophy, BarChart3 } from 'lucide-react';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { ClubInviteCode } from '@/components/club/club-invite-code';
+import { ClubAvatar } from '@/components/club/club-avatar';
+import { ClubTabs } from '@/components/club/club-tabs';
+import { ClubCreatedCelebration } from '@/components/club/club-created-celebration';
+import { Suspense } from 'react';
+
+export default async function ClubDetailPage({
+  params,
+}: {
+  params: Promise<{ clubId: string }>;
+}) {
+  const { clubId } = await params;
+  const [club, members, matches, media, myRole] = await Promise.all([
+    getClub(clubId),
+    getClubMembers(clubId),
+    getClubMatches(clubId),
+    getClubMedia(clubId),
+    getMyRole(clubId),
+  ]);
+
+  if (!club) notFound();
+
+  const canEditClub = hasPermission(myRole, 'club.edit');
+  const canManageMembers = hasPermission(myRole, 'member.manage');
+  const canCreateMatch = hasPermission(myRole, 'match.create');
+
+  return (
+    <>
+      <Suspense fallback={null}>
+        <ClubCreatedCelebration />
+      </Suspense>
+
+      <TopBar
+        title={club.name}
+        backHref="/clubs"
+        rightAction={
+          canEditClub ? (
+            <Link
+              href={`/clubs/${clubId}/settings`}
+              className="p-2 rounded-full hover:bg-surface-elevated transition-colors"
+            >
+              <Settings className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
+            </Link>
+          ) : null
+        }
+      />
+
+      {/* Club Header Card */}
+      <div className="px-4 pt-4 pb-2 animate-fade-in">
+        <Card variant="glow" padding="lg">
+          <div className="space-y-4">
+            {/* Club identity */}
+            <div className="flex items-center gap-4">
+              <ClubAvatar logoUrl={club.logo_url} name={club.name} size="lg" />
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-bold text-foreground truncate">{club.name}</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  {myRole && (
+                    <Badge variant="primary">{formatRole(myRole)}</Badge>
+                  )}
+                  <span className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Users className="w-3.5 h-3.5" />
+                    {members.length}명
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            {club.description && (
+              <p className="text-sm text-muted-foreground leading-relaxed">{club.description}</p>
+            )}
+
+            {/* Meta info */}
+            <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
+              {club.region && (
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-elevated border border-border">
+                  <MapPin className="w-3.5 h-3.5 text-primary/70" />
+                  {club.region}
+                </span>
+              )}
+              {club.main_court && (
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-elevated border border-border">
+                  <Trophy className="w-3.5 h-3.5 text-primary/70" />
+                  {club.main_court}
+                </span>
+              )}
+            </div>
+
+            {/* Invite code for managers */}
+            {canManageMembers && (
+              <div className="pt-2 border-t border-border">
+                <ClubInviteCode code={club.invite_code} />
+              </div>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      {/* Quick Links */}
+      <div className="px-4 py-2 animate-fade-in">
+        <Link
+          href={`/clubs/${clubId}/stats`}
+          className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-200"
+        >
+          <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+            <BarChart3 className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <span className="text-sm font-semibold text-foreground">통계</span>
+            <p className="text-xs text-muted-foreground">클럽 활동 통계 보기</p>
+          </div>
+        </Link>
+      </div>
+
+      {/* Tabs */}
+      <ClubTabs
+        clubId={clubId}
+        matches={JSON.parse(JSON.stringify(matches))}
+        members={JSON.parse(JSON.stringify(members))}
+        media={JSON.parse(JSON.stringify(media))}
+        myRole={myRole}
+        canCreateMatch={canCreateMatch}
+        canManageMembers={canManageMembers}
+      />
+    </>
+  );
+}
