@@ -6,6 +6,7 @@ import { Modal } from '@/components/ui/modal';
 import { ImageViewer } from './image-viewer';
 import { LikeButton } from './like-button';
 import { DoubleTapHeart } from './double-tap-heart';
+import { CaptionText } from './caption-text';
 import { updateMedia, deleteMedia } from '@/lib/actions/media';
 import { toggleLike } from '@/lib/actions/social';
 import { formatRelativeTime } from '@/lib/utils/format';
@@ -321,7 +322,7 @@ export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: P
               !captionExpanded && isCaptionLong && 'line-clamp-2'
             )}>
               <Link href={`/profile/${post.uploaded_by}`} className="font-semibold mr-1.5 hover:text-primary transition-colors">{displayName}</Link>
-              {captionText}
+              <CaptionText text={captionText} />
             </p>
             {isCaptionLong && !captionExpanded && (
               <button

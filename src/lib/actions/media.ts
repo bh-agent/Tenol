@@ -7,8 +7,63 @@ import {
   saveMediaSchema,
   updateMediaSchema,
 } from '@/lib/validations';
+import { parseCaption } from '@/lib/utils/mentions';
+import { createNotification } from '@/lib/actions/notifications';
 
 export type MediaFile = { url: string; type: 'image' | 'video' };
+
+/**
+ * 태그 및 멘션 처리 (게시물 저장 후 호출)
+ */
+async function processTagsAndMentions(
+  mediaId: string,
+  caption: string | null,
+  uploaderId: string
+) {
+  if (!caption) return;
+
+  const { tags, mentions } = parseCaption(caption);
+  const supabase = await createClient();
+
+  // Insert tags
+  if (tags.length > 0) {
+    const tagRows = tags.map((tag) => ({ media_id: mediaId, tag }));
+    await supabase.from('media_tags').insert(tagRows);
+  }
+
+  // Resolve mentions by display_name and insert
+  if (mentions.length > 0) {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, display_name')
+      .in('display_name', mentions);
+
+    if (profiles && profiles.length > 0) {
+      const mentionRows = profiles.map((p) => ({
+        media_id: mediaId,
+        mentioned_user_id: p.id,
+      }));
+      await supabase.from('media_mentions').insert(mentionRows);
+
+      // Send notification to mentioned users (skip self-mention)
+      for (const profile of profiles) {
+        if (profile.id !== uploaderId) {
+          try {
+            await createNotification(
+              profile.id,
+              'mention',
+              '멘션',
+              '게시물에서 회원님을 언급했습니다',
+              { media_id: mediaId }
+            );
+          } catch {
+            // Notification failure should not block the post
+          }
+        }
+      }
+    }
+  }
+}
 
 /**
  * 클럽 피드에 게시물 저장 (다중 파일)
@@ -23,7 +78,7 @@ export async function saveClubMedia(
   const { userId } = await requirePermission(validClubId, 'match.create');
 
   const supabase = await createClient();
-  const { error } = await supabase.from('media').insert({
+  const { data, error } = await supabase.from('media').insert({
     club_id: validClubId,
     uploaded_by: userId,
     file_url: validated.files[0]?.url || '',
@@ -31,9 +86,11 @@ export async function saveClubMedia(
     file_urls: validated.files,
     caption: validated.caption,
     feed_type: 'club',
-  });
+  }).select('id').single();
 
-  if (error) throw new Error('저장에 실패했습니다');
+  if (error || !data) throw new Error('저장에 실패했습니다');
+
+  await processTagsAndMentions(data.id, validated.caption, userId);
 }
 
 /**
@@ -58,7 +115,7 @@ export async function savePersonalMedia(
 
   if (!membership) throw new Error('클럽에 가입 후 이용할 수 있습니다');
 
-  const { error } = await supabase.from('media').insert({
+  const { data, error } = await supabase.from('media').insert({
     club_id: membership.club_id,
     uploaded_by: user.id,
     file_url: validated.files[0]?.url || '',
@@ -66,9 +123,11 @@ export async function savePersonalMedia(
     file_urls: validated.files,
     caption: validated.caption,
     feed_type: 'personal',
-  });
+  }).select('id').single();
 
-  if (error) throw new Error('저장에 실패했습니다');
+  if (error || !data) throw new Error('저장에 실패했습니다');
+
+  await processTagsAndMentions(data.id, validated.caption, user.id);
 }
 
 /**

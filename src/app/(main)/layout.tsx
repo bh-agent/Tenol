@@ -1,4 +1,5 @@
 import { BottomNav } from '@/components/layout/bottom-nav';
+import { ScrollTopButton } from '@/components/ui/scroll-top-button';
 
 export default function MainLayout({
   children,
@@ -10,6 +11,7 @@ export default function MainLayout({
       <main className="flex-1 pb-28">
         {children}
       </main>
+      <ScrollTopButton />
       <BottomNav />
     </div>
   );

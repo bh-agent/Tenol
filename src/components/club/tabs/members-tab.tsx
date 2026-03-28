@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { formatRole } from '@/lib/utils/format';
 import { MemberManageActions } from '@/components/club/member-manage-actions';
 import type { ClubRole } from '@/types';
+import { Crown, Shield } from 'lucide-react';
+import Link from 'next/link';
 
 interface MembersTabProps {
   clubId: string;
@@ -42,34 +44,40 @@ export function MembersTab({ clubId, members, myRole, canManageMembers }: Member
             key={member.id}
             className="flex items-center gap-3 p-3 rounded-xl hover:bg-surface-elevated transition-colors"
           >
-            <Avatar
-              src={member.profiles?.avatar_url}
-              alt={member.profiles?.display_name}
-              fallback={member.profiles?.display_name}
-              size="lg"
-            />
+            <Link href={`/profile/${member.profiles?.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+              <Avatar
+                src={member.profiles?.avatar_url}
+                alt={member.profiles?.display_name}
+                fallback={member.profiles?.display_name}
+                size="lg"
+              />
 
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold text-sm text-foreground truncate">
-                  {member.profiles?.display_name}
-                </span>
-                <Badge variant={roleVariant(member.role)}>
-                  {formatRole(member.role)}
-                </Badge>
-              </div>
-
-              <div className="flex items-center gap-3 mt-1">
-                {member.profiles?.ntrp_level && (
-                  <span className="text-xs text-primary font-medium">
-                    NTRP {member.profiles.ntrp_level}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm text-foreground truncate hover:text-primary transition-colors">
+                    {member.profiles?.display_name}
                   </span>
-                )}
-                <span className="text-[11px] text-muted-foreground">
-                  {formatJoinDate(member.joined_at)} 가입
-                </span>
+                  <Badge variant={roleVariant(member.role)}>
+                    <span className="flex items-center gap-1">
+                      {member.role === 'owner' && <Crown className="w-3 h-3 text-yellow-500" />}
+                      {member.role === 'admin' && <Shield className="w-3 h-3 text-emerald-500" />}
+                      {formatRole(member.role)}
+                    </span>
+                  </Badge>
+                </div>
+
+                <div className="flex items-center gap-3 mt-1">
+                  {member.profiles?.ntrp_level && (
+                    <span className="text-xs text-primary font-medium">
+                      NTRP {member.profiles.ntrp_level}
+                    </span>
+                  )}
+                  <span className="text-[11px] text-muted-foreground">
+                    {formatJoinDate(member.joined_at)} 가입
+                  </span>
+                </div>
               </div>
-            </div>
+            </Link>
 
             {/* 관리 버튼 - 회장/운영진만, 회장은 대상 제외 */}
             {canManageMembers && member.role !== 'owner' && (

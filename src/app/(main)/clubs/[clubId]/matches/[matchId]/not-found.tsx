@@ -12,11 +12,16 @@ export default function MatchNotFound() {
         경기를 찾을 수 없어요
       </h2>
       <p className="text-sm text-muted-foreground mb-6 max-w-xs">
-        요청하신 경기가 존재하지 않거나 삭제되었습니다.
+        이 경기는 존재하지 않거나 삭제되었어요
       </p>
-      <Link href="/clubs">
-        <Button>클럽 목록으로 돌아가기</Button>
-      </Link>
+      <div className="flex flex-col gap-3 w-full max-w-[240px]">
+        <Link href="/clubs">
+          <Button fullWidth>클럽 목록으로 돌아가기</Button>
+        </Link>
+        <Link href="/clubs/explore">
+          <Button variant="outline" fullWidth>클럽 탐색하기</Button>
+        </Link>
+      </div>
     </div>
   );
 }

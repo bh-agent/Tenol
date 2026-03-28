@@ -7,9 +7,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { savePersonalMedia } from '@/lib/actions/media';
 import { createClient } from '@/lib/supabase/client';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Camera, Grid3X3, List } from 'lucide-react';
+import { Camera, Grid3X3, List, AtSign } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
+import { cn } from '@/lib/utils/cn';
 
 interface ProfileFeedProps {
   userId: string;
@@ -31,9 +32,14 @@ type FeedItem = {
   profiles?: { display_name: string; avatar_url: string | null } | null;
 };
 
+type FeedTab = 'posts' | 'mentions';
+
 export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
   const [posts, setPosts] = useState<FeedItem[]>([]);
+  const [mentionedPosts, setMentionedPosts] = useState<FeedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mentionsLoading, setMentionsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<FeedTab>('posts');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedPost, setSelectedPost] = useState<FeedItem | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -50,9 +56,51 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
     setLoading(false);
   }, [userId]);
 
+  const loadMentionedPosts = useCallback(async () => {
+    setMentionsLoading(true);
+    const supabase = createClient();
+
+    // Get media IDs where user is mentioned
+    const { data: mentions } = await supabase
+      .from('media_mentions')
+      .select('media_id')
+      .eq('mentioned_user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (!mentions || mentions.length === 0) {
+      setMentionedPosts([]);
+      setMentionsLoading(false);
+      return;
+    }
+
+    const mediaIds = mentions.map((m) => m.media_id);
+
+    const { data } = await supabase
+      .from('media')
+      .select(`
+        id, file_url, file_urls, file_type, caption, created_at, uploaded_by,
+        profiles:uploaded_by (display_name, avatar_url)
+      `)
+      .in('id', mediaIds)
+      .order('created_at', { ascending: false });
+
+    const normalized = (data || []).map((item: any) => ({
+      ...item,
+      profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
+    }));
+    setMentionedPosts(normalized);
+    setMentionsLoading(false);
+  }, [userId]);
+
   useEffect(() => {
     loadPosts();
   }, [loadPosts]);
+
+  useEffect(() => {
+    if (activeTab === 'mentions' && mentionedPosts.length === 0 && !mentionsLoading) {
+      loadMentionedPosts();
+    }
+  }, [activeTab, mentionedPosts.length, mentionsLoading, loadMentionedPosts]);
 
   const handleUpload = async (
     files: { url: string; type: 'image' | 'video' }[],
@@ -70,14 +118,20 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
     return post.file_url;
   };
 
-  if (loading) {
+  const currentPosts = activeTab === 'posts' ? posts : mentionedPosts;
+  const isCurrentLoading = activeTab === 'posts' ? loading : mentionsLoading;
+
+  if (loading && activeTab === 'posts') {
     return (
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold flex items-center gap-2 text-foreground">
-            <Camera className="w-4 h-4 text-primary" />
-            피드
-          </h3>
+        {/* Tab bar skeleton */}
+        <div className="flex border-b border-border">
+          <div className="flex-1 py-3 flex justify-center">
+            <Skeleton className="w-16 h-4" />
+          </div>
+          <div className="flex-1 py-3 flex justify-center">
+            <Skeleton className="w-16 h-4" />
+          </div>
         </div>
         <div className="grid grid-cols-3 gap-[2px]">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -88,18 +142,115 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
     );
   }
 
+  const renderGrid = (items: FeedItem[]) => (
+    <div className="grid grid-cols-3 gap-[2px] rounded-xl overflow-hidden">
+      {items.map((post, index) => {
+        const thumbUrl = getThumbUrl(post);
+        if (!thumbUrl) return null;
+        const isVideo = post.file_type === 'video' || (post.file_urls?.[0]?.type === 'video');
+        return (
+          <button
+            key={post.id}
+            onClick={() => setSelectedPost(post)}
+            className="relative aspect-square bg-surface-elevated overflow-hidden group animate-fade-in"
+            style={{ animationDelay: `${Math.min(index * 40, 300)}ms` }}
+          >
+            <Image
+              src={thumbUrl}
+              alt={post.caption || ''}
+              fill
+              className="object-cover transition-transform duration-200 group-hover:scale-105"
+              sizes="(max-width: 640px) 33vw, 200px"
+            />
+            {/* Hover overlay */}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+              {post.file_urls && post.file_urls.length > 1 && (
+                <span className="text-white text-xs font-medium bg-black/50 px-2 py-0.5 rounded-full">
+                  +{post.file_urls.length - 1}
+                </span>
+              )}
+            </div>
+            {/* Video indicator */}
+            {isVideo && (
+              <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/50 rounded-full flex items-center justify-center">
+                <div className="w-0 h-0 border-l-[5px] border-l-white border-t-[3px] border-t-transparent border-b-[3px] border-b-transparent ml-0.5" />
+              </div>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  const renderList = (items: FeedItem[]) => (
+    <div className="space-y-4">
+      {items.map((post, index) => (
+        <div
+          key={post.id}
+          className="animate-fade-in"
+          style={{ animationDelay: `${Math.min(index * 80, 400)}ms` }}
+        >
+          <PostCard
+            post={{
+              ...post,
+              file_url: post.file_url || '',
+              file_type: post.file_type || 'image',
+              profiles: post.profiles || { display_name: isOwnProfile ? '나' : '', avatar_url: null },
+            } as any}
+            currentUserId={isOwnProfile ? userId : undefined}
+            onDelete={() => {
+              if (activeTab === 'posts') loadPosts();
+              else loadMentionedPosts();
+            }}
+            onUpdate={() => {
+              if (activeTab === 'posts') loadPosts();
+              else loadMentionedPosts();
+            }}
+          />
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="space-y-3 relative">
-      {/* Header with view toggle */}
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold flex items-center gap-2 text-foreground">
-          <Camera className="w-4 h-4 text-primary" />
-          피드
-          {posts.length > 0 && (
-            <span className="text-xs text-muted-foreground font-normal">{posts.length}</span>
+      {/* Instagram-style Tab Bar */}
+      <div className="flex border-b border-border">
+        <button
+          onClick={() => setActiveTab('posts')}
+          className={cn(
+            'flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-medium transition-colors relative',
+            activeTab === 'posts'
+              ? 'text-foreground'
+              : 'text-muted-foreground hover:text-foreground'
           )}
-        </h3>
-        {posts.length > 0 && (
+        >
+          <Grid3X3 className="w-4 h-4" />
+          게시물
+          {activeTab === 'posts' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground" />
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('mentions')}
+          className={cn(
+            'flex-1 py-3 flex items-center justify-center gap-1.5 text-sm font-medium transition-colors relative',
+            activeTab === 'mentions'
+              ? 'text-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <AtSign className="w-4 h-4" />
+          언급
+          {activeTab === 'mentions' && (
+            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-foreground" />
+          )}
+        </button>
+      </div>
+
+      {/* View mode toggle (only show when there are posts) */}
+      {currentPosts.length > 0 && (
+        <div className="flex justify-end">
           <div className="flex items-center gap-1 bg-surface-elevated rounded-lg p-0.5">
             <button
               onClick={() => setViewMode('grid')}
@@ -124,78 +275,26 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
               <List className="w-4 h-4" />
             </button>
           </div>
-        )}
-      </div>
-
-      {/* Empty state */}
-      {posts.length === 0 ? (
-        <EmptyState
-          icon={Camera}
-          title="아직 올린 게시물이 없어요"
-          description="테니스 일상을 공유해보세요!"
-        />
-      ) : viewMode === 'grid' ? (
-        /* Instagram-style grid (3 columns, square thumbnails) */
-        <div className="grid grid-cols-3 gap-[2px] rounded-xl overflow-hidden">
-          {posts.map((post, index) => {
-            const thumbUrl = getThumbUrl(post);
-            if (!thumbUrl) return null;
-            const isVideo = post.file_type === 'video' || (post.file_urls?.[0]?.type === 'video');
-            return (
-              <button
-                key={post.id}
-                onClick={() => setSelectedPost(post)}
-                className="relative aspect-square bg-surface-elevated overflow-hidden group animate-fade-in"
-                style={{ animationDelay: `${Math.min(index * 40, 300)}ms` }}
-              >
-                <Image
-                  src={thumbUrl}
-                  alt={post.caption || ''}
-                  fill
-                  className="object-cover transition-transform duration-200 group-hover:scale-105"
-                  sizes="(max-width: 640px) 33vw, 200px"
-                />
-                {/* Hover overlay */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  {post.file_urls && post.file_urls.length > 1 && (
-                    <span className="text-white text-xs font-medium bg-black/50 px-2 py-0.5 rounded-full">
-                      +{post.file_urls.length - 1}
-                    </span>
-                  )}
-                </div>
-                {/* Video indicator */}
-                {isVideo && (
-                  <div className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/50 rounded-full flex items-center justify-center">
-                    <div className="w-0 h-0 border-l-[5px] border-l-white border-t-[3px] border-t-transparent border-b-[3px] border-b-transparent ml-0.5" />
-                  </div>
-                )}
-              </button>
-            );
-          })}
         </div>
-      ) : (
-        /* List view */
-        <div className="space-y-4">
-          {posts.map((post, index) => (
-            <div
-              key={post.id}
-              className="animate-fade-in"
-              style={{ animationDelay: `${Math.min(index * 80, 400)}ms` }}
-            >
-              <PostCard
-                post={{
-                  ...post,
-                  file_url: post.file_url || '',
-                  file_type: post.file_type || 'image',
-                  profiles: post.profiles || { display_name: isOwnProfile ? '나' : '', avatar_url: null },
-                } as any}
-                currentUserId={isOwnProfile ? userId : undefined}
-                onDelete={() => loadPosts()}
-                onUpdate={() => loadPosts()}
-              />
-            </div>
+      )}
+
+      {/* Content */}
+      {isCurrentLoading ? (
+        <div className="grid grid-cols-3 gap-[2px]">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="aspect-square" />
           ))}
         </div>
+      ) : currentPosts.length === 0 ? (
+        <EmptyState
+          icon={activeTab === 'posts' ? Camera : AtSign}
+          title={activeTab === 'posts' ? '아직 올린 게시물이 없어요' : '언급된 게시물이 없어요'}
+          description={activeTab === 'posts' ? '테니스 일상을 공유해보세요!' : '다른 회원이 회원님을 언급하면 여기에 표시됩니다'}
+        />
+      ) : viewMode === 'grid' ? (
+        renderGrid(currentPosts)
+      ) : (
+        renderList(currentPosts)
       )}
 
       {/* Floating upload FAB */}
@@ -239,10 +338,12 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
             currentUserId={isOwnProfile ? userId : undefined}
             onDelete={() => {
               setSelectedPost(null);
-              loadPosts();
+              if (activeTab === 'posts') loadPosts();
+              else loadMentionedPosts();
             }}
             onUpdate={() => {
-              loadPosts();
+              if (activeTab === 'posts') loadPosts();
+              else loadMentionedPosts();
             }}
           />
         )}

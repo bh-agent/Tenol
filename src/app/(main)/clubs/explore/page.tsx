@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { TopBar } from '@/components/layout/top-bar';
 import { searchPublicClubs } from '@/lib/queries/clubs';
+import { getBookmarkedClubs } from '@/lib/queries/bookmarks';
 import { ExploreClubList } from '@/components/club/explore-club-list';
 import { Search } from 'lucide-react';
 
@@ -11,7 +12,11 @@ export default async function ExploreClubsPage({
   searchParams: Promise<{ q?: string; region?: string }>;
 }) {
   const { q, region } = await searchParams;
-  const clubs = await searchPublicClubs(q, region);
+  const [clubs, bookmarkedClubs] = await Promise.all([
+    searchPublicClubs(q, region),
+    getBookmarkedClubs(),
+  ]);
+  const bookmarkedClubIds = bookmarkedClubs.map((c: any) => c.id);
 
   return (
     <>
@@ -33,6 +38,7 @@ export default async function ExploreClubsPage({
         initialClubs={JSON.parse(JSON.stringify(clubs))}
         initialQuery={q || ''}
         initialRegion={region || 'all'}
+        bookmarkedClubIds={bookmarkedClubIds}
       />
     </>
   );

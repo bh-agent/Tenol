@@ -181,6 +181,53 @@ export async function getUserMedia(userId: string) {
   return data.map((m) => ({ ...m, is_liked: false }));
 }
 
+/**
+ * 특정 사용자가 언급된 게시물 (멘션 탭)
+ */
+export async function getMentionedMedia(userId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  // Get media IDs where user is mentioned
+  const { data: mentions } = await supabase
+    .from('media_mentions')
+    .select('media_id')
+    .eq('mentioned_user_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (!mentions || mentions.length === 0) return [];
+
+  const mediaIds = mentions.map((m) => m.media_id);
+
+  const { data } = await supabase
+    .from('media_with_counts')
+    .select(`
+      id, club_id, file_url, file_urls, file_type, caption, feed_type,
+      created_at, match_id, uploaded_by, like_count, comment_count,
+      profiles:uploaded_by (id, display_name, avatar_url)
+    `)
+    .in('id', mediaIds)
+    .order('created_at', { ascending: false });
+
+  if (!data) return [];
+
+  if (user) {
+    const ids = data.map((m) => m.id);
+    if (ids.length === 0) return data.map((m) => ({ ...m, is_liked: false }));
+
+    const { data: likes } = await supabase
+      .from('media_likes')
+      .select('media_id')
+      .eq('user_id', user.id)
+      .in('media_id', ids);
+
+    const likedSet = new Set(likes?.map((l) => l.media_id) ?? []);
+    return data.map((m) => ({ ...m, is_liked: likedSet.has(m.id) }));
+  }
+
+  return data.map((m) => ({ ...m, is_liked: false }));
+}
+
 export async function getMediaLikeStatus(mediaId: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

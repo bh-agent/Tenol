@@ -169,13 +169,18 @@ export function MultiUpload({ storagePath, onUpload, maxFiles = 10 }: MultiUploa
 
       {/* Caption & Actions */}
       <div className="mt-3 space-y-2">
-        <input
-          type="text"
-          placeholder="설명 추가 (선택)"
-          value={caption}
-          onChange={(e) => setCaption(e.target.value)}
-          className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-        />
+        <div>
+          <input
+            type="text"
+            placeholder="설명 추가 (선택)"
+            value={caption}
+            onChange={(e) => setCaption(e.target.value)}
+            className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+          />
+          <p className="text-[11px] text-muted-foreground mt-1 px-1">
+            #태그 로 해시태그, @이름 으로 멤버 언급
+          </p>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={cancel} disabled={uploading} fullWidth>
             취소

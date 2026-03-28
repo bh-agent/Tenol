@@ -15,6 +15,8 @@ import { MatchActions } from '@/components/match/match-actions';
 import { MatchManageButtons } from '@/components/match/match-manage-buttons';
 import { GuestActions } from '@/components/match/guest-actions';
 import { MatchBottomBar } from '@/components/match/match-bottom-bar';
+import { MatchReminderBanner } from '@/components/match/match-reminder-banner';
+import { ShareButton } from '@/components/ui/share-button';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function MatchDetailPage({
@@ -65,7 +67,25 @@ export default async function MatchDetailPage({
 
   return (
     <>
-      <TopBar title={match.title} backHref={`/clubs/${clubId}`} />
+      <TopBar
+        title={match.title}
+        backHref={`/clubs/${clubId}`}
+        rightAction={
+          <ShareButton
+            url={`/clubs/${clubId}/matches/${matchId}`}
+            title={match.title}
+            text={`${match.title} - 테놀`}
+          />
+        }
+      />
+
+      {match.status === 'upcoming' && (
+        <MatchReminderBanner
+          matchDate={match.match_date}
+          startTime={match.start_time}
+          location={match.location}
+        />
+      )}
 
       <div className="px-4 py-4 space-y-4 animate-fade-in">
         {/* Match Info Card */}
@@ -171,18 +191,37 @@ export default async function MatchDetailPage({
               {pending.map((p: any) => (
                 <div key={p.id} className="flex items-center justify-between p-2 rounded-xl bg-surface-elevated">
                   <div className="flex items-center gap-3">
-                    <Avatar
-                      src={p.profiles?.avatar_url}
-                      alt={p.profiles?.display_name || p.guest_name}
-                      fallback={p.profiles?.display_name || p.guest_name}
-                      size="sm"
-                    />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {p.profiles?.display_name || p.guest_name}
-                      </p>
-                      <Badge variant="warning">게스트 대기중</Badge>
-                    </div>
+                    {p.user_id ? (
+                      <Link href={`/profile/${p.user_id}`} className="flex items-center gap-3">
+                        <Avatar
+                          src={p.profiles?.avatar_url}
+                          alt={p.profiles?.display_name || p.guest_name}
+                          fallback={p.profiles?.display_name || p.guest_name}
+                          size="sm"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                            {p.profiles?.display_name || p.guest_name}
+                          </p>
+                          <Badge variant="warning">게스트 대기중</Badge>
+                        </div>
+                      </Link>
+                    ) : (
+                      <>
+                        <Avatar
+                          src={p.profiles?.avatar_url}
+                          alt={p.profiles?.display_name || p.guest_name}
+                          fallback={p.profiles?.display_name || p.guest_name}
+                          size="sm"
+                        />
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {p.profiles?.display_name || p.guest_name}
+                          </p>
+                          <Badge variant="warning">게스트 대기중</Badge>
+                        </div>
+                      </>
+                    )}
                   </div>
                   <GuestActions participantId={p.id} matchId={matchId} />
                 </div>
@@ -236,22 +275,45 @@ export default async function MatchDetailPage({
           <div className="space-y-1.5">
             {confirmed.map((p: any) => (
               <div key={p.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-elevated transition-colors">
-                <Avatar
-                  src={p.profiles?.avatar_url}
-                  alt={p.profiles?.display_name || p.guest_name}
-                  fallback={p.profiles?.display_name || p.guest_name}
-                  size="sm"
-                />
-                <div className="flex-1">
-                  <span className="text-sm font-medium text-foreground">
-                    {p.profiles?.display_name || p.guest_name}
-                  </span>
-                  {p.profiles?.ntrp_level && (
-                    <span className="text-xs text-primary ml-2 font-medium">
-                      NTRP {p.profiles.ntrp_level}
-                    </span>
-                  )}
-                </div>
+                {p.user_id ? (
+                  <Link href={`/profile/${p.user_id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                    <Avatar
+                      src={p.profiles?.avatar_url}
+                      alt={p.profiles?.display_name || p.guest_name}
+                      fallback={p.profiles?.display_name || p.guest_name}
+                      size="sm"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                        {p.profiles?.display_name || p.guest_name}
+                      </span>
+                      {p.profiles?.ntrp_level && (
+                        <span className="text-xs text-primary ml-2 font-medium">
+                          NTRP {p.profiles.ntrp_level}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                ) : (
+                  <>
+                    <Avatar
+                      src={p.profiles?.avatar_url}
+                      alt={p.profiles?.display_name || p.guest_name}
+                      fallback={p.profiles?.display_name || p.guest_name}
+                      size="sm"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-foreground">
+                        {p.profiles?.display_name || p.guest_name}
+                      </span>
+                      {p.profiles?.ntrp_level && (
+                        <span className="text-xs text-primary ml-2 font-medium">
+                          NTRP {p.profiles.ntrp_level}
+                        </span>
+                      )}
+                    </div>
+                  </>
+                )}
                 {p.participant_type === 'guest' && (
                   <Badge variant="outline">게스트</Badge>
                 )}

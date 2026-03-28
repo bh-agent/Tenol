@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMyClubs } from '@/lib/queries/clubs';
 import { getPlayerStats } from '@/lib/queries/stats';
 import { getFollowStatus } from '@/lib/queries/follow';
-import { BarChart3, Users, ChevronRight, Crown, Shield, Plus, Search } from 'lucide-react';
+import { BarChart3, Users, ChevronRight, Crown, Shield, Plus, Search, Bookmark } from 'lucide-react';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -17,6 +17,7 @@ import { ProfileHeader } from '@/components/profile/profile-header';
 import { ProfileStatsBar } from '@/components/profile/profile-stats-bar';
 import { SignOutButton } from '@/components/profile/sign-out-button';
 import { ProfileFeed } from '@/components/profile/profile-feed';
+import { getBookmarkedClubs } from '@/lib/queries/bookmarks';
 
 export default async function ProfilePage() {
   const supabase = await createClient();
@@ -31,10 +32,11 @@ export default async function ProfilePage() {
 
   if (!profile) redirect('/login');
 
-  const [clubs, overallStats, followStatus] = await Promise.all([
+  const [clubs, overallStats, followStatus, bookmarkedClubs] = await Promise.all([
     getMyClubs(),
     getPlayerStats(user.id),
     getFollowStatus(user.id),
+    getBookmarkedClubs(),
   ]);
 
   const getRoleIcon = (role: string) => {
@@ -160,6 +162,62 @@ export default async function ProfilePage() {
                   </div>
                 </Link>
               ))}
+            </div>
+          )}
+        </Card>
+
+        {/* Bookmarked Clubs */}
+        <Card variant="glass" padding="lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-yellow-500/15 flex items-center justify-center">
+                <Bookmark className="w-5 h-5 text-yellow-500" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground">즐겨찾기 클럽</h3>
+                <p className="text-xs text-muted-foreground">{bookmarkedClubs.length}개</p>
+              </div>
+            </div>
+            {bookmarkedClubs.length > 0 && (
+              <Link
+                href="/clubs/bookmarks"
+                className="text-xs text-primary hover:text-primary/80 transition-colors"
+              >
+                전체보기
+              </Link>
+            )}
+          </div>
+
+          {bookmarkedClubs.length === 0 ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted-foreground">즐겨찾기한 클럽이 없어요</p>
+              <p className="text-xs text-subtle mt-1">관심 있는 클럽을 즐겨찾기해보세요</p>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              {bookmarkedClubs.slice(0, 3).map((club: any) => (
+                <Link key={club.id} href={`/clubs/${club.id}`}>
+                  <div className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-elevated transition-all duration-200 active:scale-[0.98] group">
+                    <ClubAvatar logoUrl={club.logo_url} name={club.name} size="sm" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-foreground truncate">{club.name}</p>
+                      {club.region && (
+                        <p className="text-[11px] text-muted-foreground">{club.region}</p>
+                      )}
+                    </div>
+                    <Bookmark className="w-4 h-4 fill-yellow-500 text-yellow-500" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
+                </Link>
+              ))}
+              {bookmarkedClubs.length > 3 && (
+                <Link
+                  href="/clubs/bookmarks"
+                  className="block text-center py-2 text-sm text-primary hover:text-primary/80 transition-colors"
+                >
+                  +{bookmarkedClubs.length - 3}개 더보기
+                </Link>
+              )}
             </div>
           )}
         </Card>

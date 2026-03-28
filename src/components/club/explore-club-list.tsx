@@ -8,6 +8,7 @@ import { FilterChips } from '@/components/search/filter-chips';
 import { SearchEmpty } from '@/components/search/search-empty';
 import { MapPin, Users } from 'lucide-react';
 import { ClubAvatar } from '@/components/club/club-avatar';
+import { BookmarkButton } from '@/components/club/bookmark-button';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { joinPublicClub } from '@/lib/actions/clubs';
@@ -37,12 +38,14 @@ interface ExploreClubListProps {
   initialClubs: any[];
   initialQuery: string;
   initialRegion: string;
+  bookmarkedClubIds?: string[];
 }
 
 export function ExploreClubList({
   initialClubs,
   initialQuery,
   initialRegion,
+  bookmarkedClubIds = [],
 }: ExploreClubListProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -117,7 +120,13 @@ export function ExploreClubList({
               <div className="flex items-start gap-3">
                 <ClubAvatar logoUrl={club.logo_url} name={club.name} size="md" />
                 <div className="flex-1 min-w-0 space-y-1.5">
-                  <h4 className="font-semibold text-foreground truncate">{club.name}</h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold text-foreground truncate">{club.name}</h4>
+                    <BookmarkButton
+                      clubId={club.id}
+                      initialBookmarked={bookmarkedClubIds.includes(club.id)}
+                    />
+                  </div>
                   {club.description && (
                     <p className="text-sm text-muted-foreground line-clamp-2">
                       {club.description}

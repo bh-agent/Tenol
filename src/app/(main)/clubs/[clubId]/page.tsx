@@ -16,6 +16,10 @@ import { ClubInviteCode } from '@/components/club/club-invite-code';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import { ClubTabs } from '@/components/club/club-tabs';
 import { ClubCreatedCelebration } from '@/components/club/club-created-celebration';
+import { ClubActivitySummary } from '@/components/club/club-activity-summary';
+import { BookmarkButton } from '@/components/club/bookmark-button';
+import { ShareButton } from '@/components/ui/share-button';
+import { isClubBookmarked } from '@/lib/queries/bookmarks';
 import { Suspense } from 'react';
 
 export default async function ClubDetailPage({
@@ -24,12 +28,13 @@ export default async function ClubDetailPage({
   params: Promise<{ clubId: string }>;
 }) {
   const { clubId } = await params;
-  const [club, members, matches, media, myRole] = await Promise.all([
+  const [club, members, matches, media, myRole, bookmarked] = await Promise.all([
     getClub(clubId),
     getClubMembers(clubId),
     getClubMatches(clubId),
     getClubMedia(clubId),
     getMyRole(clubId),
+    isClubBookmarked(clubId),
   ]);
 
   if (!club) notFound();
@@ -49,6 +54,8 @@ export default async function ClubDetailPage({
         backHref="/clubs"
         rightAction={
           <div className="flex items-center gap-1">
+            <ShareButton url={`/clubs/${clubId}`} title={club.name} text={`${club.name} - 테놀`} />
+            <BookmarkButton clubId={clubId} initialBookmarked={bookmarked} />
             <RefreshButton />
             {canEditClub && (
               <Link
@@ -139,6 +146,12 @@ export default async function ClubDetailPage({
           </span>
         </div>
       </div>
+
+      {/* Recent Activity */}
+      <ClubActivitySummary
+        matches={JSON.parse(JSON.stringify(matches))}
+        members={JSON.parse(JSON.stringify(members))}
+      />
 
       {/* Quick Links */}
       <div className="px-4 py-2 animate-fade-in">

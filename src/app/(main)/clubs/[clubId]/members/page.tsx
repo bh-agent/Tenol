@@ -8,6 +8,7 @@ import { getClubMembers, getMyRole } from '@/lib/queries/clubs';
 import { formatRole } from '@/lib/utils/format';
 import { hasPermission } from '@/lib/utils/permissions';
 import { Users, Crown, Shield } from 'lucide-react';
+import Link from 'next/link';
 import { MemberManageActions } from '@/components/club/member-manage-actions';
 
 export default async function MembersPage({
@@ -29,8 +30,8 @@ export default async function MembersPage({
   );
 
   const getRoleIcon = (role: string) => {
-    if (role === 'owner') return <Crown className="w-3 h-3" />;
-    if (role === 'admin') return <Shield className="w-3 h-3" />;
+    if (role === 'owner') return <Crown className="w-3 h-3 text-yellow-500" />;
+    if (role === 'admin') return <Shield className="w-3 h-3 text-emerald-500" />;
     return null;
   };
 
@@ -59,18 +60,19 @@ export default async function MembersPage({
               className="hover:border-primary/25 transition-all duration-200"
             >
               <div className="flex items-center gap-3">
-                <Avatar
-                  src={member.profiles?.avatar_url}
-                  alt={member.profiles?.display_name}
-                  fallback={member.profiles?.display_name}
-                  size="md"
-                  active={member.role === 'owner'}
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-foreground truncate">
-                      {member.profiles?.display_name}
-                    </span>
+                <Link href={`/profile/${member.profiles?.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                  <Avatar
+                    src={member.profiles?.avatar_url}
+                    alt={member.profiles?.display_name}
+                    fallback={member.profiles?.display_name}
+                    size="md"
+                    active={member.role === 'owner'}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-foreground truncate hover:text-primary transition-colors">
+                        {member.profiles?.display_name}
+                      </span>
                     <Badge
                       variant={member.role === 'owner' ? 'primary' : member.role === 'admin' ? 'success' : 'default'}
                     >
@@ -85,7 +87,8 @@ export default async function MembersPage({
                       NTRP <span className="text-primary font-medium">{member.profiles.ntrp_level}</span>
                     </span>
                   )}
-                </div>
+                  </div>
+                </Link>
 
                 {canManageMembers && member.role !== 'owner' && (
                   <MemberManageActions

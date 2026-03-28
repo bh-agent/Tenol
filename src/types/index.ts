@@ -138,7 +138,8 @@ export type NotificationType =
   | 'draw_published'
   | 'score_updated'
   | 'role_changed'
-  | 'new_follower';
+  | 'new_follower'
+  | 'mention';
 
 export type Notification = {
   id: string;
@@ -182,6 +183,13 @@ export type UserProfile = Profile & {
   post_count?: number;
 };
 
+export type ClubBookmark = {
+  id: string;
+  user_id: string;
+  club_id: string;
+  created_at: string;
+};
+
 export type MediaComment = {
   id: string;
   media_id: string;
@@ -189,4 +197,18 @@ export type MediaComment = {
   body: string;
   created_at: string;
   profiles?: { display_name: string; avatar_url: string | null };
+};
+
+export type MediaTag = {
+  id: string;
+  media_id: string;
+  tag: string;
+  created_at: string;
+};
+
+export type MediaMention = {
+  id: string;
+  media_id: string;
+  mentioned_user_id: string;
+  created_at: string;
 };

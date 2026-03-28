@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils/cn';
 import { Crown, Medal } from 'lucide-react';
+import Link from 'next/link';
 
 export interface LeaderboardEntry {
   userId: string;
@@ -56,31 +57,32 @@ export function Leaderboard({ entries, currentUserId, className }: LeaderboardPr
                 )}
               </div>
 
-              {/* Avatar */}
-              <Avatar
-                src={entry.avatarUrl}
-                alt={entry.displayName}
-                fallback={entry.displayName}
-                size="sm"
-              />
+              {/* Avatar + Player info */}
+              <Link href={`/profile/${entry.userId}`} className="flex items-center gap-3 flex-1 min-w-0">
+                <Avatar
+                  src={entry.avatarUrl}
+                  alt={entry.displayName}
+                  fallback={entry.displayName}
+                  size="sm"
+                />
 
-              {/* Player info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <p className={cn('text-sm font-medium truncate', isCurrentUser ? 'text-primary' : 'text-foreground')}>
-                    {entry.displayName}
-                    {isCurrentUser && ' (나)'}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className={cn('text-sm font-medium truncate hover:text-primary transition-colors', isCurrentUser ? 'text-primary' : 'text-foreground')}>
+                      {entry.displayName}
+                      {isCurrentUser && ' (나)'}
+                    </p>
+                    {entry.ntrpLevel && (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                        {entry.ntrpLevel}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    {entry.wins}승 {entry.losses}패 ({entry.total}경기)
                   </p>
-                  {entry.ntrpLevel && (
-                    <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                      {entry.ntrpLevel}
-                    </Badge>
-                  )}
                 </div>
-                <p className="text-[11px] text-muted-foreground">
-                  {entry.wins}승 {entry.losses}패 ({entry.total}경기)
-                </p>
-              </div>
+              </Link>
 
               {/* Win rate */}
               <div className="text-right flex-shrink-0">
