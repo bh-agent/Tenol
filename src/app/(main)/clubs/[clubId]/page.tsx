@@ -4,12 +4,12 @@ import { TopBar } from '@/components/layout/top-bar';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { getClub, getClubMembers, getMyRole, getPendingJoinRequests } from '@/lib/queries/clubs';
-import { getClubMatches } from '@/lib/queries/matches';
+import { getClubMatches, getPendingGuestCount, getPendingGuestCountByMatch } from '@/lib/queries/matches';
 import { getClubFeedWithCounts } from '@/lib/queries/media';
 import { formatRole } from '@/lib/utils/format';
 import { hasPermission } from '@/lib/utils/permissions';
 import { RefreshButton } from '@/components/ui/refresh-button';
-import { Settings, MapPin, Users, Trophy, BarChart3, Calendar, Swords, Megaphone } from 'lucide-react';
+import { Settings, MapPin, Users, Trophy, BarChart3, Calendar, Swords, Megaphone, ClipboardList } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ClubInviteLink } from '@/components/club/club-invite-link';
@@ -29,7 +29,7 @@ export default async function ClubDetailPage({
   params: Promise<{ clubId: string }>;
 }) {
   const { clubId } = await params;
-  const [club, members, matches, media, myRole, bookmarked, joinRequests] = await Promise.all([
+  const [club, members, matches, media, myRole, bookmarked, joinRequests, pendingGuestCount, pendingGuestByMatch] = await Promise.all([
     getClub(clubId),
     getClubMembers(clubId),
     getClubMatches(clubId),
@@ -37,6 +37,8 @@ export default async function ClubDetailPage({
     getMyRole(clubId),
     isClubBookmarked(clubId),
     getPendingJoinRequests(clubId),
+    getPendingGuestCount(clubId),
+    getPendingGuestCountByMatch(clubId),
   ]);
 
   if (!club) notFound();
@@ -123,7 +125,39 @@ export default async function ClubDetailPage({
         </Card>
       </div>
 
-      {/* Join Requests for admins */}
+      {/* Admin Management Link */}
+      {canManageMembers && (() => {
+        const joinCount = joinRequests.length;
+        const guestCount = pendingGuestCount;
+        const totalPending = joinCount + guestCount;
+        return (
+          <div className="px-4 pt-2 animate-fade-in">
+            <Link
+              href={`/clubs/${clubId}/manage`}
+              className={`flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-200 ${totalPending > 0 ? 'ring-1 ring-primary/30 shadow-[0_0_12px_rgba(var(--color-primary-rgb,99,102,241),0.15)]' : ''}`}
+            >
+              <div className="relative w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+                <ClipboardList className="w-5 h-5 text-primary" />
+                {totalPending > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-destructive text-white text-xs font-bold flex items-center justify-center animate-pulse">
+                    {totalPending}
+                  </span>
+                )}
+              </div>
+              <div className="flex-1">
+                <span className="text-sm font-semibold text-foreground">신청 관리</span>
+                <p className="text-xs text-muted-foreground">
+                  {joinCount > 0 || guestCount > 0
+                    ? `가입 신청 ${joinCount}건, 게스트 신청 ${guestCount}건`
+                    : '대기 중인 신청이 없습니다'}
+                </p>
+              </div>
+            </Link>
+          </div>
+        );
+      })()}
+
+      {/* Join Requests for admins (inline quick review) */}
       {canManageMembers && joinRequests.length > 0 && (
         <JoinRequestList
           requests={JSON.parse(JSON.stringify(joinRequests))}
@@ -203,6 +237,7 @@ export default async function ClubDetailPage({
         myRole={myRole}
         canCreateMatch={canCreateMatch}
         canManageMembers={canManageMembers}
+        pendingGuestByMatch={canManageMembers ? pendingGuestByMatch : undefined}
       />
     </>
   );

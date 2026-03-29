@@ -6,7 +6,7 @@ import { SearchInput } from '@/components/search/search-input';
 import { FilterChips } from '@/components/search/filter-chips';
 import { SearchEmpty } from '@/components/search/search-empty';
 import { formatDate, formatMatchStatus, formatTime, formatDDayWithStatus } from '@/lib/utils/format';
-import { Calendar, MapPin, Plus } from 'lucide-react';
+import { Calendar, Clock, MapPin, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 
@@ -14,6 +14,7 @@ interface MatchesTabProps {
   clubId: string;
   matches: any[];
   canCreateMatch: boolean;
+  pendingGuestByMatch?: Record<string, number>;
 }
 
 const statusVariant: Record<string, 'primary' | 'success' | 'default' | 'destructive'> = {
@@ -31,7 +32,7 @@ const STATUS_CHIPS = [
   { key: 'cancelled', label: '취소' },
 ];
 
-export function MatchesTab({ clubId, matches, canCreateMatch }: MatchesTabProps) {
+export function MatchesTab({ clubId, matches, canCreateMatch, pendingGuestByMatch }: MatchesTabProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
@@ -132,6 +133,7 @@ export function MatchesTab({ clubId, matches, canCreateMatch }: MatchesTabProps)
             const confirmedCount = match.match_participants?.filter(
               (p: any) => p.status === 'confirmed'
             ).length || 0;
+            const pendingCount = pendingGuestByMatch?.[match.id] || 0;
 
             return (
               <Link key={match.id} href={`/clubs/${clubId}/matches/${match.id}`}>
@@ -169,10 +171,18 @@ export function MatchesTab({ clubId, matches, canCreateMatch }: MatchesTabProps)
                         </p>
                       )}
                     </div>
-                    <div className="text-right text-sm">
-                      <span className="text-primary font-semibold">{confirmedCount}명</span>
-                      {match.max_participants && (
-                        <span className="text-muted-foreground">/{match.max_participants}</span>
+                    <div className="text-right text-sm space-y-1">
+                      <div>
+                        <span className="text-primary font-semibold">{confirmedCount}명</span>
+                        {match.max_participants && (
+                          <span className="text-muted-foreground">/{match.max_participants}</span>
+                        )}
+                      </div>
+                      {pendingCount > 0 && (
+                        <Badge variant="warning" className="text-[10px] px-1.5 py-0 flex items-center gap-0.5">
+                          <Clock className="w-2.5 h-2.5" />
+                          대기 {pendingCount}
+                        </Badge>
                       )}
                     </div>
                   </div>

@@ -23,7 +23,7 @@ export async function getMatch(matchId: string) {
     .select(`
       *,
       match_participants (
-        id, user_id, guest_name, participant_type, status, ntrp_override, introduction,
+        id, user_id, guest_name, participant_type, status, ntrp_override, introduction, requested_at,
         profiles:user_id (id, display_name, avatar_url, ntrp_level, gender, tennis_start_date)
       )
     `)
@@ -69,6 +69,36 @@ export async function getMatchDraws(matchId: string) {
     .order('round_number');
 
   return data || [];
+}
+
+export async function getPendingGuestCount(clubId: string): Promise<number> {
+  const supabase = await createClient();
+
+  const { count } = await supabase
+    .from('match_participants')
+    .select('id, matches!inner(club_id)', { count: 'exact', head: true })
+    .eq('matches.club_id', clubId)
+    .eq('status', 'pending')
+    .or('user_id.not.is.null,guest_name.not.is.null');
+
+  return count || 0;
+}
+
+export async function getPendingGuestCountByMatch(clubId: string): Promise<Record<string, number>> {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from('match_participants')
+    .select('match_id, matches!inner(club_id)')
+    .eq('matches.club_id', clubId)
+    .eq('status', 'pending')
+    .or('user_id.not.is.null,guest_name.not.is.null');
+
+  const counts: Record<string, number> = {};
+  for (const row of data || []) {
+    counts[row.match_id] = (counts[row.match_id] || 0) + 1;
+  }
+  return counts;
 }
 
 export async function getMyGamesInMatch(matchId: string) {

@@ -16,6 +16,7 @@ interface ClubTabsProps {
   myRole: ClubRole | null;
   canCreateMatch: boolean;
   canManageMembers: boolean;
+  pendingGuestByMatch?: Record<string, number>;
 }
 
 const tabs = [
@@ -32,6 +33,7 @@ export function ClubTabs({
   myRole,
   canCreateMatch,
   canManageMembers,
+  pendingGuestByMatch,
 }: ClubTabsProps) {
   const [activeTab, setActiveTab] = useState<string>('feed');
 
@@ -68,7 +70,7 @@ export function ClubTabs({
           <FeedTab clubId={clubId} media={media} canUpload={canUpload} />
         )}
         {activeTab === 'matches' && (
-          <MatchesTab clubId={clubId} matches={matches} canCreateMatch={canCreateMatch} />
+          <MatchesTab clubId={clubId} matches={matches} canCreateMatch={canCreateMatch} pendingGuestByMatch={pendingGuestByMatch} />
         )}
         {activeTab === 'members' && (
           <MembersTab

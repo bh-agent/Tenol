@@ -195,6 +195,60 @@ export async function getMyJoinRequestsForClubs(clubIds: string[]): Promise<Reco
   return map;
 }
 
+export type PendingGuestApplication = {
+  id: string;
+  match_id: string;
+  user_id: string | null;
+  guest_name: string | null;
+  participant_type: string;
+  status: string;
+  ntrp_override: number | null;
+  introduction: string | null;
+  created_at: string;
+  match_title: string;
+  match_date: string;
+  profiles?: {
+    id: string;
+    display_name: string;
+    avatar_url: string | null;
+    ntrp_level: number | null;
+    tennis_start_date: string | null;
+  } | null;
+};
+
+export async function getPendingGuestApplications(clubId: string): Promise<PendingGuestApplication[]> {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from('match_participants')
+    .select(`
+      id, match_id, user_id, guest_name, participant_type, status, ntrp_override, introduction, created_at,
+      matches!inner (id, club_id, title, match_date),
+      profiles:user_id (id, display_name, avatar_url, ntrp_level, tennis_start_date)
+    `)
+    .eq('matches.club_id', clubId)
+    .eq('status', 'pending')
+    .eq('participant_type', 'guest')
+    .order('created_at', { ascending: false });
+
+  if (!data) return [];
+
+  return data.map((row: any) => ({
+    id: row.id,
+    match_id: row.match_id,
+    user_id: row.user_id,
+    guest_name: row.guest_name,
+    participant_type: row.participant_type,
+    status: row.status,
+    ntrp_override: row.ntrp_override,
+    introduction: row.introduction,
+    created_at: row.created_at,
+    match_title: row.matches?.title || '제목 없음',
+    match_date: row.matches?.match_date || '',
+    profiles: row.profiles || null,
+  }));
+}
+
 export async function getMyMembershipClubIds(): Promise<string[]> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

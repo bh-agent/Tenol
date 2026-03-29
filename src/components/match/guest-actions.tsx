@@ -2,43 +2,74 @@
 
 import { Button } from '@/components/ui/button';
 import { respondToGuest } from '@/lib/actions/matches';
+import { Check, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
+type ActionState = 'idle' | 'loading' | 'approved' | 'rejected';
+
 export function GuestActions({ participantId, matchId }: { participantId: string; matchId: string }) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
+  const [state, setState] = useState<ActionState>('idle');
 
   const handleRespond = async (approved: boolean) => {
-    setLoading(true);
+    if (!approved) {
+      const confirmed = window.confirm('게스트 신청을 거절하시겠습니까?');
+      if (!confirmed) return;
+    }
+
+    setState('loading');
     try {
       await respondToGuest(participantId, matchId, approved);
-      router.refresh();
+      setState(approved ? 'approved' : 'rejected');
+      setTimeout(() => {
+        router.refresh();
+      }, 800);
     } catch (e) {
+      setState('idle');
       alert(e instanceof Error ? e.message : '오류가 발생했습니다');
-    } finally {
-      setLoading(false);
     }
   };
 
+  if (state === 'approved') {
+    return (
+      <div className="flex items-center gap-1.5 text-sm font-medium text-primary animate-fade-in">
+        <Check className="w-4 h-4" />
+        승인됨
+      </div>
+    );
+  }
+
+  if (state === 'rejected') {
+    return (
+      <div className="flex items-center gap-1.5 text-sm font-medium text-destructive animate-fade-in">
+        <X className="w-4 h-4" />
+        거절됨
+      </div>
+    );
+  }
+
   return (
-    <div className="flex gap-1.5">
+    <div className="flex items-center gap-1.5 flex-shrink-0">
       <Button
         size="sm"
-        className="min-h-[44px] min-w-[44px]"
+        variant="primary"
         onClick={() => handleRespond(true)}
-        disabled={loading}
+        disabled={state === 'loading'}
+        className="h-8 px-2.5"
       >
-        승인
+        <Check className="w-4 h-4" />
+        <span className="hidden sm:inline ml-1">승인</span>
       </Button>
       <Button
         size="sm"
-        variant="destructive"
-        className="min-h-[44px] min-w-[44px]"
+        variant="ghost"
         onClick={() => handleRespond(false)}
-        disabled={loading}
+        disabled={state === 'loading'}
+        className="h-8 px-2.5 text-muted-foreground hover:text-destructive"
       >
-        거절
+        <X className="w-4 h-4" />
+        <span className="hidden sm:inline ml-1">거절</span>
       </Button>
     </div>
   );
