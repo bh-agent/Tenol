@@ -50,34 +50,16 @@ export default function LoginPage() {
 
       {/* Branding Section */}
       <div className="relative z-10 flex flex-col items-center stagger">
-        {/* Tennis ball SVG element */}
+        {/* Tenol app icon */}
         <div className="relative mb-8">
-          <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center glow-primary">
-            <svg
-              width="56"
-              height="56"
-              viewBox="0 0 56 56"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <circle cx="28" cy="28" r="26" stroke="#00E676" strokeWidth="2" opacity="0.6" />
-              <path
-                d="M8 28C8 28 18 18 28 18C38 18 48 28 48 28"
-                stroke="#00E676"
-                strokeWidth="2"
-                strokeLinecap="round"
-                opacity="0.4"
-              />
-              <path
-                d="M8 28C8 28 18 38 28 38C38 38 48 28 48 28"
-                stroke="#00E676"
-                strokeWidth="2"
-                strokeLinecap="round"
-                opacity="0.4"
-              />
-              <circle cx="28" cy="28" r="6" fill="#00E676" opacity="0.15" />
-              <circle cx="28" cy="28" r="3" fill="#00E676" opacity="0.5" />
-            </svg>
+          <div className="w-24 h-24 rounded-3xl overflow-hidden glow-primary shadow-lg shadow-primary/20">
+            <img
+              src="/icons/icon-192.png"
+              alt="테놀"
+              width={96}
+              height={96}
+              className="w-full h-full object-cover"
+            />
           </div>
           {/* Floating particles */}
           <div className="absolute -top-2 -right-2 w-2 h-2 rounded-full bg-primary/40 animate-pulse" />

@@ -100,7 +100,7 @@ export default async function ClubsPage() {
       {/* FAB for creating club */}
       <Link
         href="/clubs/new"
-        className="fixed bottom-24 right-5 z-40 w-14 h-14 rounded-full bg-primary text-black flex items-center justify-center shadow-lg hover:shadow-[0_0_30px_rgba(0,230,118,0.35)] transition-all duration-300 active:scale-90"
+        className="fixed bottom-36 right-5 z-30 w-14 h-14 rounded-full bg-primary text-black flex items-center justify-center shadow-lg hover:shadow-[0_0_30px_rgba(0,230,118,0.35)] transition-all duration-300 active:scale-90"
         style={{ animation: 'pulse-glow 2s ease-in-out infinite' }}
       >
         <Plus className="w-6 h-6" />

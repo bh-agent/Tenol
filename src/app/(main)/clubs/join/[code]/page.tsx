@@ -1,10 +1,55 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from 'next';
 import { Card } from '@/components/ui/card';
 import { TopBar } from '@/components/layout/top-bar';
 import { createClient } from '@/lib/supabase/server';
 import { MapPin, Users, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { JoinByLinkForm } from './join-form';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ code: string }>;
+}): Promise<Metadata> {
+  const { code } = await params;
+  const supabase = await createClient();
+
+  const { data: club } = await supabase
+    .from('clubs')
+    .select('name, description, logo_url')
+    .eq('invite_code', code)
+    .single();
+
+  if (!club) {
+    return { title: '클럽 가입 - 테놀' };
+  }
+
+  const title = `${club.name} - 테놀 클럽 초대`;
+  const description = club.description || `${club.name} 클럽에 가입하세요!`;
+  const images = club.logo_url
+    ? [{ url: club.logo_url, width: 512, height: 512, alt: club.name }, { url: '/icons/icon-512.png', width: 512, height: 512, alt: '테놀' }]
+    : [{ url: '/icons/icon-512.png', width: 512, height: 512, alt: '테놀' }];
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      siteName: '테놀',
+      images,
+      locale: 'ko_KR',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
+      images: images.map((img) => img.url),
+    },
+  };
+}
 
 export default async function JoinByLinkPage({
   params,

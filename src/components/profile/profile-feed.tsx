@@ -304,7 +304,7 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
       {isOwnProfile && (
         <button
           onClick={() => setShowUploadModal(true)}
-          className="fixed bottom-24 right-5 z-40 w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/30 hover:bg-primary-dark active:scale-95 transition-all duration-200"
+          className="fixed bottom-36 right-5 z-30 w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/30 hover:bg-primary-dark active:scale-95 transition-all duration-200"
           aria-label="사진 올리기"
         >
           <Camera className="w-6 h-6 text-black" />

@@ -18,6 +18,20 @@ export const metadata: Metadata = {
     icon: '/icons/icon-192.png',
     apple: '/icons/apple-touch-icon.png',
   },
+  openGraph: {
+    title: '테놀 - 테니스 치며 놀자',
+    description: '테니스 클럽 운영을 더 쉽고 즐겁게. 게스트 구인, 대진표, 경기 기록, MVP까지 한 번에.',
+    siteName: '테놀',
+    images: [{ url: '/icons/icon-512.png', width: 512, height: 512, alt: '테놀' }],
+    locale: 'ko_KR',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: '테놀 - 테니스 치며 놀자',
+    description: '테니스 클럽 운영을 더 쉽고 즐겁게.',
+    images: ['/icons/icon-512.png'],
+  },
 };
 
 export const viewport: Viewport = {
