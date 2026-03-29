@@ -7,6 +7,7 @@ import { Check, X, UserPlus, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import { useState, useTransition } from 'react';
 import { respondToJoinRequest } from '@/lib/actions/clubs';
 import type { ClubJoinRequest } from '@/types';
+import Link from 'next/link';
 
 function formatTennisCareer(startDate: string | null) {
   if (!startDate) return null;
@@ -72,7 +73,7 @@ export function JoinRequestList({ requests, clubId }: JoinRequestListProps) {
             const createdDate = new Date(request.created_at);
             const timeAgo = getTimeAgo(createdDate);
             const isExpanded = expandedIds.has(request.id);
-            const hasDetail = !!(profile?.ntrp_level || (profile as any)?.tennis_start_date || request.introduction);
+            const hasDetail = !!(profile?.ntrp_level || (profile as any)?.tennis_start_date || request.introduction || (profile as any)?.bio);
 
             return (
               <div
@@ -81,27 +82,39 @@ export function JoinRequestList({ requests, clubId }: JoinRequestListProps) {
               >
                 <div className="flex items-center gap-3 p-3">
                   {/* Avatar */}
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary-dark/30 flex items-center justify-center flex-shrink-0">
-                    {profile?.avatar_url ? (
-                      <img
-                        src={profile.avatar_url}
-                        alt={displayName}
-                        className="w-10 h-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-sm font-bold text-primary">{avatarInitial}</span>
-                    )}
-                  </div>
+                  <Link href={`/profile/${request.user_id}`} className="flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary-dark/30 flex items-center justify-center">
+                      {profile?.avatar_url ? (
+                        <img
+                          src={profile.avatar_url}
+                          alt={displayName}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-sm font-bold text-primary">{avatarInitial}</span>
+                      )}
+                    </div>
+                  </Link>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-foreground truncate">{displayName}</p>
+                      <Link href={`/profile/${request.user_id}`}>
+                        <p className="text-sm font-semibold text-foreground hover:text-primary transition-colors truncate">{displayName}</p>
+                      </Link>
+                      {(profile as any)?.real_name && (
+                        <span className="text-xs text-muted-foreground">({(profile as any).real_name})</span>
+                      )}
                       {profile?.ntrp_level && (
-                        <Badge variant="primary" className="text-[10px] px-1.5 py-0">NTRP {profile.ntrp_level}</Badge>
+                        <Badge variant="primary" className="text-[10px] px-1.5 py-0 flex-shrink-0">NTRP {profile.ntrp_level}</Badge>
                       )}
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {(profile as any)?.gender && (
+                        <Badge variant="outline" className="text-[10px]">
+                          {(profile as any).gender === 'male' ? '남' : (profile as any).gender === 'female' ? '여' : ''}
+                        </Badge>
+                      )}
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="w-3 h-3" />
                         {timeAgo}
@@ -151,9 +164,15 @@ export function JoinRequestList({ requests, clubId }: JoinRequestListProps) {
                 {isExpanded && hasDetail && (
                   <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-0">
                     <div className="pt-2 space-y-1.5">
+                      {(profile as any)?.bio && (
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-0.5">프로필 소개</p>
+                          <p className="text-sm text-foreground leading-relaxed">{(profile as any).bio}</p>
+                        </div>
+                      )}
                       {request.introduction && (
                         <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-0.5">자기소개</p>
+                          <p className="text-xs font-medium text-muted-foreground mb-0.5">신청 메시지</p>
                           <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{request.introduction}</p>
                         </div>
                       )}

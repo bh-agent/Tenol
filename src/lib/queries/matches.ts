@@ -24,7 +24,7 @@ export async function getMatch(matchId: string) {
       *,
       match_participants (
         id, user_id, guest_name, participant_type, status, ntrp_override, introduction, requested_at,
-        profiles:user_id (id, display_name, avatar_url, ntrp_level, gender, tennis_start_date)
+        profiles:user_id (id, display_name, avatar_url, ntrp_level, gender, tennis_start_date, bio, real_name)
       )
     `)
     .eq('id', matchId)

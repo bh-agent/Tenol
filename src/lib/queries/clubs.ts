@@ -150,7 +150,7 @@ export async function getPendingJoinRequests(clubId: string): Promise<ClubJoinRe
     .select(`
       id, club_id, user_id, message, introduction, status, responded_by, created_at, responded_at,
       profiles:user_id (
-        id, display_name, avatar_url, ntrp_level, gender, tennis_start_date
+        id, display_name, avatar_url, ntrp_level, gender, tennis_start_date, bio, real_name
       )
     `)
     .eq('club_id', clubId)

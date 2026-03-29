@@ -65,7 +65,8 @@ export function GuestPendingList({ pending, matchId }: GuestPendingListProps) {
           const career = formatTennisCareer(p.profiles?.tennis_start_date || null);
           const timeAgo = p.requested_at ? getTimeAgo(new Date(p.requested_at)) : null;
           const isExpanded = expandedIds.has(p.id);
-          const hasIntroduction = !!p.introduction;
+          const hasBio = !!p.profiles?.bio;
+          const hasIntroduction = !!p.introduction || hasBio;
 
           return (
             <div
@@ -106,6 +107,9 @@ export function GuestPendingList({ pending, matchId }: GuestPendingListProps) {
                         {displayName}
                       </p>
                     )}
+                    {p.profiles?.real_name && (
+                      <span className="text-xs text-muted-foreground">({p.profiles.real_name})</span>
+                    )}
                     {p.profiles?.ntrp_level && (
                       <Badge variant="primary" className="text-[10px] px-1.5 py-0 flex-shrink-0">
                         NTRP {p.profiles.ntrp_level}
@@ -114,6 +118,11 @@ export function GuestPendingList({ pending, matchId }: GuestPendingListProps) {
                   </div>
                   <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                     <Badge variant="warning" className="text-[10px]">게스트 대기중</Badge>
+                    {p.profiles?.gender && (
+                      <Badge variant="outline" className="text-[10px]">
+                        {p.profiles.gender === 'male' ? '남' : p.profiles.gender === 'female' ? '여' : ''}
+                      </Badge>
+                    )}
                     {timeAgo && (
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="w-3 h-3" />
@@ -145,11 +154,21 @@ export function GuestPendingList({ pending, matchId }: GuestPendingListProps) {
               {/* Expandable introduction */}
               {isExpanded && hasIntroduction && (
                 <div className="px-3 pb-3 pt-0 border-t border-border/50">
-                  <div className="pt-2">
-                    <p className="text-xs font-medium text-muted-foreground mb-0.5">자기소개</p>
-                    <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                      {p.introduction}
-                    </p>
+                  <div className="pt-2 space-y-1.5">
+                    {hasBio && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-0.5">프로필 소개</p>
+                        <p className="text-sm text-foreground leading-relaxed">{p.profiles.bio}</p>
+                      </div>
+                    )}
+                    {p.introduction && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-0.5">신청 메시지</p>
+                        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                          {p.introduction}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -161,7 +180,7 @@ export function GuestPendingList({ pending, matchId }: GuestPendingListProps) {
                     className="text-xs text-muted-foreground leading-relaxed truncate border-t border-border/50 pt-1.5 cursor-pointer hover:text-foreground transition-colors"
                     onClick={() => toggleExpand(p.id)}
                   >
-                    {p.introduction}
+                    {p.introduction || p.profiles?.bio}
                   </p>
                 </div>
               )}
