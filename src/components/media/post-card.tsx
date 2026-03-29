@@ -9,6 +9,8 @@ import { LikeButton } from './like-button';
 import { DoubleTapHeart } from './double-tap-heart';
 import { CommentSheet } from './comment-sheet';
 import { CaptionText } from './caption-text';
+import { MentionAutocomplete } from './mention-autocomplete';
+import { useMentionInput } from '@/lib/hooks/use-mention-input';
 import { updateMedia, deleteMedia } from '@/lib/actions/media';
 import { toggleLike } from '@/lib/actions/social';
 import { formatRelativeTime } from '@/lib/utils/format';
@@ -39,15 +41,17 @@ interface PostCardProps {
     like_count?: number;
     comment_count?: number;
     is_liked?: boolean;
+    club_id?: string | null;
     profiles?: { display_name: string; avatar_url: string | null };
   };
   currentUserId?: string;
   isAdmin?: boolean;
+  clubId?: string;
   onDelete?: (id: string) => void;
   onUpdate?: (id: string, caption: string) => void;
 }
 
-export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: PostCardProps) {
+export function PostCard({ post, currentUserId, isAdmin, clubId, onDelete, onUpdate }: PostCardProps) {
   const [imageIndex, setImageIndex] = useState(0);
   const [showMenu, setShowMenu] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -61,6 +65,11 @@ export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: P
   const [commentCount, setCommentCount] = useState(post.comment_count ?? 0);
   const [commentSheetOpen, setCommentSheetOpen] = useState(false);
   const [, startTransition] = useTransition();
+
+  // Edit mention support
+  const editTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const editMention = useMentionInput(editTextareaRef, setEditCaption);
+  const resolvedClubId = clubId || post.club_id || undefined;
 
   // Touch tracking for swipe carousel
   const touchStartX = useRef(0);
@@ -375,13 +384,35 @@ export function PostCard({ post, currentUserId, isAdmin, onDelete, onUpdate }: P
       {/* ── Edit Modal ── */}
       <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title="게시물 수정">
         <div className="space-y-4">
-          <textarea
-            value={editCaption}
-            onChange={(e) => setEditCaption(e.target.value)}
-            placeholder="설명을 입력하세요"
-            rows={3}
-            className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-          />
+          <div className="relative">
+            <textarea
+              ref={editTextareaRef}
+              value={editCaption}
+              onChange={(e) => {
+                setEditCaption(e.target.value);
+                editMention.handleInputChange(e.target.value);
+              }}
+              onKeyDown={(e) => {
+                if (editMention.handleKeyDown(e)) {
+                  e.preventDefault();
+                }
+              }}
+              placeholder="설명을 입력하세요"
+              rows={3}
+              className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+            />
+            <MentionAutocomplete
+              query={editMention.autocompleteQuery}
+              clubId={resolvedClubId}
+              isOpen={editMention.isAutocompleteOpen}
+              onSelect={editMention.handleSelect}
+              onClose={editMention.handleClose}
+              position="above"
+            />
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            #태그 로 해시태그, @이름 으로 멤버 언급
+          </p>
           <Button onClick={handleEdit} disabled={saving} fullWidth>
             {saving ? '저장 중...' : '저장'}
           </Button>

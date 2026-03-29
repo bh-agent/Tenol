@@ -147,6 +147,14 @@ export async function updateMedia(mediaId: string, caption: string | null) {
     .eq('uploaded_by', user.id);
 
   if (error) throw new Error('수정에 실패했습니다');
+
+  // Remove old tags and mentions, then reprocess from the new caption
+  await Promise.all([
+    supabase.from('media_tags').delete().eq('media_id', validated.mediaId),
+    supabase.from('media_mentions').delete().eq('media_id', validated.mediaId),
+  ]);
+
+  await processTagsAndMentions(validated.mediaId, validated.caption, user.id);
 }
 
 /**

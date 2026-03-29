@@ -65,6 +65,7 @@ export function FeedTab({ clubId, media: initialMedia, canUpload }: FeedTabProps
                 post={item}
                 currentUserId={currentUserId}
                 isAdmin={canUpload}
+                clubId={clubId}
                 onDelete={() => handleChange()}
                 onUpdate={() => handleChange()}
               />
