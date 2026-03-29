@@ -129,24 +129,27 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
 
             {showMenu && (
               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-                <div className="absolute right-0 top-10 z-50 bg-surface-elevated rounded-xl shadow-lg border border-border py-1 min-w-[140px] animate-fade-in">
-                  <button
-                    onClick={handleClose}
-                    disabled={closing}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-surface-hover transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                    {closing ? '마감 중...' : '모집 마감'}
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    disabled={deleting}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-destructive hover:bg-surface-hover transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    {deleting ? '삭제 중...' : '삭제'}
-                  </button>
+                <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowMenu(false)} />
+                <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom">
+                  <div className="w-10 h-1 rounded-full bg-muted mx-auto mt-3 mb-1" />
+                  <div className="py-1">
+                    <button
+                      onClick={handleClose}
+                      disabled={closing}
+                      className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                      {closing ? '마감 중...' : '모집 마감'}
+                    </button>
+                    <button
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-destructive hover:bg-surface-hover transition-colors"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                      {deleting ? '삭제 중...' : '삭제'}
+                    </button>
+                  </div>
                 </div>
               </>
             )}

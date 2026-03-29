@@ -82,75 +82,78 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
 
         {showMenu && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
-            <div className="absolute right-0 top-8 z-50 bg-surface-elevated rounded-xl shadow-lg border border-border py-1 min-w-[180px] animate-fade-in">
-              {/* 회장만 운영진 승격/강등 가능 */}
-              {myRole === 'owner' && currentRole === 'member' && (
-                <button
-                  onClick={() => handleRoleChange('admin')}
-                  disabled={loading}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
-                >
-                  <ShieldCheck className="w-4 h-4 text-primary" />
-                  운영진으로 승격
-                </button>
-              )}
-              {myRole === 'owner' && currentRole === 'admin' && (
-                <button
-                  onClick={() => handleRoleChange('member')}
-                  disabled={loading}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
-                >
-                  <ShieldOff className="w-4 h-4 text-muted-foreground" />
-                  멤버로 강등
-                </button>
-              )}
+            <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowMenu(false)} />
+            <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom">
+              <div className="w-10 h-1 rounded-full bg-muted mx-auto mt-3 mb-1" />
+              <div className="py-1">
+                {/* 회장만 운영진 승격/강등 가능 */}
+                {myRole === 'owner' && currentRole === 'member' && (
+                  <button
+                    onClick={() => handleRoleChange('admin')}
+                    disabled={loading}
+                    className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                  >
+                    <ShieldCheck className="w-5 h-5 text-primary" />
+                    운영진으로 승격
+                  </button>
+                )}
+                {myRole === 'owner' && currentRole === 'admin' && (
+                  <button
+                    onClick={() => handleRoleChange('member')}
+                    disabled={loading}
+                    className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                  >
+                    <ShieldOff className="w-5 h-5 text-muted-foreground" />
+                    멤버로 강등
+                  </button>
+                )}
 
-              {/* 클럽장 양도 - 회장만 */}
-              {myRole === 'owner' && (
-                <button
-                  onClick={() => {
-                    setShowMenu(false);
-                    setShowTransferConfirm(true);
-                  }}
-                  disabled={loading}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
-                >
-                  <Crown className="w-4 h-4 text-yellow-500" />
-                  클럽장 양도
-                </button>
-              )}
+                {/* 클럽장 양도 - 회장만 */}
+                {myRole === 'owner' && (
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowTransferConfirm(true);
+                    }}
+                    disabled={loading}
+                    className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                  >
+                    <Crown className="w-5 h-5 text-yellow-500" />
+                    클럽장 양도
+                  </button>
+                )}
 
-              {/* 권한 관리 - 회장만 */}
-              {myRole === 'owner' && (
-                <button
-                  onClick={() => {
-                    setShowMenu(false);
-                    setShowPermissions(true);
-                  }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
-                >
-                  <KeyRound className="w-4 h-4 text-primary" />
-                  권한 관리
-                </button>
-              )}
+                {/* 권한 관리 - 회장만 */}
+                {myRole === 'owner' && (
+                  <button
+                    onClick={() => {
+                      setShowMenu(false);
+                      setShowPermissions(true);
+                    }}
+                    className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                  >
+                    <KeyRound className="w-5 h-5 text-primary" />
+                    권한 관리
+                  </button>
+                )}
 
-              {/* 구분선 */}
-              {canRemove && (
-                <div className="border-t border-border my-1" />
-              )}
+                {/* 구분선 */}
+                {canRemove && (
+                  <div className="border-t border-border my-1" />
+                )}
 
-              {/* 제명 - 운영진은 일반 멤버만 제명 가능 */}
-              {canRemove && (
-                <button
-                  onClick={handleRemove}
-                  disabled={loading}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-destructive hover:bg-surface-hover transition-colors"
-                >
-                  <UserMinus className="w-4 h-4" />
-                  제명하기
-                </button>
-              )}
+                {/* 제명 */}
+                {canRemove && (
+                  <button
+                    onClick={handleRemove}
+                    disabled={loading}
+                    className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-destructive hover:bg-surface-hover transition-colors"
+                  >
+                    <UserMinus className="w-5 h-5" />
+                    제명하기
+                  </button>
+                )}
+              </div>
             </div>
           </>
         )}
