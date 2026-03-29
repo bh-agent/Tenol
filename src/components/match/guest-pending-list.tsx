@@ -154,7 +154,34 @@ export function GuestPendingList({ pending, matchId }: GuestPendingListProps) {
               {/* Expandable introduction */}
               {isExpanded && hasIntroduction && (
                 <div className="px-3 pb-3 pt-0 border-t border-border/50">
-                  <div className="pt-2 space-y-1.5">
+                  <div className="pt-2 space-y-2">
+                    {/* Profile summary grid */}
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {p.profiles?.real_name && (
+                        <div className="px-2.5 py-1.5 rounded-lg bg-background">
+                          <p className="text-[10px] text-muted-foreground">실명</p>
+                          <p className="text-xs font-medium text-foreground">{p.profiles.real_name}</p>
+                        </div>
+                      )}
+                      {p.profiles?.gender && (
+                        <div className="px-2.5 py-1.5 rounded-lg bg-background">
+                          <p className="text-[10px] text-muted-foreground">성별</p>
+                          <p className="text-xs font-medium text-foreground">{p.profiles.gender === 'male' ? '남성' : p.profiles.gender === 'female' ? '여성' : ''}</p>
+                        </div>
+                      )}
+                      {p.profiles?.ntrp_level && (
+                        <div className="px-2.5 py-1.5 rounded-lg bg-background">
+                          <p className="text-[10px] text-muted-foreground">NTRP</p>
+                          <p className="text-xs font-medium text-foreground">{p.profiles.ntrp_level}</p>
+                        </div>
+                      )}
+                      {p.profiles?.tennis_start_date && (
+                        <div className="px-2.5 py-1.5 rounded-lg bg-background">
+                          <p className="text-[10px] text-muted-foreground">구력</p>
+                          <p className="text-xs font-medium text-foreground">{formatTennisCareer(p.profiles.tennis_start_date)}</p>
+                        </div>
+                      )}
+                    </div>
                     {hasBio && (
                       <div>
                         <p className="text-xs font-medium text-muted-foreground mb-0.5">프로필 소개</p>

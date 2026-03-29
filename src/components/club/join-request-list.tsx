@@ -163,7 +163,34 @@ export function JoinRequestList({ requests, clubId }: JoinRequestListProps) {
                 {/* Expanded detail */}
                 {isExpanded && hasDetail && (
                   <div className="px-3 pb-3 pt-0 border-t border-border/50 mt-0">
-                    <div className="pt-2 space-y-1.5">
+                    <div className="pt-2 space-y-2">
+                      {/* Profile summary grid */}
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {(profile as any)?.real_name && (
+                          <div className="px-2.5 py-1.5 rounded-lg bg-background">
+                            <p className="text-[10px] text-muted-foreground">실명</p>
+                            <p className="text-xs font-medium text-foreground">{(profile as any).real_name}</p>
+                          </div>
+                        )}
+                        {(profile as any)?.gender && (
+                          <div className="px-2.5 py-1.5 rounded-lg bg-background">
+                            <p className="text-[10px] text-muted-foreground">성별</p>
+                            <p className="text-xs font-medium text-foreground">{(profile as any).gender === 'male' ? '남성' : (profile as any).gender === 'female' ? '여성' : ''}</p>
+                          </div>
+                        )}
+                        {profile?.ntrp_level && (
+                          <div className="px-2.5 py-1.5 rounded-lg bg-background">
+                            <p className="text-[10px] text-muted-foreground">NTRP</p>
+                            <p className="text-xs font-medium text-foreground">{profile.ntrp_level}</p>
+                          </div>
+                        )}
+                        {(profile as any)?.tennis_start_date && (
+                          <div className="px-2.5 py-1.5 rounded-lg bg-background">
+                            <p className="text-[10px] text-muted-foreground">구력</p>
+                            <p className="text-xs font-medium text-foreground">{formatTennisCareer((profile as any).tennis_start_date)}</p>
+                          </div>
+                        )}
+                      </div>
                       {(profile as any)?.bio && (
                         <div>
                           <p className="text-xs font-medium text-muted-foreground mb-0.5">프로필 소개</p>
