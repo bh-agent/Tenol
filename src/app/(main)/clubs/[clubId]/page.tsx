@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { getClub, getClubMembers, getMyRole, getPendingJoinRequests } from '@/lib/queries/clubs';
 import { getClubMatches } from '@/lib/queries/matches';
-import { getClubMedia } from '@/lib/queries/media';
+import { getClubFeedWithCounts } from '@/lib/queries/media';
 import { formatRole } from '@/lib/utils/format';
 import { hasPermission } from '@/lib/utils/permissions';
 import { RefreshButton } from '@/components/ui/refresh-button';
@@ -33,7 +33,7 @@ export default async function ClubDetailPage({
     getClub(clubId),
     getClubMembers(clubId),
     getClubMatches(clubId),
-    getClubMedia(clubId),
+    getClubFeedWithCounts(clubId),
     getMyRole(clubId),
     isClubBookmarked(clubId),
     getPendingJoinRequests(clubId),

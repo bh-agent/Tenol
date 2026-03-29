@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { savePersonalMedia } from '@/lib/actions/media';
 import { createClient } from '@/lib/supabase/client';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Camera, Grid3X3, List, AtSign } from 'lucide-react';
+import { Camera, Grid3X3, List, AtSign, Heart, MessageCircle } from 'lucide-react';
 import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { cn } from '@/lib/utils/cn';
@@ -29,6 +29,7 @@ type FeedItem = {
   uploaded_by: string;
   like_count?: number;
   comment_count?: number;
+  is_liked?: boolean;
   profiles?: { display_name: string; avatar_url: string | null } | null;
 };
 
@@ -47,14 +48,31 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
 
   const loadPosts = useCallback(async () => {
     const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { data } = await supabase
-      .from('media')
-      .select('id, file_url, file_urls, file_type, caption, created_at, uploaded_by')
+      .from('media_with_counts')
+      .select('id, file_url, file_urls, file_type, caption, created_at, uploaded_by, like_count, comment_count')
       .eq('uploaded_by', userId)
       .eq('feed_type', 'personal')
       .order('created_at', { ascending: false });
 
-    setPosts(data || []);
+    if (!data) { setPosts([]); setLoading(false); return; }
+
+    // Attach is_liked status
+    if (user) {
+      const mediaIds = data.map((m: any) => m.id);
+      const { data: likes } = await supabase
+        .from('media_likes')
+        .select('media_id')
+        .eq('user_id', user.id)
+        .in('media_id', mediaIds);
+
+      const likedSet = new Set(likes?.map((l: any) => l.media_id) ?? []);
+      setPosts(data.map((m: any) => ({ ...m, is_liked: likedSet.has(m.id) })));
+    } else {
+      setPosts(data.map((m: any) => ({ ...m, is_liked: false })));
+    }
     setLoading(false);
   }, [userId]);
 
@@ -77,19 +95,34 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
 
     const mediaIds = mentions.map((m) => m.media_id);
 
+    const { data: { user } } = await supabase.auth.getUser();
+
     const { data } = await supabase
-      .from('media')
+      .from('media_with_counts')
       .select(`
-        id, file_url, file_urls, file_type, caption, created_at, uploaded_by,
+        id, file_url, file_urls, file_type, caption, created_at, uploaded_by, like_count, comment_count,
         profiles:uploaded_by (display_name, avatar_url)
       `)
       .in('id', mediaIds)
       .order('created_at', { ascending: false });
 
-    const normalized = (data || []).map((item: any) => ({
+    let normalized = (data || []).map((item: any) => ({
       ...item,
       profiles: Array.isArray(item.profiles) ? item.profiles[0] : item.profiles,
+      is_liked: false,
     }));
+
+    if (user && normalized.length > 0) {
+      const ids = normalized.map((m: any) => m.id);
+      const { data: likes } = await supabase
+        .from('media_likes')
+        .select('media_id')
+        .eq('user_id', user.id)
+        .in('media_id', ids);
+
+      const likedSet = new Set(likes?.map((l: any) => l.media_id) ?? []);
+      normalized = normalized.map((m: any) => ({ ...m, is_liked: likedSet.has(m.id) }));
+    }
     setMentionedPosts(normalized);
     setMentionsLoading(false);
     setMentionsLoaded(true);
@@ -165,11 +198,18 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
               className="object-cover transition-transform duration-200 group-hover:scale-105"
               sizes="(max-width: 640px) 33vw, 200px"
             />
-            {/* Hover overlay */}
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
-              {post.file_urls && post.file_urls.length > 1 && (
-                <span className="text-white text-xs font-medium bg-black/50 px-2 py-0.5 rounded-full">
-                  +{post.file_urls.length - 1}
+            {/* Hover overlay - Instagram style */}
+            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors duration-200 flex items-center justify-center gap-4 opacity-0 group-hover:opacity-100">
+              {(post.like_count ?? 0) > 0 && (
+                <span className="flex items-center gap-1 text-white text-sm font-semibold">
+                  <Heart className="w-4 h-4 fill-white" />
+                  {post.like_count}
+                </span>
+              )}
+              {(post.comment_count ?? 0) > 0 && (
+                <span className="flex items-center gap-1 text-white text-sm font-semibold">
+                  <MessageCircle className="w-4 h-4 fill-white" />
+                  {post.comment_count}
                 </span>
               )}
             </div>
