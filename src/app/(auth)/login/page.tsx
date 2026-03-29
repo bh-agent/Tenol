@@ -12,6 +12,9 @@ export default function LoginPage() {
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
         scopes: 'profile_nickname profile_image',
+        queryParams: {
+          scope: 'profile_nickname profile_image',
+        },
       },
     });
   };
