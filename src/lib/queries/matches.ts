@@ -23,8 +23,8 @@ export async function getMatch(matchId: string) {
     .select(`
       *,
       match_participants (
-        id, user_id, guest_name, participant_type, status, ntrp_override,
-        profiles:user_id (id, display_name, avatar_url, ntrp_level, gender)
+        id, user_id, guest_name, participant_type, status, ntrp_override, introduction,
+        profiles:user_id (id, display_name, avatar_url, ntrp_level, gender, tennis_start_date)
       )
     `)
     .eq('id', matchId)

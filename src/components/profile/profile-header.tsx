@@ -158,8 +158,11 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
           <p className="text-xs text-muted-foreground mt-1">업로드 중...</p>
         )}
 
-        {/* 닉네임 + 수정 버튼 */}
-        <div className="flex items-center gap-1.5 mt-3">
+        {/* 실명 + 닉네임 + 수정 버튼 */}
+        <p className="text-xs text-muted-foreground mt-3">
+          {profile.real_name || '익명'}
+        </p>
+        <div className="flex items-center gap-1.5 mt-1">
           <h2 className="text-xl font-bold text-foreground">{profile.display_name}</h2>
           <button
             onClick={() => setShowEdit(true)}
@@ -208,6 +211,18 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
             defaultValue={profile.display_name}
             required
           />
+          <div>
+            <Input
+              id="real_name"
+              name="real_name"
+              label="실명"
+              defaultValue={profile.real_name || ''}
+              placeholder="실명을 입력해주세요"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              대진표에서 실명(닉네임) 형태로 표시됩니다
+            </p>
+          </div>
           <Input
             id="bio"
             name="bio"

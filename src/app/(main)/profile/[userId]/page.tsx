@@ -92,7 +92,10 @@ export default async function UserProfilePage({
               />
             </div>
 
-            <div className="flex items-center gap-3 mt-3">
+            <p className="text-xs text-muted-foreground mt-3">
+              {profile.real_name || '익명'}
+            </p>
+            <div className="flex items-center gap-3 mt-1">
               <h2 className="text-xl font-bold text-foreground">
                 {profile.display_name}
               </h2>

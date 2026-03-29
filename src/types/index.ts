@@ -4,6 +4,7 @@
 export type Profile = {
   id: string;
   display_name: string;
+  real_name: string | null;
   avatar_url: string | null;
   phone: string | null;
   ntrp_level: number | null;
@@ -77,6 +78,7 @@ export type MatchParticipant = {
   participant_type: ParticipantType;
   status: ParticipantStatus;
   ntrp_override: number | null;
+  introduction: string | null;
   requested_at: string;
   responded_at: string | null;
   responded_by: string | null;
@@ -140,6 +142,7 @@ export type ClubJoinRequest = {
   club_id: string;
   user_id: string;
   message: string | null;
+  introduction: string | null;
   status: JoinRequestStatus;
   responded_by: string | null;
   created_at: string;
@@ -245,6 +248,9 @@ export type RecruitmentPost = {
   match_date: string | null;
   location: string | null;
   needed_count: number | null;
+  male_slots: number | null;
+  female_slots: number | null;
+  any_slots: number | null;
   ntrp_min: number | null;
   ntrp_max: number | null;
   status: 'open' | 'closed';

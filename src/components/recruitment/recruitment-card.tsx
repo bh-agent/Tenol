@@ -25,6 +25,18 @@ interface RecruitmentCardProps {
   onDelete?: (id: string) => void;
 }
 
+function formatSlots(post: RecruitmentPost): string | null {
+  if (post.male_slots != null || post.female_slots != null) {
+    const parts: string[] = [];
+    if (post.male_slots != null && post.male_slots > 0) parts.push(`남 ${post.male_slots}명`);
+    if (post.female_slots != null && post.female_slots > 0) parts.push(`여 ${post.female_slots}명`);
+    return parts.join(' / ') || null;
+  }
+  if (post.any_slots != null) return `성별 무관 ${post.any_slots}명`;
+  if (post.needed_count != null) return `${post.needed_count}명 모집`;
+  return null;
+}
+
 export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: RecruitmentCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -162,10 +174,10 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
               {post.location}
             </span>
           )}
-          {post.needed_count && (
+          {formatSlots(post) && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-xs text-muted-foreground">
               <Users className="w-3 h-3 text-[#42A5F5]/70" />
-              {post.needed_count}명 모집
+              {formatSlots(post)}
             </span>
           )}
           {(post.ntrp_min || post.ntrp_max) && (
@@ -177,12 +189,20 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
       )}
 
       {/* Member recruit info */}
-      {isMemberRecruit && post.clubs?.region && (
+      {isMemberRecruit && (post.clubs?.region || formatSlots(post)) && (
         <div className="px-4 pb-2 flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-xs text-muted-foreground">
-            <MapPin className="w-3 h-3 text-[#00E676]/70" />
-            {post.clubs.region}
-          </span>
+          {post.clubs?.region && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-xs text-muted-foreground">
+              <MapPin className="w-3 h-3 text-[#00E676]/70" />
+              {post.clubs.region}
+            </span>
+          )}
+          {formatSlots(post) && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-xs text-muted-foreground">
+              <Users className="w-3 h-3 text-[#00E676]/70" />
+              {formatSlots(post)}
+            </span>
+          )}
         </div>
       )}
 

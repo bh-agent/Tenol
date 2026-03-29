@@ -44,7 +44,19 @@ export default async function MatchDetailPage({
   const pending = match.match_participants?.filter((p: any) => p.status === 'pending') || [];
 
   const isParticipant = user ? confirmed.some((p: any) => p.user_id === user.id) : false;
+  const isPendingGuest = user ? pending.some((p: any) => p.user_id === user.id) : false;
   const isFull = match.max_participants ? confirmed.length >= match.max_participants : false;
+
+  // Get user profile for guest application
+  let userProfile: { display_name: string; ntrp_level: number | null; tennis_start_date: string | null } | null = null;
+  if (user && !myRole) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('display_name, ntrp_level, tennis_start_date')
+      .eq('id', user.id)
+      .single();
+    userProfile = profile;
+  }
 
   // Doubles need minimum 4 for a draw
   const isDoubles = match.format === 'doubles' || match.format === 'mixed_doubles';
@@ -188,44 +200,77 @@ export default async function MatchDetailPage({
               게스트 승인 대기 ({pending.length}명)
             </h3>
             <div className="space-y-3">
-              {pending.map((p: any) => (
-                <div key={p.id} className="flex items-center justify-between p-2 rounded-xl bg-surface-elevated">
-                  <div className="flex items-center gap-3">
-                    {p.user_id ? (
-                      <Link href={`/profile/${p.user_id}`} className="flex items-center gap-3">
-                        <Avatar
-                          src={p.profiles?.avatar_url}
-                          alt={p.profiles?.display_name || p.guest_name}
-                          fallback={p.profiles?.display_name || p.guest_name}
-                          size="sm"
-                        />
-                        <div>
-                          <p className="text-sm font-medium text-foreground hover:text-primary transition-colors">
-                            {p.profiles?.display_name || p.guest_name}
-                          </p>
-                          <Badge variant="warning">게스트 대기중</Badge>
-                        </div>
-                      </Link>
-                    ) : (
-                      <>
-                        <Avatar
-                          src={p.profiles?.avatar_url}
-                          alt={p.profiles?.display_name || p.guest_name}
-                          fallback={p.profiles?.display_name || p.guest_name}
-                          size="sm"
-                        />
-                        <div>
-                          <p className="text-sm font-medium text-foreground">
-                            {p.profiles?.display_name || p.guest_name}
-                          </p>
-                          <Badge variant="warning">게스트 대기중</Badge>
-                        </div>
-                      </>
+              {pending.map((p: any) => {
+                const tennisStart = p.profiles?.tennis_start_date;
+                const career = tennisStart ? (() => {
+                  const start = new Date(tennisStart);
+                  const now = new Date();
+                  const totalMonths = (now.getFullYear() - start.getFullYear()) * 12 + (now.getMonth() - start.getMonth());
+                  if (totalMonths < 1) return '시작한 지 얼마 안 됨';
+                  if (totalMonths < 12) return `${totalMonths}개월`;
+                  const years = Math.floor(totalMonths / 12);
+                  const months = totalMonths % 12;
+                  return months > 0 ? `${years}년 ${months}개월` : `${years}년`;
+                })() : null;
+
+                return (
+                  <div key={p.id} className="rounded-xl bg-surface-elevated overflow-hidden">
+                    <div className="flex items-center justify-between p-2">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        {p.user_id ? (
+                          <Link href={`/profile/${p.user_id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                            <Avatar
+                              src={p.profiles?.avatar_url}
+                              alt={p.profiles?.display_name || p.guest_name}
+                              fallback={p.profiles?.display_name || p.guest_name}
+                              size="sm"
+                            />
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-medium text-foreground hover:text-primary transition-colors truncate">
+                                  {p.profiles?.display_name || p.guest_name}
+                                </p>
+                                {p.profiles?.ntrp_level && (
+                                  <Badge variant="primary" className="text-[10px] px-1.5 py-0 flex-shrink-0">NTRP {p.profiles.ntrp_level}</Badge>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <Badge variant="warning" className="text-[10px]">게스트 대기중</Badge>
+                                {career && (
+                                  <span className="text-[10px] text-muted-foreground">구력 {career}</span>
+                                )}
+                              </div>
+                            </div>
+                          </Link>
+                        ) : (
+                          <>
+                            <Avatar
+                              src={p.profiles?.avatar_url}
+                              alt={p.profiles?.display_name || p.guest_name}
+                              fallback={p.profiles?.display_name || p.guest_name}
+                              size="sm"
+                            />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium text-foreground truncate">
+                                {p.profiles?.display_name || p.guest_name}
+                              </p>
+                              <Badge variant="warning" className="text-[10px]">게스트 대기중</Badge>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <GuestActions participantId={p.id} matchId={matchId} />
+                    </div>
+                    {p.introduction && (
+                      <div className="px-3 pb-2 pt-0">
+                        <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap border-t border-border/50 pt-1.5">
+                          {p.introduction}
+                        </p>
+                      </div>
                     )}
                   </div>
-                  <GuestActions participantId={p.id} matchId={matchId} />
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Card>
         )}
@@ -333,6 +378,10 @@ export default async function MatchDetailPage({
         status={match.status}
         isParticipant={isParticipant}
         isFull={isFull}
+        isMember={!!myRole}
+        isPendingGuest={isPendingGuest}
+        allowGuests={match.allow_guests}
+        userProfile={userProfile}
       />
     </>
   );

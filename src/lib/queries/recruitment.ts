@@ -11,8 +11,8 @@ export async function getRecruitmentPosts(
     .from('recruitment_posts')
     .select(`
       id, club_id, match_id, created_by, type, title, description,
-      match_date, location, needed_count, ntrp_min, ntrp_max,
-      status, created_at,
+      match_date, location, needed_count, male_slots, female_slots, any_slots,
+      ntrp_min, ntrp_max, status, created_at,
       clubs:club_id (name, logo_url, region),
       profiles:created_by (display_name, avatar_url)
     `)
@@ -39,8 +39,8 @@ export async function searchRecruitmentPosts(
     .from('recruitment_posts')
     .select(`
       id, club_id, match_id, created_by, type, title, description,
-      match_date, location, needed_count, ntrp_min, ntrp_max,
-      status, created_at,
+      match_date, location, needed_count, male_slots, female_slots, any_slots,
+      ntrp_min, ntrp_max, status, created_at,
       clubs:club_id (name, logo_url, region),
       profiles:created_by (display_name, avatar_url)
     `)
@@ -69,8 +69,8 @@ export async function getClubRecruitmentPosts(
     .from('recruitment_posts')
     .select(`
       id, club_id, match_id, created_by, type, title, description,
-      match_date, location, needed_count, ntrp_min, ntrp_max,
-      status, created_at,
+      match_date, location, needed_count, male_slots, female_slots, any_slots,
+      ntrp_min, ntrp_max, status, created_at,
       clubs:club_id (name, logo_url, region),
       profiles:created_by (display_name, avatar_url)
     `)

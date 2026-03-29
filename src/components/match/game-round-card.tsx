@@ -28,6 +28,7 @@ type Participant = {
   ntrp_override: number | null;
   guest_gender: string | null;
   name: string;
+  drawName: string;
   ntrp: number | null;
   gender: string | null;
 };
@@ -94,7 +95,7 @@ export function GameRoundCard({
   const [savedGameIds, setSavedGameIds] = useState<Set<string>>(new Set());
 
   const getPlayerName = (id: string | null) =>
-    id ? participantMap[id]?.name || '???' : '-';
+    id ? participantMap[id]?.drawName || participantMap[id]?.name || '???' : '-';
 
   const allCompleted = games.every((g) => g.status === 'completed');
 

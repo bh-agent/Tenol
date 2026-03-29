@@ -22,6 +22,7 @@ interface RecruitmentFormProps {
 export function RecruitmentForm({ clubId, upcomingMatches }: RecruitmentFormProps) {
   const [type, setType] = useState<'member_recruit' | 'guest_recruit'>('member_recruit');
   const [selectedMatchId, setSelectedMatchId] = useState('');
+  const [slotMode, setSlotMode] = useState<'any' | 'gendered'>('any');
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -106,6 +107,65 @@ export function RecruitmentForm({ clubId, upcomingMatches }: RecruitmentFormProp
         />
       </div>
 
+      {/* Slot mode selector */}
+      <div>
+        <label className="block text-sm font-medium text-muted-foreground mb-2">
+          모집 인원
+        </label>
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => setSlotMode('any')}
+            className={cn(
+              'py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border cursor-pointer',
+              slotMode === 'any'
+                ? 'bg-primary/10 border-primary/40 text-primary'
+                : 'bg-surface-elevated border-border text-muted-foreground hover:border-border/80'
+            )}
+          >
+            성별 무관
+          </button>
+          <button
+            type="button"
+            onClick={() => setSlotMode('gendered')}
+            className={cn(
+              'py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border cursor-pointer',
+              slotMode === 'gendered'
+                ? 'bg-primary/10 border-primary/40 text-primary'
+                : 'bg-surface-elevated border-border text-muted-foreground hover:border-border/80'
+            )}
+          >
+            성별 지정
+          </button>
+        </div>
+        {slotMode === 'any' ? (
+          <Input
+            name="any_slots"
+            placeholder="모집 인원 수"
+            type="number"
+            min={1}
+            max={100}
+          />
+        ) : (
+          <div className="flex items-center gap-3">
+            <Input
+              name="male_slots"
+              placeholder="남자 인원"
+              type="number"
+              min={0}
+              max={100}
+            />
+            <Input
+              name="female_slots"
+              placeholder="여자 인원"
+              type="number"
+              min={0}
+              max={100}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Guest-specific fields */}
       {type === 'guest_recruit' && (
         <div className="space-y-5 p-4 rounded-xl bg-surface-elevated border border-border">
@@ -141,16 +201,6 @@ export function RecruitmentForm({ clubId, upcomingMatches }: RecruitmentFormProp
             placeholder="경기 장소를 입력하세요"
             defaultValue={selectedMatch?.location || ''}
             maxLength={200}
-          />
-
-          {/* Needed count */}
-          <Input
-            name="needed_count"
-            label="필요 인원"
-            type="number"
-            placeholder="2"
-            min={1}
-            max={100}
           />
 
           {/* NTRP range */}

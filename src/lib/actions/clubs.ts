@@ -43,7 +43,7 @@ export async function createClub(formData: FormData) {
   redirect(`/clubs/${club.id}?created=true`);
 }
 
-export async function joinClubByCode(inviteCode: string) {
+export async function joinClubByCode(inviteCode: string, introduction?: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('인증이 필요합니다');
@@ -91,6 +91,7 @@ export async function joinClubByCode(inviteCode: string) {
     club_id: club.id,
     user_id: user.id,
     message: '초대 코드로 가입 신청',
+    introduction: introduction?.trim() || null,
   });
 
   if (error) {
@@ -240,7 +241,7 @@ export async function updateClubLogo(clubId: string, logoUrl: string) {
   if (error) throw new Error('클럽 로고 수정에 실패했습니다');
 }
 
-export async function joinPublicClub(clubId: string) {
+export async function joinPublicClub(clubId: string, introduction?: string) {
   const validClubId = uuidSchema.parse(clubId);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -288,6 +289,7 @@ export async function joinPublicClub(clubId: string) {
   const { error } = await supabase.from('club_join_requests').insert({
     club_id: validClubId,
     user_id: user.id,
+    introduction: introduction?.trim() || null,
   });
 
   if (error) {

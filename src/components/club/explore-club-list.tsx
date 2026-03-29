@@ -9,6 +9,7 @@ import { SearchEmpty } from '@/components/search/search-empty';
 import { MapPin, Users, Star, Clock, X } from 'lucide-react';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import { BookmarkButton } from '@/components/club/bookmark-button';
+import { Modal } from '@/components/ui/modal';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { joinPublicClub, cancelJoinRequest } from '@/lib/actions/clubs';
@@ -60,6 +61,8 @@ export function ExploreClubList({
   const [cancelledIds, setCancelledIds] = useState<Set<string>>(new Set());
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  const [joinModalClubId, setJoinModalClubId] = useState<string | null>(null);
+  const [joinIntroduction, setJoinIntroduction] = useState('');
 
   function updateSearch(query: string, region: string) {
     const params = new URLSearchParams();
@@ -79,13 +82,20 @@ export function ExploreClubList({
     updateSearch(query, region);
   }
 
+  function openJoinModal(clubId: string) {
+    setJoinModalClubId(clubId);
+    setJoinIntroduction('');
+  }
+
   async function handleJoin(clubId: string) {
     setJoiningId(clubId);
     try {
       startTransition(async () => {
-        await joinPublicClub(clubId);
+        await joinPublicClub(clubId, joinIntroduction || undefined);
         setRequestedIds((prev) => new Set(prev).add(clubId));
         setJoiningId(null);
+        setJoinModalClubId(null);
+        setJoinIntroduction('');
       });
     } catch (error: any) {
       alert(error.message || '가입 신청에 실패했습니다');
@@ -155,7 +165,7 @@ export function ExploreClubList({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => handleJoin(club.id)}
+            onClick={() => openJoinModal(club.id)}
             disabled={joiningId === club.id || isPending}
           >
             재신청
@@ -167,7 +177,7 @@ export function ExploreClubList({
     return (
       <Button
         size="sm"
-        onClick={() => handleJoin(club.id)}
+        onClick={() => openJoinModal(club.id)}
         disabled={joiningId === club.id || isPending}
       >
         {joiningId === club.id ? '신청 중...' : '가입 신청'}
@@ -251,6 +261,38 @@ export function ExploreClubList({
           ))}
         </div>
       )}
+      {/* Join Application Modal */}
+      <Modal
+        isOpen={!!joinModalClubId}
+        onClose={() => { setJoinModalClubId(null); setJoinIntroduction(''); }}
+        title="가입 신청"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-1.5">
+              자기소개 <span className="text-muted-foreground font-normal">(선택)</span>
+            </label>
+            <textarea
+              value={joinIntroduction}
+              onChange={(e) => setJoinIntroduction(e.target.value)}
+              placeholder="간단한 자기소개를 작성해주세요"
+              maxLength={500}
+              rows={3}
+              className="w-full rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary resize-none"
+            />
+            <p className="text-xs text-muted-foreground text-right mt-1">
+              {joinIntroduction.length}/500
+            </p>
+          </div>
+          <Button
+            fullWidth
+            onClick={() => joinModalClubId && handleJoin(joinModalClubId)}
+            loading={!!joiningId}
+          >
+            가입 신청
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

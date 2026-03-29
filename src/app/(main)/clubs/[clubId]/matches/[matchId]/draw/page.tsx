@@ -68,6 +68,7 @@ type Participant = {
   ntrp_override: number | null;
   guest_gender: string | null;
   name: string;
+  drawName: string;
   ntrp: number | null;
   gender: string | null;
 };
@@ -304,22 +305,29 @@ export default function DrawPage() {
 
     const { data: parts } = await supabase
       .from('match_participants')
-      .select('id, user_id, guest_name, guest_gender, participant_type, status, ntrp_override, profiles:user_id (display_name, ntrp_level, gender)')
+      .select('id, user_id, guest_name, guest_gender, participant_type, status, ntrp_override, profiles:user_id (display_name, real_name, ntrp_level, gender)')
       .eq('match_id', matchId)
       .eq('status', 'confirmed');
 
-    const pList: Participant[] = (parts || []).map((p: any) => ({
-      id: p.id,
-      user_id: p.user_id,
-      guest_name: p.guest_name,
-      guest_gender: p.guest_gender,
-      participant_type: p.participant_type,
-      status: p.status,
-      ntrp_override: p.ntrp_override,
-      name: p.profiles?.display_name || p.guest_name || '???',
-      ntrp: p.ntrp_override || p.profiles?.ntrp_level || null,
-      gender: p.profiles?.gender || p.guest_gender || null,
-    }));
+    const pList: Participant[] = (parts || []).map((p: any) => {
+      const displayName = p.profiles?.display_name || p.guest_name || '???';
+      const realName = p.profiles?.real_name;
+      // Draw display: "실명(닉네임)" if real_name exists, otherwise just display_name
+      const drawName = realName ? `${realName}(${displayName})` : displayName;
+      return {
+        id: p.id,
+        user_id: p.user_id,
+        guest_name: p.guest_name,
+        guest_gender: p.guest_gender,
+        participant_type: p.participant_type,
+        status: p.status,
+        ntrp_override: p.ntrp_override,
+        name: displayName,
+        drawName,
+        ntrp: p.ntrp_override || p.profiles?.ntrp_level || null,
+        gender: p.profiles?.gender || p.guest_gender || null,
+      };
+    });
 
     const pMap: Record<string, Participant> = {};
     pList.forEach((p) => { pMap[p.id] = p; });
@@ -629,7 +637,7 @@ export default function DrawPage() {
   // Player select options for edit modal
   const playerOptions = participants.map((p) => ({
     value: p.id,
-    label: `${p.name}${p.gender === 'M' ? ' (남)' : p.gender === 'F' ? ' (여)' : ''}`,
+    label: `${p.drawName}${p.gender === 'M' ? ' (남)' : p.gender === 'F' ? ' (여)' : ''}`,
   }));
 
   return (
@@ -1039,7 +1047,7 @@ export default function DrawPage() {
                     const slotGames = gamesByOrder[order];
                     const slot = timeSlots[order];
                     const sitOuts = getSitOutPlayersForSlot(slotGames, participants);
-                    const sitOutNames = sitOuts.map((p) => p.name);
+                    const sitOutNames = sitOuts.map((p) => p.drawName);
 
                     return (
                       <GameRoundCard

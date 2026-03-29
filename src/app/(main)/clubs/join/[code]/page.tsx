@@ -100,16 +100,25 @@ export default async function JoinByLinkPage({
   // Check if already a member
   let isMember = false;
   let isPending = false;
+  let userProfile: { ntrp_level: number | null; tennis_start_date: string | null } | null = null;
 
   if (user) {
-    const { data: existingMember } = await supabase
-      .from('club_members')
-      .select('id')
-      .eq('club_id', club.id)
-      .eq('user_id', user.id)
-      .maybeSingle();
+    const [{ data: existingMember }, { data: profile }] = await Promise.all([
+      supabase
+        .from('club_members')
+        .select('id')
+        .eq('club_id', club.id)
+        .eq('user_id', user.id)
+        .maybeSingle(),
+      supabase
+        .from('profiles')
+        .select('ntrp_level, tennis_start_date')
+        .eq('id', user.id)
+        .single(),
+    ]);
 
     isMember = !!existingMember;
+    userProfile = profile;
 
     if (!isMember) {
       const { data: existingRequest } = await supabase
@@ -175,7 +184,7 @@ export default async function JoinByLinkPage({
                   </span>
                 </div>
               ) : (
-                <JoinByLinkForm inviteCode={code} />
+                <JoinByLinkForm inviteCode={code} profile={userProfile} />
               )}
             </div>
           </div>

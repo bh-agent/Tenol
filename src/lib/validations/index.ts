@@ -149,6 +149,7 @@ export const commentBodySchema = sanitizedText.pipe(
 
 export const updateProfileSchema = z.object({
   display_name: sanitizedText.pipe(z.string().min(1, '닉네임을 입력해주세요').max(30)),
+  real_name: sanitizedText.pipe(z.string().max(30)).nullable(),
   bio: sanitizedText.pipe(z.string().max(200)).nullable(),
   ntrp_level: z.number().min(1.0).max(7.0).nullable(),
   tennis_start_date: z.string().regex(/^\d{4}-\d{2}-01$/).nullable(),
@@ -199,6 +200,9 @@ export const createRecruitmentSchema = z.object({
   match_date: dateSchema.optional(),
   location: sanitizedText.pipe(z.string().max(200)).optional(),
   needed_count: z.number().int().min(1).max(100).optional(),
+  male_slots: z.number().int().min(0).max(100).optional(),
+  female_slots: z.number().int().min(0).max(100).optional(),
+  any_slots: z.number().int().min(0).max(100).optional(),
   ntrp_min: z.number().min(1.0).max(7.0).optional(),
   ntrp_max: z.number().min(1.0).max(7.0).optional(),
 });

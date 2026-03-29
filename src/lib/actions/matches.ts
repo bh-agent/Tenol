@@ -73,7 +73,7 @@ export async function joinMatch(matchId: string) {
   }
 }
 
-export async function applyAsGuest(matchId: string, name: string, phone?: string) {
+export async function applyAsGuest(matchId: string, name: string, phone?: string, introduction?: string) {
   const validMatchId = uuidSchema.parse(matchId);
   const validated = guestApplySchema.parse({ name, phone });
 
@@ -88,6 +88,7 @@ export async function applyAsGuest(matchId: string, name: string, phone?: string
     p_status: 'pending',
     p_guest_name: validated.name,
     p_guest_phone: validated.phone || null,
+    p_introduction: introduction?.trim() || null,
   });
 
   if (error) {

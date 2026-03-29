@@ -18,8 +18,11 @@ export async function updateProfile(formData: FormData) {
 
   const genderRaw = formData.get('gender') as string | null;
 
+  const realNameRaw = formData.get('real_name') as string | null;
+
   const validated = updateProfileSchema.parse({
     display_name: formData.get('display_name'),
+    real_name: realNameRaw || null,
     bio: formData.get('bio') as string || null,
     ntrp_level: formData.get('ntrp_level') ? Number(formData.get('ntrp_level')) : null,
     tennis_start_date: tennisStartDate,
@@ -28,6 +31,7 @@ export async function updateProfile(formData: FormData) {
 
   const updateData: Record<string, unknown> = {
     display_name: validated.display_name,
+    real_name: validated.real_name,
     bio: validated.bio,
     ntrp_level: validated.ntrp_level,
     updated_at: new Date().toISOString(),

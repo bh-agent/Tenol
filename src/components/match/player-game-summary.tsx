@@ -28,6 +28,7 @@ type Participant = {
   ntrp_override: number | null;
   guest_gender: string | null;
   name: string;
+  drawName: string;
   ntrp: number | null;
   gender: string | null;
 };
@@ -116,7 +117,7 @@ export function PlayerGameSummary({ games, participantMap, courtNames }: PlayerG
         const p = participantMap[pid];
         summaryMap[pid] = {
           participantId: pid,
-          name: p?.name || '???',
+          name: p?.drawName || p?.name || '???',
           gender: p?.gender || null,
           gameCount: 0,
           appearances: [],

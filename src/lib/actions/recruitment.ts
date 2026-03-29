@@ -19,6 +19,9 @@ export async function createRecruitmentPost(formData: FormData) {
   const neededCountRaw = formData.get('needed_count');
   const ntrpMinRaw = formData.get('ntrp_min');
   const ntrpMaxRaw = formData.get('ntrp_max');
+  const maleSlotsRaw = formData.get('male_slots');
+  const femaleSlotsRaw = formData.get('female_slots');
+  const anySlotsRaw = formData.get('any_slots');
 
   const validated = createRecruitmentSchema.parse({
     club_id: clubId,
@@ -29,6 +32,9 @@ export async function createRecruitmentPost(formData: FormData) {
     match_date: formData.get('match_date') || undefined,
     location: formData.get('location') || undefined,
     needed_count: neededCountRaw ? Number(neededCountRaw) : undefined,
+    male_slots: maleSlotsRaw ? Number(maleSlotsRaw) : undefined,
+    female_slots: femaleSlotsRaw ? Number(femaleSlotsRaw) : undefined,
+    any_slots: anySlotsRaw ? Number(anySlotsRaw) : undefined,
     ntrp_min: ntrpMinRaw ? Number(ntrpMinRaw) : undefined,
     ntrp_max: ntrpMaxRaw ? Number(ntrpMaxRaw) : undefined,
   });
@@ -43,6 +49,9 @@ export async function createRecruitmentPost(formData: FormData) {
     match_date: validated.match_date || null,
     location: validated.location || null,
     needed_count: validated.needed_count || null,
+    male_slots: validated.male_slots ?? null,
+    female_slots: validated.female_slots ?? null,
+    any_slots: validated.any_slots ?? null,
     ntrp_min: validated.ntrp_min || null,
     ntrp_max: validated.ntrp_max || null,
   });
