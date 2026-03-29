@@ -112,7 +112,7 @@ export async function getMyGamesInMatch(matchId: string) {
     .select('id')
     .eq('match_id', matchId)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (!participant) return [];
 

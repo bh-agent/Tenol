@@ -16,7 +16,7 @@ export async function GET(request: Request) {
           .from('profiles')
           .select('is_onboarded')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
         if (!profile?.is_onboarded) {
           return NextResponse.redirect(`${origin}/onboarding`);

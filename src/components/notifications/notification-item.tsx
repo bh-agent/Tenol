@@ -15,6 +15,8 @@ import {
   Calendar,
   AtSign,
   Users,
+  Heart,
+  MessageCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
@@ -32,6 +34,8 @@ const typeConfig: Record<string, { icon: typeof Bell; color: string }> = {
   join_request: { icon: Users, color: 'text-warning bg-warning/10' },
   join_approved: { icon: UserCheck, color: 'text-success bg-success/10' },
   join_rejected: { icon: UserX, color: 'text-destructive bg-destructive/10' },
+  new_like: { icon: Heart, color: 'text-destructive bg-destructive/10' },
+  new_comment: { icon: MessageCircle, color: 'text-primary bg-primary-dim' },
 };
 
 function getNotificationHref(notification: Notification): string | null {
@@ -44,6 +48,12 @@ function getNotificationHref(notification: Notification): string | null {
   }
   if (data.follower_id) {
     return `/profile/${data.follower_id}`;
+  }
+  if (data.liker_id) {
+    return `/profile/${data.liker_id}`;
+  }
+  if (data.commenter_id) {
+    return `/profile/${data.commenter_id}`;
   }
   if (data.media_id) {
     return `/feed`;

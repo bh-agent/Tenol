@@ -72,7 +72,7 @@ export async function getMyRole(clubId: string) {
     .select('role')
     .eq('club_id', clubId)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   return data?.role || null;
 }

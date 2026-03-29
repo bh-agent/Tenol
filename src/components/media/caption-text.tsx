@@ -24,7 +24,7 @@ export function CaptionText({ text, mentionMap, className }: CaptionTextProps) {
       {parts.map((part, i) => {
         if (part.type === 'tag') {
           return (
-            <span key={i} className="text-primary cursor-pointer hover:text-primary/80 transition-colors">
+            <span key={i} className="text-primary font-medium">
               #{part.value}
             </span>
           );

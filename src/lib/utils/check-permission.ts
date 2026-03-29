@@ -18,7 +18,7 @@ export async function requirePermission(clubId: string, permission: Permission):
     .select('role')
     .eq('club_id', clubId)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   const role = (membership?.role as ClubRole) || null;
 
@@ -50,7 +50,7 @@ export async function requireMatchPermission(matchId: string, permission: Permis
     .select('role')
     .eq('club_id', match.club_id)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   const role = (membership?.role as ClubRole) || null;
 

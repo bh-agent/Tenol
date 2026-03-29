@@ -23,7 +23,8 @@ export function TopBar({ title, backHref, rightAction, className }: TopBarProps)
           {backHref && (
             <Link
               href={backHref}
-              className="p-1.5 -ml-1.5 text-muted-foreground hover:text-foreground transition-colors"
+              className="p-2.5 -ml-2.5 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="뒤로가기"
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>

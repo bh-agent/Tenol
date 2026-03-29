@@ -162,7 +162,9 @@ export type NotificationType =
   | 'mention'
   | 'join_request'
   | 'join_approved'
-  | 'join_rejected';
+  | 'join_rejected'
+  | 'new_like'
+  | 'new_comment';
 
 export type Notification = {
   id: string;

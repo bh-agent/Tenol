@@ -37,7 +37,7 @@ export function BottomNav() {
                 key={item.label}
                 href={item.href}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-1 w-16 h-full transition-all duration-200',
+                  'flex flex-col items-center justify-center gap-1 w-16 h-full relative transition-all duration-200',
                   isActive
                     ? 'text-primary'
                     : 'text-muted-foreground'

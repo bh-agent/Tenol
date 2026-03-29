@@ -1,6 +1,7 @@
 'use client';
 
 import { Avatar } from '@/components/ui/avatar';
+import { CaptionText } from '@/components/media/caption-text';
 import { MentionAutocomplete } from '@/components/media/mention-autocomplete';
 import { useMentionInput } from '@/lib/hooks/use-mention-input';
 import { cn } from '@/lib/utils/cn';
@@ -287,7 +288,7 @@ export function CommentSheet({
                         </span>
                       </div>
                       <p className="text-sm text-foreground/90 mt-0.5 break-words">
-                        {comment.body}
+                        <CaptionText text={comment.body} />
                       </p>
                     </div>
                     {/* Delete button for own comments */}

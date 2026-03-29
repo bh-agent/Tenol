@@ -48,12 +48,12 @@ export async function createRecruitmentPost(formData: FormData) {
     match_id: validated.match_id || null,
     match_date: validated.match_date || null,
     location: validated.location || null,
-    needed_count: validated.needed_count || null,
+    needed_count: validated.needed_count ?? null,
     male_slots: validated.male_slots ?? null,
     female_slots: validated.female_slots ?? null,
     any_slots: validated.any_slots ?? null,
-    ntrp_min: validated.ntrp_min || null,
-    ntrp_max: validated.ntrp_max || null,
+    ntrp_min: validated.ntrp_min ?? null,
+    ntrp_max: validated.ntrp_max ?? null,
   });
 
   if (error) throw new Error('모집글 작성에 실패했습니다');

@@ -52,33 +52,28 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 인증된 유저 → 온보딩 체크 (온보딩/auth 경로 제외)
-  if (user && !isAuthRoute && pathname !== '/onboarding') {
+  // 인증된 유저 → 온보딩 체크
+  if (user && !isAuthRoute) {
     const { data: profile } = await supabase
       .from('profiles')
       .select('is_onboarded')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (profile && !profile.is_onboarded) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/onboarding';
-      return NextResponse.redirect(url);
-    }
-  }
-
-  // 온보딩 완료 유저가 /onboarding 접근 시 → 홈으로
-  if (user && pathname === '/onboarding') {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_onboarded')
-      .eq('id', user.id)
-      .single();
-
-    if (profile?.is_onboarded) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/clubs';
-      return NextResponse.redirect(url);
+    if (pathname === '/onboarding') {
+      // 온보딩 완료 유저가 /onboarding 접근 시 → 홈으로
+      if (profile?.is_onboarded) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/clubs';
+        return NextResponse.redirect(url);
+      }
+    } else {
+      // 온보딩 미완료 유저 → 온보딩으로
+      if (profile && !profile.is_onboarded) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/onboarding';
+        return NextResponse.redirect(url);
+      }
     }
   }
 

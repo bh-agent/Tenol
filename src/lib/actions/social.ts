@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { uuidSchema, commentBodySchema } from '@/lib/validations';
+import { createNotification } from '@/lib/actions/notifications';
 
 /**
  * 좋아요 토글 (좋아요가 있으면 취소, 없으면 추가)
@@ -36,6 +37,34 @@ export async function toggleLike(mediaId: string) {
       .insert({ media_id: validMediaId, user_id: user.id });
 
     if (error) throw new Error('좋아요에 실패했습니다');
+
+    // 게시물 작성자에게 좋아요 알림 (본인 제외)
+    try {
+      const { data: media } = await supabase
+        .from('media')
+        .select('uploaded_by')
+        .eq('id', validMediaId)
+        .single();
+
+      if (media && media.uploaded_by !== user.id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('display_name')
+          .eq('id', user.id)
+          .single();
+
+        const name = profile?.display_name ?? '누군가';
+        await createNotification(
+          media.uploaded_by,
+          'new_like',
+          `${name}님이 회원님의 게시물을 좋아합니다`,
+          '게시물에 좋아요를 눌렀습니다',
+          { media_id: validMediaId, liker_id: user.id }
+        );
+      }
+    } catch {
+      // 알림 실패는 좋아요 동작에 영향을 주지 않음
+    }
   }
 
   // 업데이트된 카운트 조회
@@ -72,6 +101,36 @@ export async function addComment(mediaId: string, body: string) {
     .single();
 
   if (error) throw new Error('댓글 작성에 실패했습니다');
+
+  // 게시물 작성자에게 댓글 알림 (본인 제외)
+  try {
+    const { data: media } = await supabase
+      .from('media')
+      .select('uploaded_by')
+      .eq('id', validMediaId)
+      .single();
+
+    if (media && media.uploaded_by !== user.id) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .single();
+
+      const name = profile?.display_name ?? '누군가';
+      const preview = validBody.length > 30 ? validBody.slice(0, 30) + '...' : validBody;
+      await createNotification(
+        media.uploaded_by,
+        'new_comment',
+        `${name}님이 댓글을 남겼습니다`,
+        preview,
+        { media_id: validMediaId, commenter_id: user.id }
+      );
+    }
+  } catch {
+    // 알림 실패는 댓글 동작에 영향을 주지 않음
+  }
+
   return data;
 }
 

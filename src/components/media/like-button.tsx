@@ -38,9 +38,13 @@ export function LikeButton({
   }
 
   const handleToggle = () => {
+    // Capture pre-toggle state for revert
+    const prevLiked = liked;
+    const prevCount = count;
+
     // Optimistic update
-    const newLiked = !liked;
-    const newCount = newLiked ? count + 1 : Math.max(0, count - 1);
+    const newLiked = !prevLiked;
+    const newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
     setLiked(newLiked);
     setCount(newCount);
     onLikeChange?.(newLiked, newCount);
@@ -57,11 +61,10 @@ export function LikeButton({
         setCount(result.likeCount);
         onLikeChange?.(result.liked, result.likeCount);
       } catch {
-        // Revert on error
-        setLiked(!newLiked);
-        const revertedCount = newLiked ? Math.max(0, count - 1) : count + 1;
-        setCount(revertedCount);
-        onLikeChange?.(!newLiked, revertedCount);
+        // Revert to pre-toggle state on error
+        setLiked(prevLiked);
+        setCount(prevCount);
+        onLikeChange?.(prevLiked, prevCount);
       }
     });
   };
