@@ -678,7 +678,7 @@ export default function DrawPage() {
                 <div>
                   <p className="text-xs font-semibold text-pink-400 mb-2 flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-pink-400" />
-                    녀 <span className="text-muted-foreground font-normal">{females.length}명</span>
+                    여 <span className="text-muted-foreground font-normal">{females.length}명</span>
                   </p>
                   <div className="flex flex-wrap gap-1.5">
                     {females.map(renderParticipantChip)}
@@ -832,11 +832,11 @@ export default function DrawPage() {
 
               {/* Generate buttons */}
               <div className="grid grid-cols-2 gap-3">
-                <Button onClick={handleGenerate} disabled={generating || participants.length < 4} fullWidth>
+                <Button onClick={handleGenerate} disabled={generating || participants.length < 4} fullWidth size="sm">
                   {generating ? (
-                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                    <RefreshCw className="w-4 h-4 animate-spin mr-1.5 shrink-0" />
                   ) : (
-                    <Shuffle className="w-4 h-4 mr-2" />
+                    <Shuffle className="w-4 h-4 mr-1.5 shrink-0" />
                   )}
                   {generating ? '생성 중...' : '자동 생성'}
                 </Button>
@@ -845,9 +845,10 @@ export default function DrawPage() {
                   onClick={initManualMode}
                   disabled={participants.length < 2}
                   fullWidth
+                  size="sm"
                 >
-                  <PenLine className="w-4 h-4 mr-2" />
-                  수동으로 만들기
+                  <PenLine className="w-4 h-4 mr-1.5 shrink-0" />
+                  <span className="truncate">수동으로 만들기</span>
                 </Button>
               </div>
               {participants.length < 4 && (

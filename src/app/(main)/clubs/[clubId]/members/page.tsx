@@ -63,14 +63,16 @@ export default async function MembersPage({
 
         {/* Member list */}
         <div className="space-y-2 stagger">
-          {sorted.map((member: any) => (
+          {sorted.map((member: any) => {
+            const profileId = member.profiles?.id;
+            return (
             <Card
               key={member.id}
               padding="sm"
               className="hover:border-primary/25 transition-all duration-200"
             >
               <div className="flex items-center gap-3">
-                <Link href={`/profile/${member.profiles?.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                <Link href={profileId ? `/profile/${profileId}` : '#'} className="flex items-center gap-3 flex-1 min-w-0">
                   <Avatar
                     src={member.profiles?.avatar_url}
                     alt={member.profiles?.display_name}
@@ -105,17 +107,18 @@ export default async function MembersPage({
                   </div>
                 </Link>
 
-                {canManageMembers && member.role !== 'owner' && (
+                {canManageMembers && member.role !== 'owner' && profileId && (
                   <MemberManageActions
                     clubId={clubId}
-                    targetUserId={member.profiles?.id}
+                    targetUserId={profileId}
                     currentRole={member.role}
                     myRole={myRole!}
                   />
                 )}
               </div>
             </Card>
-          ))}
+            );
+          })}
         </div>
       </div>
     </>

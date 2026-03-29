@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/utils/check-permission';
 import { redirect } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import {
   createClubSchema,
   updateClubSchema,
@@ -190,8 +191,8 @@ export async function updateMemberRole(clubId: string, targetUserId: string, new
   if (role === 'admin' && validRole === 'admin') {
     throw new Error('운영진 역할 변경은 클럽장만 가능합니다');
   }
-  // owner 역할 부여는 owner만 가능
-  if (validRole === 'owner') throw new Error('클럽장 역할은 양도할 수 없습니다');
+  // owner 역할 부여는 transferOwnership으로만 가능
+  if (validRole === 'owner') throw new Error('클럽장 양도는 별도 기능을 사용하세요');
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -372,6 +373,8 @@ export async function respondToJoinRequest(requestId: string, approved: boolean)
 
   if (updateError) throw new Error('신청 처리에 실패했습니다');
 
+  revalidatePath(`/clubs/${request.club_id}`);
+
   // 신청자에게 알림 전송
   try {
     const { data: club } = await supabase
@@ -450,6 +453,85 @@ export async function deleteClub(clubId: string) {
   if (error) throw new Error('클럽 삭제에 실패했습니다');
 
   redirect('/clubs');
+}
+
+// 클럽장 양도 - owner만 가능
+export async function transferOwnership(clubId: string, targetUserId: string) {
+  const validClubId = uuidSchema.parse(clubId);
+  const validTargetUserId = uuidSchema.parse(targetUserId);
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('인증이 필요합니다');
+
+  // 현재 사용자가 owner인지 확인
+  const { data: myMembership } = await supabase
+    .from('club_members')
+    .select('role')
+    .eq('club_id', validClubId)
+    .eq('user_id', user.id)
+    .single();
+
+  if (myMembership?.role !== 'owner') throw new Error('클럽장만 양도할 수 있습니다');
+
+  // 대상이 클럽 멤버인지 확인
+  const { data: targetMembership } = await supabase
+    .from('club_members')
+    .select('role')
+    .eq('club_id', validClubId)
+    .eq('user_id', validTargetUserId)
+    .single();
+
+  if (!targetMembership) throw new Error('클럽 멤버가 아닙니다');
+  if (validTargetUserId === user.id) throw new Error('자기 자신에게 양도할 수 없습니다');
+
+  // 대상을 owner로 변경
+  const { error: promoteError } = await supabase
+    .from('club_members')
+    .update({ role: 'owner' })
+    .eq('club_id', validClubId)
+    .eq('user_id', validTargetUserId);
+
+  if (promoteError) throw new Error('클럽장 양도에 실패했습니다');
+
+  // 현재 owner를 admin으로 변경
+  const { error: demoteError } = await supabase
+    .from('club_members')
+    .update({ role: 'admin' })
+    .eq('club_id', validClubId)
+    .eq('user_id', user.id);
+
+  if (demoteError) throw new Error('역할 변경에 실패했습니다');
+
+  // clubs 테이블의 created_by도 업데이트
+  await supabase
+    .from('clubs')
+    .update({ created_by: validTargetUserId })
+    .eq('id', validClubId);
+
+  // 알림 전송
+  const { data: club } = await supabase
+    .from('clubs')
+    .select('name')
+    .eq('id', validClubId)
+    .single();
+
+  if (club) {
+    try {
+      const { createNotification } = await import('@/lib/actions/notifications');
+      await createNotification(
+        validTargetUserId,
+        'role_changed',
+        '클럽장으로 임명되었습니다',
+        `"${club.name}" 클럽의 클럽장으로 임명되었습니다.`,
+        { club_id: validClubId }
+      );
+    } catch {
+      // 알림 전송 실패해도 주요 기능은 계속 진행
+    }
+  }
+
+  revalidatePath(`/clubs/${validClubId}`);
 }
 
 export async function leaveClub(clubId: string) {

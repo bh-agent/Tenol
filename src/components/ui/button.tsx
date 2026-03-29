@@ -29,7 +29,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={disabled || loading}
         className={cn(
           // Base
-          'relative inline-flex items-center justify-center font-medium rounded-xl',
+          'relative inline-flex items-center justify-center font-medium rounded-xl overflow-hidden min-w-0',
           'transition-all duration-200 ease-out',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
           'disabled:opacity-40 disabled:pointer-events-none',
@@ -66,7 +66,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         {loading && (
           <Loader2 className="w-4 h-4 animate-spin absolute" />
         )}
-        <span className={cn('inline-flex items-center gap-2', loading && 'invisible')}>
+        <span className={cn('inline-flex items-center gap-2 min-w-0', loading && 'invisible')}>
           {children}
         </span>
       </button>

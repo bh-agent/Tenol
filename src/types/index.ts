@@ -11,6 +11,7 @@ export type Profile = {
   bio: string | null;
   region: string | null;
   tennis_start_date: string | null;
+  is_onboarded: boolean;
   created_at: string;
   updated_at: string;
 };

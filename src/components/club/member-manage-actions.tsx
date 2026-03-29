@@ -1,11 +1,11 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { removeMember, updateMemberRole } from '@/lib/actions/clubs';
+import { removeMember, updateMemberRole, transferOwnership } from '@/lib/actions/clubs';
 import { getPermissions, getPermissionLabel } from '@/lib/utils/permissions';
 import type { ClubRole } from '@/types';
 import type { ClubPermission } from '@/lib/utils/permissions';
-import { MoreVertical, ShieldCheck, ShieldOff, UserMinus, KeyRound, X } from 'lucide-react';
+import { MoreVertical, ShieldCheck, ShieldOff, UserMinus, KeyRound, Crown, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -21,6 +21,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
   const [showMenu, setShowMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPermissions, setShowPermissions] = useState(false);
+  const [showTransferConfirm, setShowTransferConfirm] = useState(false);
 
   // 운영진은 다른 운영진을 제명할 수 없음
   const canRemove = myRole === 'owner' || (myRole === 'admin' && currentRole === 'member');
@@ -36,6 +37,19 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
     } finally {
       setLoading(false);
       setShowMenu(false);
+    }
+  };
+
+  const handleTransferOwnership = async () => {
+    setLoading(true);
+    try {
+      await transferOwnership(clubId, targetUserId);
+      router.refresh();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '오류가 발생했습니다');
+    } finally {
+      setLoading(false);
+      setShowTransferConfirm(false);
     }
   };
 
@@ -92,6 +106,21 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
                 </button>
               )}
 
+              {/* 클럽장 양도 - 회장만 */}
+              {myRole === 'owner' && (
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    setShowTransferConfirm(true);
+                  }}
+                  disabled={loading}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                >
+                  <Crown className="w-4 h-4 text-yellow-500" />
+                  클럽장 양도
+                </button>
+              )}
+
               {/* 권한 관리 - 회장만 */}
               {myRole === 'owner' && (
                 <button
@@ -126,6 +155,49 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
           </>
         )}
       </div>
+
+      {/* 클럽장 양도 확인 모달 */}
+      {showTransferConfirm && (
+        <>
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setShowTransferConfirm(false)} />
+          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 max-w-sm mx-auto bg-surface-elevated rounded-2xl border border-border shadow-xl animate-fade-in">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="font-semibold text-foreground">클럽장 양도</h3>
+              <button
+                onClick={() => setShowTransferConfirm(false)}
+                className="p-1.5 rounded-full hover:bg-surface-hover transition-colors"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                <Crown className="w-5 h-5 text-yellow-500 shrink-0" />
+                <p className="text-sm text-foreground">
+                  이 멤버에게 클럽장을 양도하면 회원님은 운영진으로 변경됩니다. 이 작업은 되돌릴 수 없습니다.
+                </p>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowTransferConfirm(false)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-surface-hover text-foreground hover:bg-muted transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={handleTransferOwnership}
+                  disabled={loading}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-yellow-500 text-white hover:bg-yellow-600 transition-colors disabled:opacity-50"
+                >
+                  {loading ? '처리 중...' : '양도하기'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* 권한 관리 모달 */}
       {showPermissions && (

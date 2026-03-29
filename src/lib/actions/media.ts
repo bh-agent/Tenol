@@ -111,7 +111,7 @@ export async function savePersonalMedia(
     .select('club_id')
     .eq('user_id', user.id)
     .limit(1)
-    .single();
+    .maybeSingle();
 
   if (!membership) throw new Error('클럽에 가입 후 이용할 수 있습니다');
 
