@@ -225,26 +225,26 @@ export async function getPendingGuestApplications(clubId: string): Promise<Pendi
   const result = await supabase
     .from('match_participants')
     .select(`
-      id, match_id, user_id, guest_name, participant_type, status, ntrp_override, introduction, created_at,
+      id, match_id, user_id, guest_name, participant_type, status, ntrp_override, introduction, requested_at,
       matches!inner (id, club_id, title, match_date),
       profiles:user_id (id, display_name, avatar_url, ntrp_level, tennis_start_date)
     `)
     .eq('matches.club_id', clubId)
     .eq('status', 'pending')
-    .order('created_at', { ascending: false });
+    .order('requested_at', { ascending: false });
 
   if (result.error) {
     // Fallback without introduction column
     const fallback = await supabase
       .from('match_participants')
       .select(`
-        id, match_id, user_id, guest_name, participant_type, status, ntrp_override, created_at,
+        id, match_id, user_id, guest_name, participant_type, status, ntrp_override, requested_at,
         matches!inner (id, club_id, title, match_date),
         profiles:user_id (id, display_name, avatar_url, ntrp_level, tennis_start_date)
       `)
       .eq('matches.club_id', clubId)
       .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+      .order('requested_at', { ascending: false });
     data = fallback.data;
   } else {
     data = result.data;
@@ -261,7 +261,7 @@ export async function getPendingGuestApplications(clubId: string): Promise<Pendi
     status: row.status,
     ntrp_override: row.ntrp_override,
     introduction: row.introduction ?? null,
-    created_at: row.created_at,
+    created_at: row.requested_at,
     match_title: row.matches?.title || '제목 없음',
     match_date: row.matches?.match_date || '',
     profiles: row.profiles || null,
