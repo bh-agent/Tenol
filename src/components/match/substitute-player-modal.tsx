@@ -41,9 +41,11 @@ export function SubstitutePlayerModal({
   onAddOffline,
   loading,
 }: SubstitutePlayerModalProps) {
-  const [tab, setTab] = useState<'member' | 'offline'>('member');
+  const [tab, setTab] = useState<'member' | 'guest' | 'offline'>('member');
   const [members, setMembers] = useState<ClubMemberOption[]>([]);
+  const [guests, setGuests] = useState<ClubMemberOption[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [loadingGuests, setLoadingGuests] = useState(false);
   const [search, setSearch] = useState('');
 
   // Offline form
@@ -90,9 +92,46 @@ export function SubstitutePlayerModal({
     loadMembers();
   }, [isOpen, tab, clubId, excludeParticipantIds]);
 
-  const filteredMembers = search
-    ? members.filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
-    : members;
+  // Load confirmed guests for this match
+  useEffect(() => {
+    if (!isOpen || tab !== 'guest') return;
+    const loadGuests = async () => {
+      setLoadingGuests(true);
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('match_participants')
+        .select('id, user_id, guest_name, guest_gender, ntrp_override, profiles:user_id (display_name, gender, ntrp_level)')
+        .eq('match_id', matchId)
+        .eq('status', 'confirmed')
+        .eq('participant_type', 'guest');
+
+      if (data) {
+        const mapped: ClubMemberOption[] = data
+          .map((p: any) => {
+            const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
+            const name = profile?.display_name || p.guest_name || '게스트';
+            const gender = profile?.gender || (p.guest_gender === 'M' ? 'M' : p.guest_gender === 'F' ? 'F' : null);
+            return {
+              id: p.user_id || p.id,
+              userId: p.user_id || p.id,
+              name,
+              gender,
+              ntrp: p.ntrp_override || profile?.ntrp_level || null,
+            };
+          })
+          .filter((m: ClubMemberOption) => !excludeParticipantIds.includes(m.userId));
+        setGuests(mapped);
+      }
+      setLoadingGuests(false);
+    };
+    loadGuests();
+  }, [isOpen, tab, matchId, excludeParticipantIds]);
+
+  const currentList = tab === 'guest' ? guests : members;
+  const currentLoading = tab === 'guest' ? loadingGuests : loadingMembers;
+  const filteredList = search
+    ? currentList.filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
+    : currentList;
 
   const handleSubmitOffline = () => {
     if (!offlineName.trim()) return;
@@ -108,35 +147,25 @@ export function SubstitutePlayerModal({
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-xl bg-muted mb-4">
-        <button
-          type="button"
-          onClick={() => setTab('member')}
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer',
-            tab === 'member'
-              ? 'bg-surface-elevated text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <Users className="w-3.5 h-3.5" />
-          클럽 멤버
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('offline')}
-          className={cn(
-            'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer',
-            tab === 'offline'
-              ? 'bg-surface-elevated text-foreground shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          )}
-        >
-          <UserPlus className="w-3.5 h-3.5" />
-          직접 추가
-        </button>
+        {(['member', 'guest', 'offline'] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => { setTab(t); setSearch(''); }}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer',
+              tab === t
+                ? 'bg-surface-elevated text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            {t === 'offline' ? <UserPlus className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
+            {t === 'member' ? '멤버' : t === 'guest' ? '게스트' : '직접 추가'}
+          </button>
+        ))}
       </div>
 
-      {tab === 'member' && (
+      {(tab === 'member' || tab === 'guest') && (
         <div className="space-y-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -150,14 +179,14 @@ export function SubstitutePlayerModal({
           </div>
 
           <div className="max-h-60 overflow-y-auto space-y-1.5">
-            {loadingMembers ? (
+            {currentLoading ? (
               <p className="text-sm text-muted-foreground text-center py-6">로딩 중...</p>
-            ) : filteredMembers.length === 0 ? (
+            ) : filteredList.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-6">
-                {search ? '검색 결과가 없습니다' : '선택 가능한 멤버가 없습니다'}
+                {search ? '검색 결과가 없습니다' : tab === 'guest' ? '승인된 게스트가 없습니다' : '선택 가능한 멤버가 없습니다'}
               </p>
             ) : (
-              filteredMembers.map((m) => (
+              filteredList.map((m) => (
                 <button
                   key={m.id}
                   type="button"
