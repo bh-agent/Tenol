@@ -113,3 +113,20 @@ CREATE POLICY "Can add participant" ON public.match_participants
         AND (m.created_by = auth.uid() OR public.is_club_admin(m.club_id))
     )
   );
+
+-- 00026: Public read access for authenticated users
+-- 비멤버도 클럽 정보, 멤버 목록, 피드를 볼 수 있도록 SELECT 정책 개방
+DROP POLICY IF EXISTS "Public clubs viewable by all" ON public.clubs;
+DROP POLICY IF EXISTS "Clubs viewable by authenticated" ON public.clubs;
+CREATE POLICY "Clubs viewable by authenticated" ON public.clubs
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Members viewable by club members" ON public.club_members;
+DROP POLICY IF EXISTS "Members viewable by authenticated" ON public.club_members;
+CREATE POLICY "Members viewable by authenticated" ON public.club_members
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Media viewable by club members" ON public.media;
+DROP POLICY IF EXISTS "Media viewable by authenticated" ON public.media;
+CREATE POLICY "Media viewable by authenticated" ON public.media
+  FOR SELECT TO authenticated USING (true);

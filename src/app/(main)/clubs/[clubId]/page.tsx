@@ -29,16 +29,13 @@ export default async function ClubDetailPage({
   params: Promise<{ clubId: string }>;
 }) {
   const { clubId } = await params;
-  const [club, members, matches, media, myRole, bookmarked, joinRequests, pendingGuestCount, pendingGuestByMatch] = await Promise.all([
+  const [club, members, matches, media, myRole, bookmarked] = await Promise.all([
     getClub(clubId),
     getClubMembers(clubId),
     getClubMatches(clubId),
     getClubFeedWithCounts(clubId),
     getMyRole(clubId),
     isClubBookmarked(clubId),
-    getPendingJoinRequests(clubId),
-    getPendingGuestCount(clubId),
-    getPendingGuestCountByMatch(clubId),
   ]);
 
   if (!club) notFound();
@@ -46,6 +43,15 @@ export default async function ClubDetailPage({
   const canEditClub = hasPermission(myRole, 'club.edit');
   const canManageMembers = hasPermission(myRole, 'member.manage');
   const canCreateMatch = hasPermission(myRole, 'match.create');
+
+  // Only fetch admin data when the user has permission
+  const [joinRequests, pendingGuestCount, pendingGuestByMatch] = canManageMembers
+    ? await Promise.all([
+        getPendingJoinRequests(clubId),
+        getPendingGuestCount(clubId),
+        getPendingGuestCountByMatch(clubId),
+      ])
+    : [[] as Awaited<ReturnType<typeof getPendingJoinRequests>>, 0, {} as Record<string, number>];
 
   return (
     <>
