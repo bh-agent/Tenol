@@ -763,45 +763,68 @@ export default function DrawPage() {
               </div>
 
               {/* Settings grid */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1.5">
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
                     코트 수
                   </label>
                   <div className="h-11 rounded-xl border border-border bg-muted flex items-center justify-center text-sm font-medium text-foreground">
-                    {matchCourtCount}코트
+                    {matchCourtCount}
                   </div>
                 </div>
-                <Input
-                  id="gamesPerCourt"
-                  label="코트 당 경기 수"
-                  type="number"
-                  value={String(gamesPerCourt)}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10);
-                    if (!isNaN(v) && v >= 1 && v <= 50) setGamesPerCourt(v);
-                  }}
-                />
+                <div>
+                  <label htmlFor="gamesPerCourt" className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    코트당 경기
+                  </label>
+                  <div className="flex items-center h-11 rounded-xl border border-border bg-muted overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setGamesPerCourt(Math.max(1, gamesPerCourt - 1))}
+                      className="w-10 h-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
+                    >
+                      −
+                    </button>
+                    <span className="flex-1 text-center text-sm font-medium text-foreground">{gamesPerCourt}</span>
+                    <button
+                      type="button"
+                      onClick={() => setGamesPerCourt(Math.min(50, gamesPerCourt + 1))}
+                      className="w-10 h-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="gameDuration" className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    경기 시간(분)
+                  </label>
+                  <div className="flex items-center h-11 rounded-xl border border-border bg-muted overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setGameDuration(String(Math.max(10, Number(gameDuration) - 5)))}
+                      className="w-10 h-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
+                    >
+                      −
+                    </button>
+                    <span className="flex-1 text-center text-sm font-medium text-foreground">{gameDuration}</span>
+                    <button
+                      type="button"
+                      onClick={() => setGameDuration(String(Math.min(120, Number(gameDuration) + 5)))}
+                      className="w-10 h-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-surface-hover transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <Input
-                  id="startTime"
-                  label="시작 시간"
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                />
-                <Input
-                  id="gameDuration"
-                  label="경기 시간 (분)"
-                  type="number"
-                  min={10}
-                  max={120}
-                  value={gameDuration}
-                  onChange={(e) => setGameDuration(e.target.value)}
-                />
-              </div>
+              <Input
+                id="startTime"
+                label="시작 시간"
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
 
               {/* Court names - expandable */}
               <div>
