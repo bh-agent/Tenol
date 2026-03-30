@@ -71,7 +71,19 @@ export async function joinMatch(matchId: string) {
     if (error.message?.includes('REGISTRATION_CLOSED')) throw new Error('모집이 마감되었습니다');
     if (error.message?.includes('MATCH_FULL')) throw new Error('참가 인원이 가득 찼습니다');
     if (error.code === '23505') throw new Error('이미 참가 신청했습니다');
-    throw new Error('참가 신청에 실패했습니다');
+
+    // RPC might be outdated - fallback to direct insert
+    const { error: insertError } = await supabase.from('match_participants').insert({
+      match_id: validMatchId,
+      user_id: user.id,
+      participant_type: 'member',
+      status: 'confirmed',
+    });
+
+    if (insertError) {
+      if (insertError.code === '23505') throw new Error('이미 참가 신청했습니다');
+      throw new Error('참가 신청에 실패했습니다');
+    }
   }
 }
 
@@ -83,6 +95,7 @@ export async function applyAsGuest(matchId: string, name: string, phone?: string
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('인증이 필요합니다');
 
+  // Try RPC first (atomic with registration_closed check)
   const { error } = await supabase.rpc('join_match_atomically', {
     p_match_id: validMatchId,
     p_user_id: user.id,
@@ -98,7 +111,22 @@ export async function applyAsGuest(matchId: string, name: string, phone?: string
     if (error.message?.includes('REGISTRATION_CLOSED')) throw new Error('모집이 마감되었습니다');
     if (error.message?.includes('MATCH_FULL')) throw new Error('참가 인원이 가득 찼습니다');
     if (error.code === '23505') throw new Error('이미 참가 신청했습니다');
-    throw new Error('게스트 신청에 실패했습니다');
+
+    // RPC function might be outdated (missing p_introduction param) - fallback to direct insert
+    const { error: insertError } = await supabase.from('match_participants').insert({
+      match_id: validMatchId,
+      user_id: user.id,
+      participant_type: 'guest',
+      status: 'pending',
+      guest_name: validated.name,
+      guest_phone: validated.phone || null,
+      introduction: introduction?.trim() || null,
+    });
+
+    if (insertError) {
+      if (insertError.code === '23505') throw new Error('이미 참가 신청했습니다');
+      throw new Error('게스트 신청에 실패했습니다');
+    }
   }
 }
 

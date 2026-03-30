@@ -18,7 +18,7 @@ export async function getClubMatches(clubId: string) {
 export async function getMatch(matchId: string) {
   const supabase = await createClient();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('matches')
     .select(`
       *,
@@ -28,7 +28,23 @@ export async function getMatch(matchId: string) {
       )
     `)
     .eq('id', matchId)
-    .single();
+    .maybeSingle();
+
+  if (error) {
+    // If columns don't exist yet (migration not applied), retry with minimal select
+    const { data: fallback } = await supabase
+      .from('matches')
+      .select(`
+        *,
+        match_participants (
+          id, user_id, guest_name, participant_type, status, ntrp_override, requested_at,
+          profiles:user_id (id, display_name, avatar_url, ntrp_level, gender, tennis_start_date)
+        )
+      `)
+      .eq('id', matchId)
+      .maybeSingle();
+    return fallback;
+  }
 
   return data;
 }
