@@ -226,7 +226,7 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: `repeat(${Math.min(slotGames.length, courtCount)}, 1fr)`,
+                  gridTemplateColumns: `repeat(${courtCount}, 1fr)`,
                   gap: 12,
                 }}
               >
