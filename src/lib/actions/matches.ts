@@ -67,6 +67,7 @@ export async function joinMatch(matchId: string) {
   });
 
   if (error) {
+    if (error.message?.includes('MATCH_NOT_FOUND')) throw new Error('경기를 찾을 수 없습니다');
     if (error.message?.includes('REGISTRATION_CLOSED')) throw new Error('모집이 마감되었습니다');
     if (error.message?.includes('MATCH_FULL')) throw new Error('참가 인원이 가득 찼습니다');
     if (error.code === '23505') throw new Error('이미 참가 신청했습니다');
@@ -93,6 +94,7 @@ export async function applyAsGuest(matchId: string, name: string, phone?: string
   });
 
   if (error) {
+    if (error.message?.includes('MATCH_NOT_FOUND')) throw new Error('경기를 찾을 수 없습니다');
     if (error.message?.includes('REGISTRATION_CLOSED')) throw new Error('모집이 마감되었습니다');
     if (error.message?.includes('MATCH_FULL')) throw new Error('참가 인원이 가득 찼습니다');
     if (error.code === '23505') throw new Error('이미 참가 신청했습니다');
