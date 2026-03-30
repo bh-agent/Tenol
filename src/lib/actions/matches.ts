@@ -75,9 +75,9 @@ export async function joinMatch(matchId: string) {
   }
 }
 
-export async function applyAsGuest(matchId: string, name: string, phone?: string, introduction?: string) {
+export async function applyAsGuest(matchId: string, name: string, phone?: string | null, introduction?: string | null) {
   const validMatchId = uuidSchema.parse(matchId);
-  const validated = guestApplySchema.parse({ name, phone });
+  const validated = guestApplySchema.parse({ name, phone: phone ?? undefined });
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

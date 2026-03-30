@@ -6,7 +6,7 @@ import { SearchInput } from '@/components/search/search-input';
 import { RecruitmentCard } from './recruitment-card';
 import type { RecruitmentPost, RecruitmentType } from '@/types';
 import { Megaphone } from 'lucide-react';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface RecruitmentListProps {
@@ -32,6 +32,14 @@ export function RecruitmentList({
   const [activeType, setActiveType] = useState<RecruitmentType | 'all'>(initialType);
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [posts, setPosts] = useState(initialPosts);
+
+  useEffect(() => {
+    setPosts(initialPosts);
+  }, [initialPosts]);
+
+  useEffect(() => {
+    setActiveType(initialType);
+  }, [initialType]);
 
   const handleFilterChange = useCallback((type: RecruitmentType | 'all') => {
     setActiveType(type);

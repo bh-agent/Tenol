@@ -71,7 +71,7 @@ export function MatchBottomBar({
     if (!userProfile) return;
     setLoading(true);
     try {
-      await applyAsGuest(matchId, userProfile.display_name, undefined, introduction || undefined);
+      await applyAsGuest(matchId, userProfile.display_name, null, introduction || null);
       setShowGuestModal(false);
       setIntroduction('');
       router.refresh();

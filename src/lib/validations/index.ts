@@ -91,7 +91,7 @@ export const updateMatchSchema = z.object({
 
 export const guestApplySchema = z.object({
   name: sanitizedText.pipe(z.string().min(1, '이름을 입력해주세요').max(50)),
-  phone: z.string().max(20).regex(/^[0-9\-+() ]*$/, '올바른 전화번호 형식이 아닙니다').optional(),
+  phone: z.string().max(20).regex(/^[0-9\-+() ]*$/, '올바른 전화번호 형식이 아닙니다').optional().nullable().transform(v => v ?? undefined),
 });
 
 export const offlineParticipantSchema = z.object({
