@@ -409,11 +409,11 @@ export default function DrawPage() {
 
   const handleRemoveParticipant = async (pid: string, name: string) => {
     if (!confirm(`${name}님을 참가자에서 제거하시겠습니까?`)) return;
-    try {
-      await removeParticipant(pid, matchId);
+    const result = await removeParticipant(pid, matchId);
+    if (result?.error) {
+      alert(result.error);
+    } else {
       await loadData();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '제거에 실패했습니다');
     }
   };
 
@@ -462,29 +462,27 @@ export default function DrawPage() {
   const handleSubstituteMember = async (member: { userId: string }) => {
     if (!substituteTarget) return;
     setSubstituting(true);
-    try {
-      await replaceParticipant(matchId, substituteTarget.id, member.userId);
+    const result = await replaceParticipant(matchId, substituteTarget.id, member.userId);
+    if (result?.error) {
+      alert(result.error);
+    } else {
       setSubstituteTarget(null);
       await loadData();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '대체에 실패했습니다');
-    } finally {
-      setSubstituting(false);
     }
+    setSubstituting(false);
   };
 
   const handleSubstituteOffline = async (name: string, gender: 'M' | 'F', ntrp?: number) => {
     if (!substituteTarget) return;
     setSubstituting(true);
-    try {
-      await replaceWithOffline(matchId, substituteTarget.id, name, gender, ntrp);
+    const result = await replaceWithOffline(matchId, substituteTarget.id, name, gender, ntrp);
+    if (result?.error) {
+      alert(result.error);
+    } else {
       setSubstituteTarget(null);
       await loadData();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '대체에 실패했습니다');
-    } finally {
-      setSubstituting(false);
     }
+    setSubstituting(false);
   };
 
   const handleEditGame = (game: GameData) => {

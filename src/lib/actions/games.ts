@@ -142,14 +142,14 @@ export async function submitScore(
         .from('draws')
         .select('match_id')
         .eq('id', gameData.draw_id)
-        .single();
+        .maybeSingle();
 
       if (participants && draw) {
         const { data: match } = await supabase
           .from('matches')
           .select('title, club_id')
           .eq('id', draw.match_id)
-          .single();
+          .maybeSingle();
 
         if (match) {
           const { data: { user } } = await supabase.auth.getUser();

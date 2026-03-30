@@ -312,18 +312,52 @@ export async function addOfflineParticipant(matchId: string, name: string, gende
 /**
  * 참가자 삭제 (비회원 또는 본인)
  */
-export async function removeParticipant(participantId: string, matchId: string) {
-  const validParticipantId = uuidSchema.parse(participantId);
-  const validMatchId = uuidSchema.parse(matchId);
-  await requireMatchPermission(validMatchId, 'match.create');
+export async function removeParticipant(participantId: string, matchId: string): Promise<{ error?: string }> {
+  try {
+    const validParticipantId = uuidSchema.parse(participantId);
+    const validMatchId = uuidSchema.parse(matchId);
+    await requireMatchPermission(validMatchId, 'match.create');
 
-  const supabase = await createClient();
-  const { error } = await supabase
-    .from('match_participants')
-    .delete()
-    .eq('id', validParticipantId);
+    const supabase = await createClient();
 
-  if (error) throw new Error('참가자 삭제에 실패했습니다');
+    // Clear game references before deleting
+    const { data: draws } = await supabase
+      .from('draws')
+      .select('id')
+      .eq('match_id', validMatchId);
+
+    if (draws && draws.length > 0) {
+      const drawIds = draws.map(d => d.id);
+      const { data: games } = await supabase
+        .from('games')
+        .select('id, team_a_player1_id, team_a_player2_id, team_b_player1_id, team_b_player2_id')
+        .in('draw_id', drawIds);
+
+      if (games) {
+        for (const game of games) {
+          const updates: Record<string, null> = {};
+          if (game.team_a_player1_id === validParticipantId) updates.team_a_player1_id = null;
+          if (game.team_a_player2_id === validParticipantId) updates.team_a_player2_id = null;
+          if (game.team_b_player1_id === validParticipantId) updates.team_b_player1_id = null;
+          if (game.team_b_player2_id === validParticipantId) updates.team_b_player2_id = null;
+
+          if (Object.keys(updates).length > 0) {
+            await supabase.from('games').update(updates).eq('id', game.id);
+          }
+        }
+      }
+    }
+
+    const { error } = await supabase
+      .from('match_participants')
+      .delete()
+      .eq('id', validParticipantId);
+
+    if (error) return { error: '참가자 삭제에 실패했습니다: ' + error.message };
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : '참가자 삭제에 실패했습니다' };
+  }
 }
 
 /**
@@ -331,39 +365,40 @@ export async function removeParticipant(participantId: string, matchId: string) 
  * - match_participants에서 oldParticipant를 교체
  * - 기존 대진표(games)에서 해당 선수가 배정된 모든 경기를 새 선수로 교체
  */
-export async function replaceParticipant(matchId: string, oldParticipantId: string, newUserId: string) {
-  const validMatchId = uuidSchema.parse(matchId);
-  const validOldId = uuidSchema.parse(oldParticipantId);
-  const validNewUserId = uuidSchema.parse(newUserId);
-  await requireMatchPermission(validMatchId, 'match.create');
+export async function replaceParticipant(matchId: string, oldParticipantId: string, newUserId: string): Promise<{ error?: string }> {
+  try {
+    const validMatchId = uuidSchema.parse(matchId);
+    const validOldId = uuidSchema.parse(oldParticipantId);
+    const validNewUserId = uuidSchema.parse(newUserId);
+    await requireMatchPermission(validMatchId, 'match.create');
 
-  const supabase = await createClient();
+    const supabase = await createClient();
 
-  // Check if the new user is already a participant
-  const { data: existing } = await supabase
-    .from('match_participants')
-    .select('id')
-    .eq('match_id', validMatchId)
-    .eq('user_id', validNewUserId)
-    .maybeSingle();
+    // Check if the new user is already a participant
+    const { data: existing } = await supabase
+      .from('match_participants')
+      .select('id')
+      .eq('match_id', validMatchId)
+      .eq('user_id', validNewUserId)
+      .maybeSingle();
 
-  if (existing) {
-    throw new Error('이미 참가 중인 멤버입니다');
-  }
+    if (existing) {
+      return { error: '이미 참가 중인 멤버입니다' };
+    }
 
-  // Create new participant
-  const { data: newParticipant, error: insertErr } = await supabase
-    .from('match_participants')
-    .insert({
-      match_id: validMatchId,
-      user_id: validNewUserId,
-      participant_type: 'member',
-      status: 'confirmed',
-    })
-    .select('id')
-    .single();
+    // Create new participant
+    const { data: newParticipant, error: insertErr } = await supabase
+      .from('match_participants')
+      .insert({
+        match_id: validMatchId,
+        user_id: validNewUserId,
+        participant_type: 'member',
+        status: 'confirmed',
+      })
+      .select('id')
+      .maybeSingle();
 
-  if (insertErr) throw new Error('대체 선수 추가에 실패했습니다');
+    if (insertErr || !newParticipant) return { error: '대체 선수 추가에 실패했습니다: ' + (insertErr?.message || 'no data') };
 
   // Find all games where oldParticipant is assigned and swap
   const { data: draws } = await supabase
@@ -394,10 +429,16 @@ export async function replaceParticipant(matchId: string, oldParticipantId: stri
   }
 
   // Delete old participant
-  await supabase
+  const { error: deleteErr } = await supabase
     .from('match_participants')
     .delete()
     .eq('id', validOldId);
+
+  if (deleteErr) return { error: '기존 참가자 삭제에 실패했습니다: ' + deleteErr.message };
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : '대체에 실패했습니다' };
+  }
 }
 
 /**
@@ -409,29 +450,30 @@ export async function replaceWithOffline(
   name: string,
   gender: 'M' | 'F',
   ntrp?: number
-) {
-  const validMatchId = uuidSchema.parse(matchId);
-  const validOldId = uuidSchema.parse(oldParticipantId);
-  await requireMatchPermission(validMatchId, 'match.create');
+): Promise<{ error?: string }> {
+  try {
+    const validMatchId = uuidSchema.parse(matchId);
+    const validOldId = uuidSchema.parse(oldParticipantId);
+    await requireMatchPermission(validMatchId, 'match.create');
 
-  const supabase = await createClient();
+    const supabase = await createClient();
 
-  // Create new offline participant
-  const { data: newParticipant, error: insertErr } = await supabase
-    .from('match_participants')
-    .insert({
-      match_id: validMatchId,
-      user_id: null,
-      guest_name: name,
-      guest_gender: gender,
-      participant_type: 'guest',
-      status: 'confirmed',
-      ntrp_override: ntrp || null,
-    })
-    .select('id')
-    .single();
+    // Create new offline participant
+    const { data: newParticipant, error: insertErr } = await supabase
+      .from('match_participants')
+      .insert({
+        match_id: validMatchId,
+        user_id: null,
+        guest_name: name,
+        guest_gender: gender,
+        participant_type: 'guest',
+        status: 'confirmed',
+        ntrp_override: ntrp || null,
+      })
+      .select('id')
+      .maybeSingle();
 
-  if (insertErr) throw new Error('대체 선수 추가에 실패했습니다');
+    if (insertErr || !newParticipant) return { error: '대체 선수 추가에 실패했습니다: ' + (insertErr?.message || 'no data') };
 
   // Find all games where oldParticipant is assigned and swap
   const { data: draws } = await supabase
@@ -462,10 +504,16 @@ export async function replaceWithOffline(
   }
 
   // Delete old participant
-  await supabase
+  const { error: deleteErr } = await supabase
     .from('match_participants')
     .delete()
     .eq('id', validOldId);
+
+  if (deleteErr) return { error: '기존 참가자 삭제에 실패했습니다: ' + deleteErr.message };
+    return {};
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : '대체에 실패했습니다' };
+  }
 }
 
 export async function updateMatch(matchId: string, formData: FormData) {
