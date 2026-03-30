@@ -166,7 +166,7 @@ export async function getMatchMVP(matchId: string) {
     .from('profiles')
     .select('id, display_name, avatar_url')
     .eq('id', mvpId)
-    .single();
+    .maybeSingle();
 
   return profile ? { ...profile, wins: maxWins } : null;
 }
@@ -208,7 +208,7 @@ export async function getClubMVP(clubId: string, startDate?: string, endDate?: s
     .from('profiles')
     .select('id, display_name, avatar_url, ntrp_level')
     .eq('id', mvpId)
-    .single();
+    .maybeSingle();
 
   return profile ? { ...profile, wins: maxWins } : null;
 }

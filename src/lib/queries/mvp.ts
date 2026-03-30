@@ -195,7 +195,7 @@ export async function getMatchMvp(
     .from('profiles')
     .select('id, display_name, avatar_url, ntrp_level')
     .eq('id', mvpId)
-    .single();
+    .maybeSingle();
 
   return {
     user_id: mvpId,

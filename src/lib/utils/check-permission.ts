@@ -41,7 +41,7 @@ export async function requireMatchPermission(matchId: string, permission: Permis
     .from('matches')
     .select('club_id')
     .eq('id', matchId)
-    .single();
+    .maybeSingle();
 
   if (!match) throw new Error('경기를 찾을 수 없습니다');
 

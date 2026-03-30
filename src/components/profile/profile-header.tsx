@@ -111,6 +111,7 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
   };
 
   // 프로필 정보 저장
+  const [editError, setEditError] = useState('');
   const handleSubmit = async (formData: FormData) => {
     if (startYear && startMonth) {
       formData.set('tennis_start_date', `${startYear}-${startMonth}`);
@@ -120,18 +121,23 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
     if (editGender) {
       formData.set('gender', editGender);
     }
-    await updateProfile(formData);
-    setProfile((p) => ({
-      ...p,
-      display_name: (formData.get('display_name') as string) || p.display_name,
-      real_name: (formData.get('real_name') as string) || null,
-      bio: (formData.get('bio') as string) || null,
-      ntrp_level: formData.get('ntrp_level') ? Number(formData.get('ntrp_level')) : p.ntrp_level,
-      tennis_start_date: startYear && startMonth ? `${startYear}-${startMonth}-01` : null,
-      gender: (editGender as 'M' | 'F') || p.gender,
-    }));
-    setShowEdit(false);
-    router.refresh();
+    setEditError('');
+    try {
+      await updateProfile(formData);
+      setProfile((p) => ({
+        ...p,
+        display_name: (formData.get('display_name') as string) || p.display_name,
+        real_name: (formData.get('real_name') as string) || null,
+        bio: (formData.get('bio') as string) || null,
+        ntrp_level: formData.get('ntrp_level') ? Number(formData.get('ntrp_level')) : p.ntrp_level,
+        tennis_start_date: startYear && startMonth ? `${startYear}-${startMonth}-01` : null,
+        gender: (editGender as 'M' | 'F') || p.gender,
+      }));
+      setShowEdit(false);
+      router.refresh();
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : '프로필 수정에 실패했습니다');
+    }
   };
 
   return (
@@ -314,6 +320,9 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
             </div>
           </div>
 
+          {editError && (
+            <p className="text-sm text-destructive">{editError}</p>
+          )}
           <Button type="submit" fullWidth>
             저장
           </Button>

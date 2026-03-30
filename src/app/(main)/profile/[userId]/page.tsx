@@ -38,7 +38,7 @@ export default async function UserProfilePage({
     .from('profiles')
     .select('*')
     .eq('id', userId)
-    .single();
+    .maybeSingle();
 
   if (!profile) notFound();
 

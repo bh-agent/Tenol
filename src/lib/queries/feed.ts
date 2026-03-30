@@ -231,23 +231,29 @@ export async function getUnifiedFeed(limit = 30): Promise<FeedPost[]> {
 
 /**
  * Load more posts for pagination (used by API endpoint)
+ * @param excludeIds - post IDs already displayed, to avoid duplicates
  */
-export async function getMoreFeed(offset = 30, limit = 20): Promise<FeedPost[]> {
+export async function getMoreFeed(offset = 30, limit = 20, excludeIds: string[] = []): Promise<FeedPost[]> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  // For "load more", fetch discovery-style posts with offset
+  // Fetch extra rows to compensate for filtering out already-shown posts
+  const fetchLimit = limit + Math.min(excludeIds.length, 50);
+
   const { data } = await supabase
     .from('media_with_counts')
     .select(MEDIA_SELECT)
     .not('uploaded_by', 'eq', user.id)
     .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+    .range(offset, offset + fetchLimit - 1);
 
   if (!data || data.length === 0) return [];
 
-  const posts = data.map((p: any) => ({ ...p, feed_source: 'discovery' as FeedSource }));
+  const excludeSet = new Set(excludeIds);
+  const filtered = data.filter((p: any) => !excludeSet.has(p.id)).slice(0, limit);
+
+  const posts = filtered.map((p: any) => ({ ...p, feed_source: 'discovery' as FeedSource }));
   const withLikes = await attachLikeStatus(supabase, user.id, posts);
   return withLikes as FeedPost[];
 }

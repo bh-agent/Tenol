@@ -26,6 +26,7 @@ export function LikeButton({
   const [count, setCount] = useState(initialCount);
   const [animating, setAnimating] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const pendingRef = useRef(false);
 
   // Sync with parent state when props change (e.g. double-tap like from PostCard)
   const prevLikedRef = useRef(initialLiked);
@@ -38,6 +39,10 @@ export function LikeButton({
   }
 
   const handleToggle = () => {
+    // Prevent rapid double-clicks before useTransition marks isPending
+    if (pendingRef.current) return;
+    pendingRef.current = true;
+
     // Capture pre-toggle state for revert
     const prevLiked = liked;
     const prevCount = count;
@@ -65,6 +70,8 @@ export function LikeButton({
         setLiked(prevLiked);
         setCount(prevCount);
         onLikeChange?.(prevLiked, prevCount);
+      } finally {
+        pendingRef.current = false;
       }
     });
   };

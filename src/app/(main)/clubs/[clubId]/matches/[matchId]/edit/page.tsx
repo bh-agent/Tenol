@@ -45,7 +45,7 @@ export default function EditMatchPage() {
           .from('matches')
           .select('id, club_id, title, description, location, match_date, start_time, end_time, court_count, max_participants, format')
           .eq('id', matchId)
-          .single();
+          .maybeSingle();
 
         if (fetchError || !data) {
           setError('경기를 찾을 수 없습니다');

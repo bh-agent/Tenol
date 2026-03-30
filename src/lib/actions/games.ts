@@ -15,24 +15,48 @@ async function getClubIdFromGame(gameId: string): Promise<string> {
     .from('games')
     .select('draw_id')
     .eq('id', gameId)
-    .single();
+    .maybeSingle();
   if (!game) throw new Error('게임을 찾을 수 없습니다');
 
   const { data: draw } = await supabase
     .from('draws')
     .select('match_id')
     .eq('id', game.draw_id)
-    .single();
+    .maybeSingle();
   if (!draw) throw new Error('대진표를 찾을 수 없습니다');
 
   const { data: match } = await supabase
     .from('matches')
     .select('club_id')
     .eq('id', draw.match_id)
-    .single();
+    .maybeSingle();
   if (!match) throw new Error('경기를 찾을 수 없습니다');
 
   return match.club_id;
+}
+
+// Helper: get match status from a game ID using an existing supabase client
+async function getMatchStatusFromGame(supabase: any, gameId: string): Promise<string | null> {
+  const { data: game } = await supabase
+    .from('games')
+    .select('draw_id')
+    .eq('id', gameId)
+    .maybeSingle();
+  if (!game) return null;
+
+  const { data: draw } = await supabase
+    .from('draws')
+    .select('match_id')
+    .eq('id', game.draw_id)
+    .maybeSingle();
+  if (!draw) return null;
+
+  const { data: match } = await supabase
+    .from('matches')
+    .select('status')
+    .eq('id', draw.match_id)
+    .maybeSingle();
+  return match?.status || null;
 }
 
 // draw.manage 권한 필요 - 대진표 삭제 (CASCADE로 games도 삭제됨)
@@ -67,6 +91,16 @@ export async function submitScore(
   await requirePermission(clubId, 'result.input');
 
   const supabase = await createClient();
+
+  // Check that the match is in a scorable state (in_progress or completed for corrections)
+  const matchStatusForGame = await getMatchStatusFromGame(supabase, validated.gameId);
+  if (matchStatusForGame === 'upcoming') {
+    throw new Error('아직 시작되지 않은 경기에는 점수를 입력할 수 없습니다');
+  }
+  if (matchStatusForGame === 'cancelled') {
+    throw new Error('취소된 경기에는 점수를 입력할 수 없습니다');
+  }
+
   const winner = validated.scoreA > validated.scoreB ? 'team_a' : validated.scoreB > validated.scoreA ? 'team_b' : null;
 
   // 게임 정보 조회 (알림 전송용)
@@ -74,7 +108,7 @@ export async function submitScore(
     .from('games')
     .select('draw_id, team_a_player1_id, team_a_player2_id, team_b_player1_id, team_b_player2_id')
     .eq('id', validated.gameId)
-    .single();
+    .maybeSingle();
 
   const { error } = await supabase
     .from('games')
@@ -90,49 +124,53 @@ export async function submitScore(
   if (error) throw new Error('점수 저장에 실패했습니다');
 
   // 점수 입력 알림 전송
-  if (gameData) {
-    const playerIds = [
-      gameData.team_a_player1_id,
-      gameData.team_a_player2_id,
-      gameData.team_b_player1_id,
-      gameData.team_b_player2_id,
-    ].filter(Boolean) as string[];
+  try {
+    if (gameData) {
+      const playerIds = [
+        gameData.team_a_player1_id,
+        gameData.team_a_player2_id,
+        gameData.team_b_player1_id,
+        gameData.team_b_player2_id,
+      ].filter(Boolean) as string[];
 
-    const { data: participants } = await supabase
-      .from('match_participants')
-      .select('id, user_id')
-      .in('id', playerIds);
+      const { data: participants } = await supabase
+        .from('match_participants')
+        .select('id, user_id')
+        .in('id', playerIds);
 
-    const { data: draw } = await supabase
-      .from('draws')
-      .select('match_id')
-      .eq('id', gameData.draw_id)
-      .single();
-
-    if (participants && draw) {
-      const { data: match } = await supabase
-        .from('matches')
-        .select('title, club_id')
-        .eq('id', draw.match_id)
+      const { data: draw } = await supabase
+        .from('draws')
+        .select('match_id')
+        .eq('id', gameData.draw_id)
         .single();
 
-      if (match) {
-        const { data: { user } } = await supabase.auth.getUser();
-        const { createNotification } = await import('@/lib/actions/notifications');
+      if (participants && draw) {
+        const { data: match } = await supabase
+          .from('matches')
+          .select('title, club_id')
+          .eq('id', draw.match_id)
+          .single();
 
-        for (const p of participants) {
-          if (p.user_id && p.user_id !== user?.id) {
-            await createNotification(
-              p.user_id,
-              'score_updated',
-              '점수가 입력되었습니다',
-              `"${match.title}" 경기의 점수가 업데이트되었습니다. (${validated.scoreA}:${validated.scoreB})`,
-              { match_id: draw.match_id, club_id: match.club_id }
-            );
+        if (match) {
+          const { data: { user } } = await supabase.auth.getUser();
+          const { createNotification } = await import('@/lib/actions/notifications');
+
+          for (const p of participants) {
+            if (p.user_id && p.user_id !== user?.id) {
+              await createNotification(
+                p.user_id,
+                'score_updated',
+                '점수가 입력되었습니다',
+                `"${match.title}" 경기의 점수가 업데이트되었습니다. (${validated.scoreA}:${validated.scoreB})`,
+                { match_id: draw.match_id, club_id: match.club_id }
+              ).catch(() => {});
+            }
           }
         }
       }
     }
+  } catch {
+    // 알림 전송 실패해도 점수 저장은 이미 완료됨
   }
 }
 

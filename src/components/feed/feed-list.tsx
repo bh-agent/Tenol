@@ -32,7 +32,7 @@ export function FeedList({ initialFeed, suggestedUsers }: FeedListProps) {
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [feed, setFeed] = useState<FeedPost[]>(initialFeed);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(initialFeed.length >= 20);
+  const [hasMore, setHasMore] = useState(initialFeed.length >= 10);
   const loaderRef = useRef<HTMLDivElement>(null);
 
   // Get current user
@@ -48,15 +48,17 @@ export function FeedList({ initialFeed, suggestedUsers }: FeedListProps) {
     if (loadingMore || !hasMore) return;
     setLoadingMore(true);
     try {
-      const res = await fetch(`/api/feed/more?offset=${feed.length}&limit=20`);
+      const currentIds = feed.map((p) => p.id);
+      const excludeParam = currentIds.length > 0 ? `&excludeIds=${currentIds.join(',')}` : '';
+      const res = await fetch(`/api/feed/more?offset=${feed.length}&limit=20${excludeParam}`);
       const data = await res.json();
       const newPosts: FeedPost[] = data.feed ?? [];
       if (newPosts.length === 0) {
         setHasMore(false);
       } else {
-        // Deduplicate
-        const existingIds = new Set(feed.map((p) => p.id));
-        const unique = newPosts.filter((p) => !existingIds.has(p.id));
+        // Client-side dedup as safety net
+        const existingSet = new Set(currentIds);
+        const unique = newPosts.filter((p) => !existingSet.has(p.id));
         setFeed((prev) => [...prev, ...unique]);
         if (newPosts.length < 20) setHasMore(false);
       }

@@ -71,7 +71,7 @@ export default function ResultsPage() {
         .select('role')
         .eq('club_id', clubId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       setMyRole((membership?.role as ClubRole) || null);
     }
 
@@ -164,7 +164,7 @@ export default function ResultsPage() {
             .from('profiles')
             .select('avatar_url, ntrp_level')
             .eq('id', userId)
-            .single();
+            .maybeSingle();
           avatarUrl = profile?.avatar_url || null;
           ntrpLevel = profile?.ntrp_level ?? null;
         }

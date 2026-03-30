@@ -142,6 +142,10 @@ export async function getLatestCommentsForFeed(mediaIds: string[]) {
       map[row.media_id] = list;
     }
   }
+  // Reverse each list so comments display in chronological order (oldest first)
+  for (const key of Object.keys(map)) {
+    map[key].reverse();
+  }
   return map;
 }
 

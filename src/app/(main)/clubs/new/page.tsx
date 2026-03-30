@@ -42,8 +42,11 @@ export default function NewClubPage() {
     setError('');
     try {
       await joinClubByCode(code);
+      // Success - show feedback and navigate
+      router.push('/clubs');
     } catch (e) {
       setError(e instanceof Error ? e.message : '오류가 발생했습니다');
+    } finally {
       setLoading(false);
     }
   };

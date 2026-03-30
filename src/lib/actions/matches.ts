@@ -72,7 +72,28 @@ export async function joinMatch(matchId: string) {
     if (error.message?.includes('MATCH_FULL')) throw new Error('참가 인원이 가득 찼습니다');
     if (error.code === '23505') throw new Error('이미 참가 신청했습니다');
 
-    // RPC might be outdated - fallback to direct insert
+    // RPC might be outdated - fallback to direct insert with safety checks
+    const { data: matchCheck } = await supabase
+      .from('matches')
+      .select('status, registration_closed, max_participants')
+      .eq('id', validMatchId)
+      .maybeSingle();
+
+    if (!matchCheck) throw new Error('경기를 찾을 수 없습니다');
+    if (matchCheck.status === 'completed' || matchCheck.status === 'cancelled') {
+      throw new Error('종료되었거나 취소된 경기에는 참가할 수 없습니다');
+    }
+    if (matchCheck.registration_closed) throw new Error('모집이 마감되었습니다');
+
+    if (matchCheck.max_participants) {
+      const { count } = await supabase
+        .from('match_participants')
+        .select('id', { count: 'exact', head: true })
+        .eq('match_id', validMatchId)
+        .eq('status', 'confirmed');
+      if (count && count >= matchCheck.max_participants) throw new Error('참가 인원이 가득 찼습니다');
+    }
+
     const { error: insertError } = await supabase.from('match_participants').insert({
       match_id: validMatchId,
       user_id: user.id,
@@ -112,7 +133,19 @@ export async function applyAsGuest(matchId: string, name: string, phone?: string
     if (error.message?.includes('MATCH_FULL')) throw new Error('참가 인원이 가득 찼습니다');
     if (error.code === '23505') throw new Error('이미 참가 신청했습니다');
 
-    // RPC function might be outdated (missing p_introduction param) - fallback to direct insert
+    // RPC function might be outdated (missing p_introduction param) - fallback to direct insert with safety checks
+    const { data: matchCheck } = await supabase
+      .from('matches')
+      .select('status, registration_closed, max_participants')
+      .eq('id', validMatchId)
+      .maybeSingle();
+
+    if (!matchCheck) throw new Error('경기를 찾을 수 없습니다');
+    if (matchCheck.status === 'completed' || matchCheck.status === 'cancelled') {
+      throw new Error('종료되었거나 취소된 경기에는 참가할 수 없습니다');
+    }
+    if (matchCheck.registration_closed) throw new Error('모집이 마감되었습니다');
+
     const { error: insertError } = await supabase.from('match_participants').insert({
       match_id: validMatchId,
       user_id: user.id,
@@ -141,7 +174,7 @@ export async function toggleRegistration(matchId: string) {
     .from('matches')
     .select('registration_closed')
     .eq('id', validMatchId)
-    .single();
+    .maybeSingle();
 
   if (!match) throw new Error('경기를 찾을 수 없습니다');
 
@@ -172,7 +205,7 @@ export async function respondToGuest(participantId: string, matchId: string, app
     .from('match_participants')
     .select('user_id, guest_name')
     .eq('id', validParticipantId)
-    .single();
+    .maybeSingle();
 
   const { error } = await supabase
     .from('match_participants')
@@ -191,7 +224,7 @@ export async function respondToGuest(participantId: string, matchId: string, app
       .from('matches')
       .select('title, club_id')
       .eq('id', validMatchId)
-      .single();
+      .maybeSingle();
 
     if (match) {
       try {
@@ -219,6 +252,17 @@ export async function withdrawFromMatch(matchId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('인증이 필요합니다');
 
+  // Prevent withdrawal from completed/cancelled matches
+  const { data: match } = await supabase
+    .from('matches')
+    .select('status')
+    .eq('id', validMatchId)
+    .maybeSingle();
+
+  if (match?.status === 'completed' || match?.status === 'cancelled') {
+    throw new Error('종료되었거나 취소된 경기에서는 탈퇴할 수 없습니다');
+  }
+
   await supabase
     .from('match_participants')
     .delete()
@@ -235,6 +279,17 @@ export async function addOfflineParticipant(matchId: string, name: string, gende
   await requireMatchPermission(validMatchId, 'match.create');
 
   const supabase = await createClient();
+
+  // Block adding participants to completed/cancelled matches
+  const { data: match } = await supabase
+    .from('matches')
+    .select('status')
+    .eq('id', validMatchId)
+    .maybeSingle();
+
+  if (match?.status === 'completed' || match?.status === 'cancelled') {
+    throw new Error('종료되었거나 취소된 경기에는 참가자를 추가할 수 없습니다');
+  }
 
   // 비회원은 user_id가 null이므로 RPC 대신 직접 insert
   // 운영진 추가이므로 모집 마감 여부와 관계없이 허용
@@ -451,7 +506,7 @@ export async function deleteMatch(matchId: string) {
     .from('matches')
     .select('status')
     .eq('id', validMatchId)
-    .single();
+    .maybeSingle();
 
   if (!match) throw new Error('경기를 찾을 수 없습니다');
   if (match.status !== 'upcoming' && match.status !== 'cancelled') {
@@ -468,12 +523,35 @@ export async function deleteMatch(matchId: string) {
   redirect(`/clubs/${clubId}`);
 }
 
+// Valid match status transitions
+const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
+  upcoming: ['in_progress', 'cancelled'],
+  in_progress: ['completed', 'cancelled'],
+  completed: [],           // terminal state
+  cancelled: ['upcoming'], // can reopen a cancelled match
+};
+
 export async function updateMatchStatus(matchId: string, status: string) {
   const validMatchId = uuidSchema.parse(matchId);
   const validStatus = matchStatusSchema.parse(status);
   await requireMatchPermission(validMatchId, 'match.create');
 
   const supabase = await createClient();
+
+  // Validate state transition
+  const { data: match } = await supabase
+    .from('matches')
+    .select('status')
+    .eq('id', validMatchId)
+    .maybeSingle();
+
+  if (!match) throw new Error('경기를 찾을 수 없습니다');
+
+  const allowed = VALID_STATUS_TRANSITIONS[match.status] || [];
+  if (!allowed.includes(validStatus)) {
+    throw new Error(`현재 상태(${match.status})에서 ${validStatus}(으)로 변경할 수 없습니다`);
+  }
+
   const { error } = await supabase
     .from('matches')
     .update({ status: validStatus, updated_at: new Date().toISOString() })

@@ -87,34 +87,34 @@ export function ExploreClubList({
     setJoinIntroduction('');
   }
 
-  async function handleJoin(clubId: string) {
+  function handleJoin(clubId: string) {
     setJoiningId(clubId);
-    try {
-      startTransition(async () => {
+    startTransition(async () => {
+      try {
         await joinPublicClub(clubId, joinIntroduction || undefined);
         setRequestedIds((prev) => new Set(prev).add(clubId));
-        setJoiningId(null);
         setJoinModalClubId(null);
         setJoinIntroduction('');
-      });
-    } catch (error: any) {
-      alert(error.message || '가입 신청에 실패했습니다');
-      setJoiningId(null);
-    }
+      } catch (error: any) {
+        alert(error.message || '가입 신청에 실패했��니다');
+      } finally {
+        setJoiningId(null);
+      }
+    });
   }
 
-  async function handleCancel(requestId: string, clubId: string) {
+  function handleCancel(requestId: string, clubId: string) {
     setCancellingId(clubId);
-    try {
-      startTransition(async () => {
+    startTransition(async () => {
+      try {
         await cancelJoinRequest(requestId);
         setCancelledIds((prev) => new Set(prev).add(clubId));
+      } catch (error: any) {
+        alert(error.message || '신청 취소에 실패했습니다');
+      } finally {
         setCancellingId(null);
-      });
-    } catch (error: any) {
-      alert(error.message || '신청 취소에 실패했습니다');
-      setCancellingId(null);
-    }
+      }
+    });
   }
 
   function getClubStatus(clubId: string): 'member' | 'pending' | 'rejected' | 'none' {

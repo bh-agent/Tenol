@@ -87,6 +87,15 @@ export async function addComment(mediaId: string, body: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('인증이 필요합니다');
 
+  // 게시물 존재 여부 확인
+  const { data: mediaExists } = await supabase
+    .from('media')
+    .select('id')
+    .eq('id', validMediaId)
+    .maybeSingle();
+
+  if (!mediaExists) throw new Error('삭제된 게시물에는 댓글을 작성할 수 없습니다');
+
   const { data, error } = await supabase
     .from('media_comments')
     .insert({
@@ -149,7 +158,7 @@ export async function deleteComment(commentId: string) {
     .from('media_comments')
     .select('id, user_id, media_id')
     .eq('id', validCommentId)
-    .single();
+    .maybeSingle();
 
   if (!comment) throw new Error('댓글을 찾을 수 없습니다');
 
@@ -162,7 +171,7 @@ export async function deleteComment(commentId: string) {
       .from('media')
       .select('uploaded_by')
       .eq('id', comment.media_id)
-      .single();
+      .maybeSingle();
 
     if (!media || media.uploaded_by !== user.id) {
       throw new Error('삭제 권한이 없습니다');

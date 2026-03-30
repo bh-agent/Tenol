@@ -150,12 +150,15 @@ export function CommentSheet({
 
     // Optimistic remove
     const prev = comments;
-    setComments((c) => c.filter((x) => x.id !== commentId));
+    const updated = comments.filter((x) => x.id !== commentId);
+    setComments(updated);
+    onCommentCountChange?.(updated.length);
 
     try {
       await deleteComment(commentId);
     } catch {
       setComments(prev);
+      onCommentCountChange?.(prev.length);
     } finally {
       setDeletingId(null);
     }

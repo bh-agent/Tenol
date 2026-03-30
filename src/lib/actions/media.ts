@@ -172,7 +172,7 @@ export async function deleteMedia(mediaId: string) {
     .from('media')
     .select('uploaded_by, club_id, file_urls, file_url')
     .eq('id', validMediaId)
-    .single();
+    .maybeSingle();
 
   if (!media) throw new Error('게시물을 찾을 수 없습니다');
 
@@ -185,7 +185,7 @@ export async function deleteMedia(mediaId: string) {
       .select('role')
       .eq('club_id', media.club_id)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
     if (!membership || !['owner', 'admin'].includes(membership.role)) {
       throw new Error('삭제 권한이 없습니다');

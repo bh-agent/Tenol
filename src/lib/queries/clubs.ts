@@ -28,7 +28,7 @@ export async function getClub(clubId: string) {
     .from('clubs')
     .select('*')
     .eq('id', clubId)
-    .single();
+    .maybeSingle();
 
   return data;
 }
@@ -167,7 +167,7 @@ export async function getMyJoinRequestStatus(clubId: string): Promise<ClubJoinRe
 
   const { data } = await supabase
     .from('club_join_requests')
-    .select('id, club_id, user_id, message, status, responded_by, created_at, responded_at')
+    .select('id, club_id, user_id, message, introduction, status, responded_by, created_at, responded_at')
     .eq('club_id', clubId)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
@@ -184,7 +184,7 @@ export async function getMyJoinRequestsForClubs(clubIds: string[]): Promise<Reco
 
   const { data } = await supabase
     .from('club_join_requests')
-    .select('id, club_id, user_id, message, status, created_at, responded_at')
+    .select('id, club_id, user_id, message, introduction, status, responded_by, created_at, responded_at')
     .eq('user_id', user.id)
     .in('club_id', clubIds);
 

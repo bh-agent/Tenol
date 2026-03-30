@@ -31,7 +31,7 @@ export async function POST(request: Request) {
         )
       `)
       .eq('id', validated.matchId)
-      .single();
+      .maybeSingle();
 
     if (!match) {
       return NextResponse.json({ error: '경기를 찾을 수 없습니다' }, { status: 404 });

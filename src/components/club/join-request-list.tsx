@@ -112,7 +112,7 @@ export function JoinRequestList({ requests, clubId }: JoinRequestListProps) {
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {(profile as any)?.gender && (
                         <Badge variant="outline" className="text-[10px]">
-                          {(profile as any).gender === 'male' ? '남' : (profile as any).gender === 'female' ? '여' : ''}
+                          {(profile as any).gender === 'M' ? '남' : (profile as any).gender === 'F' ? '여' : ''}
                         </Badge>
                       )}
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
@@ -175,7 +175,7 @@ export function JoinRequestList({ requests, clubId }: JoinRequestListProps) {
                         {(profile as any)?.gender && (
                           <div className="px-2.5 py-1.5 rounded-lg bg-background">
                             <p className="text-[10px] text-muted-foreground">성별</p>
-                            <p className="text-xs font-medium text-foreground">{(profile as any).gender === 'male' ? '남성' : (profile as any).gender === 'female' ? '여성' : ''}</p>
+                            <p className="text-xs font-medium text-foreground">{(profile as any).gender === 'M' ? '남성' : (profile as any).gender === 'F' ? '여성' : ''}</p>
                           </div>
                         )}
                         {profile?.ntrp_level && (

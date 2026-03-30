@@ -67,6 +67,8 @@ export async function createNotification(
 
 export async function deleteOldNotifications() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('인증이 필요합니다');
 
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -74,6 +76,7 @@ export async function deleteOldNotifications() {
   const { error } = await supabase
     .from('notifications')
     .delete()
+    .eq('user_id', user.id)
     .lt('created_at', thirtyDaysAgo.toISOString());
 
   if (error) throw new Error('오래된 알림 삭제에 실패했습니다');

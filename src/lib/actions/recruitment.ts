@@ -73,7 +73,7 @@ export async function closeRecruitmentPost(postId: string) {
     .from('recruitment_posts')
     .select('id, created_by, club_id')
     .eq('id', validPostId)
-    .single();
+    .maybeSingle();
 
   if (!post) throw new Error('모집글을 찾을 수 없습니다');
   if (post.created_by !== user.id) throw new Error('권한이 없습니다');
@@ -99,7 +99,7 @@ export async function deleteRecruitmentPost(postId: string) {
     .from('recruitment_posts')
     .select('id, created_by, club_id')
     .eq('id', validPostId)
-    .single();
+    .maybeSingle();
 
   if (!post) throw new Error('모집글을 찾을 수 없습니다');
   if (post.created_by !== user.id) throw new Error('권한이 없습니다');

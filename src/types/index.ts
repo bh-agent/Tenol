@@ -115,7 +115,7 @@ export type Game = {
   team_b_player2_id: string | null;
   score_team_a: number | null;
   score_team_b: number | null;
-  set_scores: { a: number; b: number }[] | null;
+  set_scores: { team_a: number; team_b: number }[] | null;
   winner: 'team_a' | 'team_b' | null;
   status: GameStatus;
   started_at: string | null;

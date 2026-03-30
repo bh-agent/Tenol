@@ -105,8 +105,10 @@ export function ProfileEditButton({ profile }: ProfileEditButtonProps) {
     }
   };
 
+  const [editError, setEditError] = useState('');
+
   const handleSubmit = async (formData: FormData) => {
-    // 년월을 합쳐서 전달
+    // 년월��� 합쳐서 전달
     if (startYear && startMonth) {
       formData.set('tennis_start_date', `${startYear}-${startMonth}`);
     } else {
@@ -116,9 +118,14 @@ export function ProfileEditButton({ profile }: ProfileEditButtonProps) {
     if (editGender) {
       formData.set('gender', editGender);
     }
-    await updateProfile(formData);
-    setIsOpen(false);
-    router.refresh();
+    setEditError('');
+    try {
+      await updateProfile(formData);
+      setIsOpen(false);
+      router.refresh();
+    } catch (e) {
+      setEditError(e instanceof Error ? e.message : '프로필 수정에 실패했습니다');
+    }
   };
 
   return (
@@ -271,6 +278,9 @@ export function ProfileEditButton({ profile }: ProfileEditButtonProps) {
               </div>
             </div>
 
+            {editError && (
+              <p className="text-sm text-destructive">{editError}</p>
+            )}
             <Button type="submit" fullWidth>
               저장
             </Button>

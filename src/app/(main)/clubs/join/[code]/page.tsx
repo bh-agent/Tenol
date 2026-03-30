@@ -19,7 +19,7 @@ export async function generateMetadata({
     .from('clubs')
     .select('name, description, logo_url')
     .eq('invite_code', code)
-    .single();
+    .maybeSingle();
 
   if (!club) {
     return { title: '클럽 가입 - 테놀' };
@@ -68,7 +68,7 @@ export default async function JoinByLinkPage({
     .from('clubs')
     .select('id, name, description, region, invite_code')
     .eq('invite_code', code)
-    .single();
+    .maybeSingle();
 
   if (!club) {
     return (
@@ -114,7 +114,7 @@ export default async function JoinByLinkPage({
         .from('profiles')
         .select('ntrp_level, tennis_start_date')
         .eq('id', user.id)
-        .single(),
+        .maybeSingle(),
     ]);
 
     isMember = !!existingMember;

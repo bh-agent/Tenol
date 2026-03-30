@@ -50,13 +50,13 @@ export async function joinClubByCode(inviteCode: string, introduction?: string) 
 
   const validCode = inviteCodeSchema.parse(inviteCode);
 
-  const { data: club, error: clubError } = await supabase
+  const { data: club } = await supabase
     .from('clubs')
     .select('id, name')
     .eq('invite_code', validCode)
-    .single();
+    .maybeSingle();
 
-  if (clubError || !club) throw new Error('유효하지 않은 초대 코드입니다');
+  if (!club) throw new Error('유효하지 않은 초대 코드입니다');
 
   // 이미 멤버인지 확인
   const { data: existingMember } = await supabase
@@ -170,7 +170,7 @@ export async function removeMember(clubId: string, targetUserId: string) {
     .select('role')
     .eq('club_id', validClubId)
     .eq('user_id', validTargetUserId)
-    .single();
+    .maybeSingle();
 
   if (targetMember?.role === 'owner') throw new Error('클럽장은 제명할 수 없습니다');
 
@@ -253,7 +253,7 @@ export async function joinPublicClub(clubId: string, introduction?: string) {
     .select('id, name, is_public')
     .eq('id', validClubId)
     .eq('is_public', true)
-    .single();
+    .maybeSingle();
 
   if (!club) throw new Error('공개 클럽이 아니거나 존재하지 않는 클럽입니다');
 
@@ -338,7 +338,7 @@ export async function respondToJoinRequest(requestId: string, approved: boolean)
     .from('club_join_requests')
     .select('id, club_id, user_id, status')
     .eq('id', validRequestId)
-    .single();
+    .maybeSingle();
 
   if (!request) throw new Error('가입 신청을 찾을 수 없습니다');
   if (request.status !== 'pending') throw new Error('이미 처리된 신청입니다');
@@ -411,7 +411,7 @@ export async function cancelJoinRequest(requestId: string) {
     .from('club_join_requests')
     .select('id, user_id, status')
     .eq('id', validRequestId)
-    .single();
+    .maybeSingle();
 
   if (!request) throw new Error('가입 신청을 찾을 수 없습니다');
   if (request.user_id !== user.id) throw new Error('권한이 없습니다');
@@ -441,7 +441,7 @@ export async function deleteClub(clubId: string) {
     .select('role')
     .eq('club_id', validClubId)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (membership?.role !== 'owner') {
     throw new Error('클럽장만 클럽을 삭제할 수 있습니다');
@@ -472,7 +472,7 @@ export async function transferOwnership(clubId: string, targetUserId: string) {
     .select('role')
     .eq('club_id', validClubId)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (myMembership?.role !== 'owner') throw new Error('클럽장만 양도할 수 있습니다');
 
@@ -482,10 +482,19 @@ export async function transferOwnership(clubId: string, targetUserId: string) {
     .select('role')
     .eq('club_id', validClubId)
     .eq('user_id', validTargetUserId)
-    .single();
+    .maybeSingle();
 
   if (!targetMembership) throw new Error('클럽 멤버가 아닙니다');
   if (validTargetUserId === user.id) throw new Error('자기 자신에게 양도할 수 없습니다');
+
+  // 현재 owner를 admin으로 먼저 변경 (두 명의 owner 방지)
+  const { error: demoteError } = await supabase
+    .from('club_members')
+    .update({ role: 'admin' })
+    .eq('club_id', validClubId)
+    .eq('user_id', user.id);
+
+  if (demoteError) throw new Error('역할 변경에 실패했습니다');
 
   // 대상을 owner로 변경
   const { error: promoteError } = await supabase
@@ -494,16 +503,15 @@ export async function transferOwnership(clubId: string, targetUserId: string) {
     .eq('club_id', validClubId)
     .eq('user_id', validTargetUserId);
 
-  if (promoteError) throw new Error('클럽장 양도에 실패했습니다');
-
-  // 현재 owner를 admin으로 변경
-  const { error: demoteError } = await supabase
-    .from('club_members')
-    .update({ role: 'admin' })
-    .eq('club_id', validClubId)
-    .eq('user_id', user.id);
-
-  if (demoteError) throw new Error('역할 변경에 실패했습니다');
+  if (promoteError) {
+    // 롤백: 원래 owner 복원
+    await supabase
+      .from('club_members')
+      .update({ role: 'owner' })
+      .eq('club_id', validClubId)
+      .eq('user_id', user.id);
+    throw new Error('클럽장 양도에 실패했습니다');
+  }
 
   // clubs 테이블의 created_by도 업데이트
   await supabase
@@ -548,7 +556,7 @@ export async function leaveClub(clubId: string) {
     .select('role')
     .eq('club_id', validClubId)
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
   if (membership?.role === 'owner') throw new Error('클럽장은 클럽을 탈퇴할 수 없습니다');
 

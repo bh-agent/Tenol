@@ -264,7 +264,7 @@ export default function DrawPage() {
         .select('role')
         .eq('club_id', clubId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       setMyRole((membership?.role as ClubRole) || null);
     }
 
@@ -273,7 +273,7 @@ export default function DrawPage() {
       .from('matches')
       .select('court_count, start_time')
       .eq('id', matchId)
-      .single();
+      .maybeSingle();
     if (matchData?.start_time) {
       // Set default start time from match's start_time (format: "HH:MM:SS" or "HH:MM")
       setStartTime(matchData.start_time.substring(0, 5));

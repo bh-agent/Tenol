@@ -120,7 +120,7 @@ export function GuestPendingList({ pending, matchId }: GuestPendingListProps) {
                     <Badge variant="warning" className="text-[10px]">게스트 대기중</Badge>
                     {p.profiles?.gender && (
                       <Badge variant="outline" className="text-[10px]">
-                        {p.profiles.gender === 'male' ? '남' : p.profiles.gender === 'female' ? '여' : ''}
+                        {p.profiles.gender === 'M' ? '남' : p.profiles.gender === 'F' ? '여' : ''}
                       </Badge>
                     )}
                     {timeAgo && (
@@ -166,7 +166,7 @@ export function GuestPendingList({ pending, matchId }: GuestPendingListProps) {
                       {p.profiles?.gender && (
                         <div className="px-2.5 py-1.5 rounded-lg bg-background">
                           <p className="text-[10px] text-muted-foreground">성별</p>
-                          <p className="text-xs font-medium text-foreground">{p.profiles.gender === 'male' ? '남성' : p.profiles.gender === 'female' ? '여성' : ''}</p>
+                          <p className="text-xs font-medium text-foreground">{p.profiles.gender === 'M' ? '남성' : p.profiles.gender === 'F' ? '여성' : ''}</p>
                         </div>
                       )}
                       {p.profiles?.ntrp_level && (

@@ -6,8 +6,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
     const offset = parseInt(searchParams.get('offset') ?? '30', 10);
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '20', 10), 50);
+    const excludeIds = searchParams.get('excludeIds')?.split(',').filter(Boolean) ?? [];
 
-    const feed = await getMoreFeed(offset, limit);
+    const feed = await getMoreFeed(offset, limit, excludeIds);
     return Response.json({ feed });
   } catch {
     return Response.json({ feed: [] }, { status: 500 });

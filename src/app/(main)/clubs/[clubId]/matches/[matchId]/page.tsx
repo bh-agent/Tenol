@@ -54,7 +54,7 @@ export default async function MatchDetailPage({
       .from('profiles')
       .select('display_name, ntrp_level, tennis_start_date')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
     userProfile = profile;
   }
 

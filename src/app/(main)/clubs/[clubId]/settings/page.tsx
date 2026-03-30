@@ -36,7 +36,7 @@ export default function ClubSettingsPage() {
         .from('clubs')
         .select('name, description, region, main_court, logo_url')
         .eq('id', clubId)
-        .single();
+        .maybeSingle();
 
       if (club) {
         setClubName(club.name || '');
@@ -95,8 +95,18 @@ export default function ClubSettingsPage() {
     }
   };
 
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+
   const handleSubmit = async (formData: FormData) => {
-    await updateClub(clubId, formData);
+    setSaving(true);
+    setSaveError('');
+    try {
+      await updateClub(clubId, formData);
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : '클럽 정보 수정에 실패했습니다');
+      setSaving(false);
+    }
   };
 
   const handleDelete = async () => {
@@ -218,8 +228,11 @@ export default function ClubSettingsPage() {
               defaultValue={clubMainCourt}
               key={`court-${clubMainCourt}`}
             />
+            {saveError && (
+              <p className="text-sm text-destructive">{saveError}</p>
+            )}
             <div className="pt-4">
-              <Button type="submit" fullWidth size="lg">
+              <Button type="submit" fullWidth size="lg" loading={saving}>
                 저장
               </Button>
             </div>
