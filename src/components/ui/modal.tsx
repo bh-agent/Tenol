@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils/cn';
 import { X } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
   isOpen: boolean;
@@ -37,7 +38,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
 
   if (!mounted) return null;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50">
       {/* Backdrop with blur */}
       <div
@@ -88,6 +89,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

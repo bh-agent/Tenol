@@ -88,21 +88,27 @@ export async function completeOnboarding(formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('인증이 필요합니다');
 
+  const ntrpRaw = formData.get('ntrp_level') as string | null;
+
   const validated = completeOnboardingSchema.parse({
     display_name: formData.get('display_name'),
     gender: formData.get('gender'),
     bio: formData.get('bio') as string || null,
+    ntrp_level: ntrpRaw ? Number(ntrpRaw) : null,
   });
+
+  const updateData: Record<string, unknown> = {
+    display_name: validated.display_name,
+    gender: validated.gender,
+    bio: validated.bio,
+    ntrp_level: validated.ntrp_level,
+    is_onboarded: true,
+    updated_at: new Date().toISOString(),
+  };
 
   const { error } = await supabase
     .from('profiles')
-    .update({
-      display_name: validated.display_name,
-      gender: validated.gender,
-      bio: validated.bio,
-      is_onboarded: true,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq('id', user.id);
 
   if (error) throw new Error('프로필 설정에 실패했습니다');

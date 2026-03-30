@@ -121,7 +121,15 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
       formData.set('gender', editGender);
     }
     await updateProfile(formData);
-    setProfile((p) => ({ ...p, gender: (editGender as 'M' | 'F') || p.gender }));
+    setProfile((p) => ({
+      ...p,
+      display_name: (formData.get('display_name') as string) || p.display_name,
+      real_name: (formData.get('real_name') as string) || null,
+      bio: (formData.get('bio') as string) || null,
+      ntrp_level: formData.get('ntrp_level') ? Number(formData.get('ntrp_level')) : p.ntrp_level,
+      tennis_start_date: startYear && startMonth ? `${startYear}-${startMonth}-01` : null,
+      gender: (editGender as 'M' | 'F') || p.gender,
+    }));
     setShowEdit(false);
     router.refresh();
   };

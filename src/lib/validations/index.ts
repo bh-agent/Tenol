@@ -160,6 +160,7 @@ export const completeOnboardingSchema = z.object({
   display_name: sanitizedText.pipe(z.string().min(1, '닉네임을 입력해주세요').max(30)),
   gender: genderSchema,
   bio: sanitizedText.pipe(z.string().max(200)).nullable(),
+  ntrp_level: z.number().min(1.0).max(7.0).nullable(),
 });
 
 export const avatarUrlSchema = z.string().url();
