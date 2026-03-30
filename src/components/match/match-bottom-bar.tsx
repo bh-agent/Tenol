@@ -3,18 +3,20 @@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
-import { joinMatch, withdrawFromMatch, applyAsGuest } from '@/lib/actions/matches';
+import { joinMatch, withdrawFromMatch, applyAsGuest, toggleRegistration } from '@/lib/actions/matches';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { LockKeyhole, LockKeyholeOpen } from 'lucide-react';
 
 interface MatchBottomBarProps {
   matchId: string;
   status: string;
   isParticipant: boolean;
-  isFull: boolean;
+  registrationClosed: boolean;
   isMember?: boolean;
   isPendingGuest?: boolean;
   allowGuests?: boolean;
+  canManage?: boolean;
   userProfile?: {
     display_name: string;
     ntrp_level: number | null;
@@ -38,10 +40,11 @@ export function MatchBottomBar({
   matchId,
   status,
   isParticipant,
-  isFull,
+  registrationClosed,
   isMember = true,
   isPendingGuest = false,
   allowGuests = true,
+  canManage = false,
   userProfile,
 }: MatchBottomBarProps) {
   const router = useRouter();
@@ -92,61 +95,95 @@ export function MatchBottomBar({
     }
   };
 
+  const handleToggleRegistration = async () => {
+    setLoading(true);
+    try {
+      await toggleRegistration(matchId);
+      router.refresh();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '오류가 발생했습니다');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const career = userProfile?.tennis_start_date ? formatTennisCareer(userProfile.tennis_start_date) : null;
 
   return (
     <>
       <div className="fixed bottom-[calc(4.5rem+max(env(safe-area-inset-bottom),8px))] left-0 right-0 z-30 border-t border-border glass px-4 py-3">
-        <div className="max-w-lg mx-auto">
-          {isFull && !isParticipant && !isPendingGuest ? (
-            <Badge
-              variant="default"
-              className="w-full justify-center py-2.5 text-sm"
-            >
-              마감
-            </Badge>
-          ) : isPendingGuest ? (
-            <Badge
-              variant="warning"
-              className="w-full justify-center py-2.5 text-sm"
-            >
-              게스트 승인 대기중
-            </Badge>
-          ) : isParticipant ? (
+        <div className="max-w-lg mx-auto flex gap-2">
+          {/* Main action area */}
+          <div className="flex-1">
+            {registrationClosed && !isParticipant && !isPendingGuest ? (
+              <Badge
+                variant="default"
+                className="w-full justify-center py-2.5 text-sm"
+              >
+                모집 마감
+              </Badge>
+            ) : isPendingGuest ? (
+              <Badge
+                variant="warning"
+                className="w-full justify-center py-2.5 text-sm"
+              >
+                게스트 승인 대기중
+              </Badge>
+            ) : isParticipant ? (
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={handleWithdraw}
+                loading={loading}
+              >
+                참가 취소
+              </Button>
+            ) : isMember ? (
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={handleJoin}
+                loading={loading}
+                className="glow-primary-sm"
+              >
+                참가하기
+              </Button>
+            ) : allowGuests ? (
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={() => setShowGuestModal(true)}
+                className="glow-primary-sm"
+              >
+                게스트 참가 신청
+              </Button>
+            ) : (
+              <Badge
+                variant="default"
+                className="w-full justify-center py-2.5 text-sm"
+              >
+                클럽 멤버만 참가 가능
+              </Badge>
+            )}
+          </div>
+
+          {/* Admin: registration toggle button */}
+          {canManage && (
             <Button
-              variant="outline"
-              fullWidth
-              onClick={handleWithdraw}
+              variant={registrationClosed ? 'primary' : 'outline'}
+              onClick={handleToggleRegistration}
               loading={loading}
+              className="shrink-0 px-3"
             >
-              참가 취소
+              {registrationClosed ? (
+                <LockKeyholeOpen className="w-4 h-4" />
+              ) : (
+                <LockKeyhole className="w-4 h-4" />
+              )}
+              <span className="ml-1.5 text-xs">
+                {registrationClosed ? '재오픈' : '마감'}
+              </span>
             </Button>
-          ) : isMember ? (
-            <Button
-              variant="primary"
-              fullWidth
-              onClick={handleJoin}
-              loading={loading}
-              className="glow-primary-sm"
-            >
-              참가하기
-            </Button>
-          ) : allowGuests ? (
-            <Button
-              variant="primary"
-              fullWidth
-              onClick={() => setShowGuestModal(true)}
-              className="glow-primary-sm"
-            >
-              게스트 참가 신청
-            </Button>
-          ) : (
-            <Badge
-              variant="default"
-              className="w-full justify-center py-2.5 text-sm"
-            >
-              클럽 멤버만 참가 가능
-            </Badge>
           )}
         </div>
       </div>

@@ -67,6 +67,7 @@ export async function joinMatch(matchId: string) {
   });
 
   if (error) {
+    if (error.message?.includes('REGISTRATION_CLOSED')) throw new Error('모집이 마감되었습니다');
     if (error.message?.includes('MATCH_FULL')) throw new Error('참가 인원이 가득 찼습니다');
     if (error.code === '23505') throw new Error('이미 참가 신청했습니다');
     throw new Error('참가 신청에 실패했습니다');
@@ -92,10 +93,38 @@ export async function applyAsGuest(matchId: string, name: string, phone?: string
   });
 
   if (error) {
+    if (error.message?.includes('REGISTRATION_CLOSED')) throw new Error('모집이 마감되었습니다');
     if (error.message?.includes('MATCH_FULL')) throw new Error('참가 인원이 가득 찼습니다');
     if (error.code === '23505') throw new Error('이미 참가 신청했습니다');
     throw new Error('게스트 신청에 실패했습니다');
   }
+}
+
+// 모집 마감/재오픈
+export async function toggleRegistration(matchId: string) {
+  const validMatchId = uuidSchema.parse(matchId);
+  await requireMatchPermission(validMatchId, 'match.create');
+
+  const supabase = await createClient();
+
+  const { data: match } = await supabase
+    .from('matches')
+    .select('registration_closed')
+    .eq('id', validMatchId)
+    .single();
+
+  if (!match) throw new Error('경기를 찾을 수 없습니다');
+
+  const newValue = !match.registration_closed;
+
+  const { error } = await supabase
+    .from('matches')
+    .update({ registration_closed: newValue })
+    .eq('id', validMatchId);
+
+  if (error) throw new Error('모집 상태 변경에 실패했습니다');
+
+  return { closed: newValue };
 }
 
 // member.manage 권한 필요 (회장, 운영진)
@@ -178,25 +207,7 @@ export async function addOfflineParticipant(matchId: string, name: string, gende
   const supabase = await createClient();
 
   // 비회원은 user_id가 null이므로 RPC 대신 직접 insert
-  // (RPC 함수의 p_user_id가 UUID 타입이라 null 전달 불가)
-  // 먼저 capacity 체크
-  const { data: match } = await supabase
-    .from('matches')
-    .select('max_participants')
-    .eq('id', validMatchId)
-    .single();
-
-  if (match?.max_participants) {
-    const { count } = await supabase
-      .from('match_participants')
-      .select('*', { count: 'exact', head: true })
-      .eq('match_id', validMatchId)
-      .in('status', ['confirmed', 'pending']);
-
-    if ((count ?? 0) >= match.max_participants) {
-      throw new Error('참가 인원이 가득 찼습니다');
-    }
-  }
+  // 운영진 추가이므로 모집 마감 여부와 관계없이 허용
 
   const { error } = await supabase.from('match_participants').insert({
     match_id: validMatchId,

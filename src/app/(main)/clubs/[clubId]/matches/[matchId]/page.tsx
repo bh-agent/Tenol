@@ -45,7 +45,7 @@ export default async function MatchDetailPage({
 
   const isParticipant = user ? confirmed.some((p: any) => p.user_id === user.id) : false;
   const isPendingGuest = user ? pending.some((p: any) => p.user_id === user.id) : false;
-  const isFull = match.max_participants ? confirmed.length >= match.max_participants : false;
+  const registrationClosed = !!match.registration_closed;
 
   // Get user profile for guest application
   let userProfile: { display_name: string; ntrp_level: number | null; tennis_start_date: string | null } | null = null;
@@ -299,10 +299,11 @@ export default async function MatchDetailPage({
         matchId={matchId}
         status={match.status}
         isParticipant={isParticipant}
-        isFull={isFull}
+        registrationClosed={registrationClosed}
         isMember={!!myRole}
         isPendingGuest={isPendingGuest}
         allowGuests={match.allow_guests}
+        canManage={canCreateMatch}
         userProfile={userProfile}
       />
     </>

@@ -57,6 +57,7 @@ export type Match = {
   court_count: number;
   max_participants: number | null;
   allow_guests: boolean;
+  registration_closed: boolean;
   status: MatchStatus;
   format: MatchFormat;
   created_by: string;
