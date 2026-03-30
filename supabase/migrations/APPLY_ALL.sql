@@ -1,0 +1,100 @@
+-- ============================================================
+-- 테놀 (Tenol) - 전체 마이그레이션 통합 스크립트
+-- Supabase SQL Editor에서 이 파일 내용을 실행하세요
+-- ============================================================
+
+-- 00018: Admin이 클럽 멤버를 추가할 수 있는 RLS 정책
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE policyname = 'Admins can add members' AND tablename = 'club_members'
+  ) THEN
+    CREATE POLICY "Admins can add members" ON public.club_members
+      FOR INSERT TO authenticated
+      WITH CHECK (
+        public.is_club_admin(club_id)
+      );
+  END IF;
+END $$;
+
+-- 00019: 모집글 성별 슬롯
+ALTER TABLE public.recruitment_posts ADD COLUMN IF NOT EXISTS male_slots INTEGER;
+ALTER TABLE public.recruitment_posts ADD COLUMN IF NOT EXISTS female_slots INTEGER;
+ALTER TABLE public.recruitment_posts ADD COLUMN IF NOT EXISTS any_slots INTEGER;
+
+-- 00020: 가입/게스트 신청 자기소개
+ALTER TABLE public.club_join_requests ADD COLUMN IF NOT EXISTS introduction TEXT;
+ALTER TABLE public.match_participants ADD COLUMN IF NOT EXISTS introduction TEXT;
+
+-- 00021: 프로필 실명
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS real_name TEXT;
+
+-- 00022: 모집 마감 플래그
+ALTER TABLE public.matches ADD COLUMN IF NOT EXISTS registration_closed BOOLEAN DEFAULT false;
+
+-- 00023: 게스트 접근 RLS 정책 수정
+-- 게스트 허용 경기를 비멤버도 볼 수 있게
+DROP POLICY IF EXISTS "Matches viewable by club members" ON public.matches;
+DROP POLICY IF EXISTS "Matches viewable by club members or guests" ON public.matches;
+CREATE POLICY "Matches viewable by club members or guests" ON public.matches
+  FOR SELECT TO authenticated USING (
+    public.is_club_member(club_id) OR allow_guests = true
+  );
+
+DROP POLICY IF EXISTS "Participants viewable" ON public.match_participants;
+CREATE POLICY "Participants viewable" ON public.match_participants
+  FOR SELECT TO authenticated USING (
+    EXISTS (
+      SELECT 1 FROM public.matches m
+      WHERE m.id = match_id
+        AND (public.is_club_member(m.club_id) OR m.allow_guests = true)
+    )
+  );
+
+-- RPC 함수: join_match_atomically (최종 버전)
+-- registration_closed 체크 + introduction 지원 + MATCH_NOT_FOUND 체크
+CREATE OR REPLACE FUNCTION public.join_match_atomically(
+  p_match_id UUID,
+  p_user_id UUID,
+  p_participant_type TEXT DEFAULT 'member',
+  p_status TEXT DEFAULT 'confirmed',
+  p_guest_name TEXT DEFAULT NULL,
+  p_guest_phone TEXT DEFAULT NULL,
+  p_guest_gender TEXT DEFAULT NULL,
+  p_ntrp_override NUMERIC(2,1) DEFAULT NULL,
+  p_introduction TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_closed BOOLEAN;
+  v_participant_id UUID;
+BEGIN
+  SELECT registration_closed INTO v_closed
+  FROM matches
+  WHERE id = p_match_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'MATCH_NOT_FOUND';
+  END IF;
+
+  IF v_closed = true THEN
+    RAISE EXCEPTION 'REGISTRATION_CLOSED';
+  END IF;
+
+  INSERT INTO match_participants (
+    match_id, user_id, participant_type, status,
+    guest_name, guest_phone, guest_gender, ntrp_override, introduction
+  ) VALUES (
+    p_match_id, p_user_id, p_participant_type, p_status,
+    p_guest_name, p_guest_phone, p_guest_gender, p_ntrp_override, p_introduction
+  )
+  RETURNING id INTO v_participant_id;
+
+  RETURN v_participant_id;
+END;
+$$;
