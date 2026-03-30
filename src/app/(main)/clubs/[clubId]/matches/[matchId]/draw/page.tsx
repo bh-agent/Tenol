@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils/cn';
 import type { ClubRole } from '@/types';
 import { EmptyState } from '@/components/ui/empty-state';
 import { SubstitutePlayerModal } from '@/components/match/substitute-player-modal';
+import { DrawShareImage, type DrawShareImageProps } from '@/components/match/draw-share-image';
 import {
   Shuffle,
   Check,
@@ -31,9 +32,12 @@ import {
   PenLine,
   ArrowRightLeft,
   Replace,
+  Download,
+  Share2,
+  Loader2,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -202,6 +206,13 @@ export default function DrawPage() {
   const [loading, setLoading] = useState(true);
   const [myRole, setMyRole] = useState<ClubRole | null>(null);
   const [matchCourtCount, setMatchCourtCount] = useState(2);
+  const [matchTitle, setMatchTitle] = useState('');
+  const [matchDate, setMatchDate] = useState('');
+
+  // Image export
+  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const [exportingImage, setExportingImage] = useState(false);
+  const [exportDrawId, setExportDrawId] = useState<string | null>(null);
 
   // Draw generation config
   const [drawMode, setDrawMode] = useState<DrawMode>('mixed_all');
@@ -268,16 +279,18 @@ export default function DrawPage() {
       setMyRole((membership?.role as ClubRole) || null);
     }
 
-    // Get match info for court_count and start_time
+    // Get match info for court_count, start_time, title, date
     const { data: matchData } = await supabase
       .from('matches')
-      .select('court_count, start_time')
+      .select('court_count, start_time, title, match_date')
       .eq('id', matchId)
       .maybeSingle();
     if (matchData?.start_time) {
       // Set default start time from match's start_time (format: "HH:MM:SS" or "HH:MM")
       setStartTime(matchData.start_time.substring(0, 5));
     }
+    if (matchData?.title) setMatchTitle(matchData.title);
+    if (matchData?.match_date) setMatchDate(matchData.match_date);
     if (matchData?.court_count) {
       setMatchCourtCount(matchData.court_count);
       // Init court names
@@ -573,6 +586,111 @@ export default function DrawPage() {
     } finally {
       setSavingManual(false);
     }
+  };
+
+  // ── Image export ──
+
+  const getDrawImageProps = (draw: DrawData): DrawShareImageProps | null => {
+    const gamesByOrder = getGamesByOrder(draw.games || []);
+    const sortedOrders = Object.keys(gamesByOrder)
+      .map(Number)
+      .sort((a, b) => a - b);
+    if (sortedOrders.length === 0) return null;
+    const minOrder = Math.min(...sortedOrders);
+    const maxOrder = Math.max(...sortedOrders);
+    const timeSlots = computeTimeSlots(startTime, Number(gameDuration), maxOrder, minOrder);
+
+    const sitOutsBySlot: Record<number, string[]> = {};
+    sortedOrders.forEach((order) => {
+      const sitOuts = getSitOutPlayersForSlot(gamesByOrder[order], participants);
+      if (sitOuts.length > 0) {
+        sitOutsBySlot[order] = sitOuts.map((p) => p.drawName);
+      }
+    });
+
+    return {
+      matchTitle: matchTitle || '대진표',
+      matchDate: matchDate || new Date().toISOString().split('T')[0],
+      startTime,
+      courtCount: matchCourtCount,
+      drawType: mapDrawTypeFromApi(draw.draw_type),
+      gamesByOrder,
+      sortedOrders,
+      timeSlots,
+      participantMap,
+      courtNames,
+      sitOutsBySlot,
+    };
+  };
+
+  const handleExportImage = async (draw: DrawData, mode: 'download' | 'share') => {
+    setExportingImage(true);
+    setExportDrawId(draw.id);
+    try {
+      // Dynamically import html2canvas
+      const html2canvasModule = await import('html2canvas').catch(() => null);
+      if (!html2canvasModule) {
+        alert('이미지 생성 라이브러리를 로드할 수 없습니다. html2canvas가 설치되어 있는지 확인해주세요.');
+        return;
+      }
+      const html2canvas = html2canvasModule.default;
+
+      const container = imageContainerRef.current;
+      if (!container) return;
+
+      // Wait for React to render the selected draw
+      await new Promise((r) => setTimeout(r, 200));
+
+      const canvas = await html2canvas(container.firstElementChild as HTMLElement, {
+        backgroundColor: '#0F0F0F',
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+
+      const blob = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/png')
+      );
+
+      if (!blob) {
+        alert('이미지 생성에 실패했습니다');
+        return;
+      }
+
+      if (mode === 'share' && typeof navigator.share === 'function') {
+        const file = new File([blob], `대진표_${matchTitle || 'draw'}.png`, {
+          type: 'image/png',
+        });
+        try {
+          await navigator.share({
+            title: `${matchTitle} 대진표`,
+            files: [file],
+          });
+        } catch {
+          // User cancelled share or share not supported with files - fall back to download
+          downloadBlob(blob);
+        }
+      } else {
+        downloadBlob(blob);
+      }
+    } catch (e) {
+      console.error('Image export failed:', e);
+      alert('이미지 생성 중 오류가 발생했습니다');
+    } finally {
+      setExportingImage(false);
+      setExportDrawId(null);
+    }
+  };
+
+  const downloadBlob = (blob: Blob) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `대진표_${matchTitle || 'draw'}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   // ── Participant chip renderer ──
@@ -1030,7 +1148,30 @@ export default function DrawPage() {
                       })()}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                    {/* Image export buttons */}
+                    <button
+                      onClick={() => handleExportImage(draw, 'download')}
+                      disabled={exportingImage}
+                      className="flex items-center gap-1 text-xs text-foreground font-medium px-2.5 py-1.5 rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer disabled:opacity-40"
+                    >
+                      {exportingImage ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5" />
+                      )}
+                      이미지
+                    </button>
+                    {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
+                      <button
+                        onClick={() => handleExportImage(draw, 'share')}
+                        disabled={exportingImage}
+                        className="flex items-center gap-1 text-xs text-foreground font-medium px-2.5 py-1.5 rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer disabled:opacity-40"
+                      >
+                        <Share2 className="w-3.5 h-3.5" />
+                        공유
+                      </button>
+                    )}
                     {canManageDraw && (
                       <>
                         <button
@@ -1274,6 +1415,28 @@ export default function DrawPage() {
           </div>
         )}
       </Modal>
+
+      {/* ── Hidden container for image export (off-screen rendering) ── */}
+      {draws.length > 0 && (
+        <div
+          ref={imageContainerRef}
+          aria-hidden
+          style={{
+            position: 'fixed',
+            left: -9999,
+            top: 0,
+            zIndex: -1,
+            pointerEvents: 'none',
+          }}
+        >
+          {(() => {
+            const draw = draws.find((d) => d.id === exportDrawId) || draws[0];
+            const props = getDrawImageProps(draw);
+            if (!props) return null;
+            return <DrawShareImage {...props} />;
+          })()}
+        </div>
+      )}
     </>
   );
 }
