@@ -98,3 +98,18 @@ BEGIN
   RETURN v_participant_id;
 END;
 $$;
+
+-- 00024: 관리자가 다른 유저의 참가자를 추가할 수 있도록 INSERT 정책 확장
+-- (대체 선수 교체, 운영진이 참가자 직접 추가 등)
+DROP POLICY IF EXISTS "Can add participant" ON public.match_participants;
+CREATE POLICY "Can add participant" ON public.match_participants
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    user_id = auth.uid()
+    OR user_id IS NULL
+    OR EXISTS (
+      SELECT 1 FROM public.matches m
+      WHERE m.id = match_id
+        AND (m.created_by = auth.uid() OR public.is_club_admin(m.club_id))
+    )
+  );
