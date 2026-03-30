@@ -225,9 +225,9 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
               {/* Court cards */}
               <div
                 style={{
-                  display: 'flex',
-                  gap: 16,
-                  flexWrap: 'wrap',
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${Math.min(slotGames.length, courtCount)}, 1fr)`,
+                  gap: 12,
                 }}
               >
                 {slotGames.map((game) => {
@@ -241,12 +241,10 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                     <div
                       key={game.id}
                       style={{
-                        flex: '1 1 0',
-                        minWidth: courtCount <= 2 ? 440 : 300,
                         background: '#1A1A1A',
                         border: '1px solid #2A2A2A',
                         borderRadius: 16,
-                        padding: '20px 24px',
+                        padding: '16px 20px',
                         boxSizing: 'border-box',
                       }}
                     >

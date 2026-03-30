@@ -936,13 +936,15 @@ export default function DrawPage() {
                 </div>
               </div>
 
-              <Input
-                id="startTime"
-                label="시작 시간"
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-              />
+              <div className="max-w-[200px]">
+                <Input
+                  id="startTime"
+                  label="시작 시간"
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                />
+              </div>
 
               {/* Court names - expandable */}
               <div>
