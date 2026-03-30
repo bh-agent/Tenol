@@ -26,6 +26,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useRef, useState, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 
 type MediaFile = { url: string; type: string };
 
@@ -188,7 +189,7 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, onDelete, onUpd
                 <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
               </button>
 
-              {showMenu && (
+              {showMenu && createPortal(
                 <>
                   <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowMenu(false)} />
                   <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom">
@@ -211,7 +212,8 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, onDelete, onUpd
                       </button>
                     </div>
                   </div>
-                </>
+                </>,
+                document.body
               )}
             </div>
           )}

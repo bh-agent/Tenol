@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { closeRecruitmentPost, deleteRecruitmentPost } from '@/lib/actions/recruitment';
 
 interface RecruitmentCardProps {
@@ -127,7 +128,7 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
               <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
             </button>
 
-            {showMenu && (
+            {showMenu && createPortal(
               <>
                 <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowMenu(false)} />
                 <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom">
@@ -151,7 +152,8 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
                     </button>
                   </div>
                 </div>
-              </>
+              </>,
+              document.body
             )}
           </div>
         )}

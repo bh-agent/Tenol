@@ -8,6 +8,7 @@ import type { ClubPermission } from '@/lib/utils/permissions';
 import { MoreVertical, ShieldCheck, ShieldOff, UserMinus, KeyRound, Crown, X } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 
 interface MemberManageActionsProps {
   clubId: string;
@@ -80,7 +81,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
           <MoreVertical className="w-4 h-4 text-muted-foreground" />
         </button>
 
-        {showMenu && (
+        {showMenu && createPortal(
           <>
             <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowMenu(false)} />
             <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom">
@@ -155,12 +156,13 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
                 )}
               </div>
             </div>
-          </>
+          </>,
+          document.body
         )}
       </div>
 
       {/* 클럽장 양도 확인 모달 */}
-      {showTransferConfirm && (
+      {showTransferConfirm && createPortal(
         <>
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setShowTransferConfirm(false)} />
           <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 max-w-sm mx-auto bg-surface-elevated rounded-2xl border border-border shadow-xl animate-fade-in">
@@ -199,11 +201,12 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
               </div>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
 
       {/* 권한 관리 모달 */}
-      {showPermissions && (
+      {showPermissions && createPortal(
         <>
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setShowPermissions(false)} />
           <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 max-w-sm mx-auto bg-surface-elevated rounded-2xl border border-border shadow-xl animate-fade-in">
@@ -259,7 +262,8 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
               </p>
             </div>
           </div>
-        </>
+        </>,
+        document.body
       )}
     </>
   );
