@@ -90,6 +90,7 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
     if (!mentions || mentions.length === 0) {
       setMentionedPosts([]);
       setMentionsLoading(false);
+      setMentionsLoaded(true);
       return;
     }
 
