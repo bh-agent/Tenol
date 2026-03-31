@@ -144,7 +144,7 @@ export default function EditMatchPage() {
                 defaultValue={match.match_date}
                 required
               />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
                   id="start_time"
                   name="start_time"
