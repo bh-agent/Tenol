@@ -10,6 +10,7 @@ import { MapPin, Users, Star, Clock, X } from 'lucide-react';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import { BookmarkButton } from '@/components/club/bookmark-button';
 import { Modal } from '@/components/ui/modal';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { joinPublicClub, cancelJoinRequest } from '@/lib/actions/clubs';
@@ -220,10 +221,14 @@ export function ExploreClubList({
           {clubs.map((club: any) => (
             <Card key={club.id} className="hover:border-primary/30 transition-all">
               <div className="flex items-start gap-3">
-                <ClubAvatar logoUrl={club.logo_url} name={club.name} size="md" />
+                <Link href={`/clubs/${club.id}`}>
+                  <ClubAvatar logoUrl={club.logo_url} name={club.name} size="md" />
+                </Link>
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-semibold text-foreground truncate">{club.name}</h4>
+                    <Link href={`/clubs/${club.id}`} className="hover:text-primary transition-colors">
+                      <h4 className="font-semibold text-foreground truncate">{club.name}</h4>
+                    </Link>
                     <BookmarkButton
                       clubId={club.id}
                       initialBookmarked={bookmarkedClubIds.includes(club.id)}
