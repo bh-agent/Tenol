@@ -659,15 +659,8 @@ function selectPlayersForGame(
       score += tc[typeKey] * 100;
     }
 
-    // Deterministic tiebreaker based on player ID to reduce regeneration variance.
-    // The initial shuffle of quota assignment provides variety across regenerations,
-    // while this keeps the greedy assignment stable for a given quota distribution.
-    let hash = 0;
-    const pid2 = getPlayerId(p);
-    for (let c = 0; c < pid2.length; c++) {
-      hash = ((hash << 5) - hash + pid2.charCodeAt(c)) | 0;
-    }
-    score += (Math.abs(hash) % 100) * 0.01;
+    // Random tiebreaker for variety on regeneration
+    score += Math.random() * 0.5;
 
     return score;
   }
@@ -898,26 +891,24 @@ function balanceGameCounts(
     game.gameType = newGameType;
   }
 
+  // === Phase 1: Balance game COUNTS ===
   for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
     const counts = buildGameCounts();
     const values = Array.from(counts.values());
     const minCount = Math.min(...values);
     const maxCount = Math.max(...values);
 
-    if (maxCount - minCount <= 1) break; // balanced!
+    if (maxCount - minCount <= 1) break;
 
-    // Find overplayed (max) and underplayed (min) players
     const overplayed = confirmed.filter(p => (counts.get(getPlayerId(p)) || 0) === maxCount);
     const underplayed = confirmed.filter(p => (counts.get(getPlayerId(p)) || 0) === minCount);
 
     let swapped = false;
 
-    // Try to find a beneficial swap
     for (const overPlayer of overplayed) {
       if (swapped) break;
       const overId = getPlayerId(overPlayer);
 
-      // Find games where the overplayed player participates
       for (const game of games) {
         if (swapped) break;
         const gamePlayers = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
@@ -927,18 +918,12 @@ function balanceGameCounts(
 
         for (const underPlayer of underplayed) {
           const underId = getPlayerId(underPlayer);
-
-          // Skip if underplayed player is already in this time slot (would double-book)
           if (slotPlayers.has(underId)) continue;
-
-          // Skip if underplayed player is already in this game
           if (gamePlayers.some(p => getPlayerId(p) === underId)) continue;
 
-          // Check if the swap produces a valid team composition
           const { valid, newGameType } = isValidSwap(game, overPlayer, underPlayer);
           if (!valid || !newGameType) continue;
 
-          // Apply the swap
           applySwap(game, overPlayer, underPlayer, newGameType);
           swapped = true;
           break;
@@ -946,7 +931,102 @@ function balanceGameCounts(
       }
     }
 
-    if (!swapped) break; // no beneficial swap found, stop
+    if (!swapped) break;
+  }
+
+  // === Phase 2: Balance game TYPE distribution among same-gender players ===
+  // e.g., if one male has 4 mens + 0 mixed, and another has 2 mens + 2 mixed,
+  // swap them so both get 3 mens + 1 mixed
+  if (mode === 'mixed_all') {
+    function buildTypeCounts(): Map<string, { mixed: number; same: number }> {
+      const tc = new Map<string, { mixed: number; same: number }>();
+      confirmed.forEach(p => tc.set(getPlayerId(p), { mixed: 0, same: 0 }));
+      for (const g of games) {
+        const players = [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2];
+        for (const p of players) {
+          const entry = tc.get(getPlayerId(p))!;
+          if (g.gameType === 'mixed') entry.mixed++;
+          else entry.same++;
+        }
+      }
+      return tc;
+    }
+
+    for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+      const tc = buildTypeCounts();
+      let bestSwap: { game: GameSlot; out: MatchParticipant; in_: MatchParticipant; newType: GameType } | null = null;
+      let bestImprovement = 0;
+
+      // For each pair of same-gender players, check if swapping would improve type balance
+      const genders: ('M' | 'F')[] = ['M', 'F'];
+      for (const gender of genders) {
+        const genderPlayers = confirmed.filter(p => getGender(p) === gender);
+        if (genderPlayers.length < 2) continue;
+
+        for (let i = 0; i < genderPlayers.length; i++) {
+          for (let j = i + 1; j < genderPlayers.length; j++) {
+            const pA = genderPlayers[i];
+            const pB = genderPlayers[j];
+            const tcA = tc.get(getPlayerId(pA))!;
+            const tcB = tc.get(getPlayerId(pB))!;
+
+            // Current imbalance: difference in mixed game counts between these two
+            const currentDiff = Math.abs(tcA.mixed - tcB.mixed);
+            if (currentDiff <= 1) continue; // already balanced
+
+            // Who has more mixed games?
+            const morePlayer = tcA.mixed > tcB.mixed ? pA : pB;
+            const lessPlayer = tcA.mixed > tcB.mixed ? pB : pA;
+
+            // Find a mixed game where morePlayer plays, and swap with lessPlayer
+            for (const game of games) {
+              if (game.gameType !== 'mixed') continue;
+              const gamePlayers = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
+              if (!gamePlayers.some(p => getPlayerId(p) === getPlayerId(morePlayer))) continue;
+              if (gamePlayers.some(p => getPlayerId(p) === getPlayerId(lessPlayer))) continue;
+
+              const slotPlayers = playersInSlot(game.timeSlotIndex, game);
+              if (slotPlayers.has(getPlayerId(lessPlayer))) continue;
+
+              const { valid, newGameType } = isValidSwap(game, morePlayer, lessPlayer);
+              if (!valid || !newGameType) continue;
+
+              // Would this swap improve type balance?
+              const newDiff = currentDiff - 2; // swap moves 1 game from more to less
+              const improvement = currentDiff - Math.abs(newDiff);
+              if (improvement > bestImprovement) {
+                bestImprovement = improvement;
+                bestSwap = { game, out: morePlayer, in_: lessPlayer, newType: newGameType };
+              }
+            }
+
+            // Also try: find a same-gender game where lessPlayer plays, swap with morePlayer
+            const sameType: GameType = gender === 'M' ? 'mens' : 'womens';
+            for (const game of games) {
+              if (game.gameType !== sameType) continue;
+              const gamePlayers = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
+              if (!gamePlayers.some(p => getPlayerId(p) === getPlayerId(lessPlayer))) continue;
+              if (gamePlayers.some(p => getPlayerId(p) === getPlayerId(morePlayer))) continue;
+
+              const slotPlayers = playersInSlot(game.timeSlotIndex, game);
+              if (slotPlayers.has(getPlayerId(morePlayer))) continue;
+
+              const { valid, newGameType } = isValidSwap(game, lessPlayer, morePlayer);
+              if (!valid || !newGameType) continue;
+
+              const improvement = currentDiff - (currentDiff - 2);
+              if (improvement > bestImprovement) {
+                bestImprovement = improvement;
+                bestSwap = { game, out: lessPlayer, in_: morePlayer, newType: newGameType };
+              }
+            }
+          }
+        }
+      }
+
+      if (!bestSwap || bestImprovement <= 0) break;
+      applySwap(bestSwap.game, bestSwap.out, bestSwap.in_, bestSwap.newType);
+    }
   }
 }
 
