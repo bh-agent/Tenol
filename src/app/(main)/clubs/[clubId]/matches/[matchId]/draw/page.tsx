@@ -36,7 +36,9 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, createElement } from 'react';
+import { flushSync } from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 // ── Types ──────────────────────────────────────────────────
 
@@ -209,9 +211,8 @@ export default function DrawPage() {
   const [matchDate, setMatchDate] = useState('');
 
   // Image export
-  const imageContainerRef = useRef<HTMLDivElement>(null);
   const [exportingImage, setExportingImage] = useState(false);
-  const [exportDrawId, setExportDrawId] = useState<string | null>(null);
+  const [exportingDrawId, setExportingDrawId] = useState<string | null>(null);
 
   // Draw generation config
   const [drawMode, setDrawMode] = useState<DrawMode>('mixed_all');
@@ -624,7 +625,12 @@ export default function DrawPage() {
 
   const handleExportImage = async (draw: DrawData) => {
     setExportingImage(true);
-    setExportDrawId(draw.id);
+    setExportingDrawId(draw.id);
+
+    // Temporary container for rendering
+    let tempContainer: HTMLDivElement | null = null;
+    let root: ReturnType<typeof createRoot> | null = null;
+
     try {
       // Dynamically import html2canvas
       const html2canvasModule = await import('html2canvas').catch(() => null);
@@ -634,24 +640,44 @@ export default function DrawPage() {
       }
       const html2canvas = html2canvasModule.default;
 
-      // Build props and render to a temporary off-screen div
+      // Build props for the DrawShareImage component
       const props = getDrawImageProps(draw);
       if (!props) {
         alert('대진표 데이터를 가져올 수 없습니다.');
         return;
       }
 
-      // Create a temporary container, render via innerHTML approach won't work with React
-      // Instead, wait for React to re-render with the correct exportDrawId
-      await new Promise((r) => setTimeout(r, 500));
+      // Create a temporary container attached to document.body.
+      // Position it on-screen but visually hidden so html2canvas can render it.
+      tempContainer = document.createElement('div');
+      tempContainer.style.position = 'fixed';
+      tempContainer.style.left = '0';
+      tempContainer.style.top = '0';
+      tempContainer.style.zIndex = '-9999';
+      tempContainer.style.opacity = '0';
+      tempContainer.style.pointerEvents = 'none';
+      // Must NOT use display:none or off-screen left:-9999px — html2canvas needs layout
+      document.body.appendChild(tempContainer);
 
-      const container = imageContainerRef.current;
-      if (!container || !container.firstElementChild) {
+      // Render the DrawShareImage component into the temp container synchronously
+      root = createRoot(tempContainer);
+      flushSync(() => {
+        root!.render(createElement(DrawShareImage, props));
+      });
+
+      // Wait for the browser to actually paint the DOM
+      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+      const target = tempContainer.firstElementChild as HTMLElement;
+      if (!target) {
         alert('이미지 렌더링에 실패했습니다. 다시 시도해주세요.');
         return;
       }
 
-      const canvas = await html2canvas(container.firstElementChild as HTMLElement, {
+      // Make the container visible to html2canvas during capture
+      tempContainer.style.opacity = '1';
+
+      const canvas = await html2canvas(target, {
         backgroundColor: '#0F0F0F',
         scale: 2,
         useCORS: true,
@@ -667,7 +693,7 @@ export default function DrawPage() {
         return;
       }
 
-      // Always try share first, fall back to download
+      // Try native share first (mobile), fall back to download (PC)
       if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
         const file = new File([blob], `대진표_${matchTitle || 'draw'}.png`, {
           type: 'image/png',
@@ -677,7 +703,7 @@ export default function DrawPage() {
           try {
             await navigator.share(shareData);
           } catch {
-            // User cancelled - do nothing
+            // User cancelled share - do nothing
           }
         } else {
           downloadBlob(blob);
@@ -689,8 +715,15 @@ export default function DrawPage() {
       console.error('Image export failed:', e);
       alert('이미지 생성 중 오류가 발생했습니다');
     } finally {
+      // Clean up: unmount React tree and remove temp container
+      if (root) {
+        root.unmount();
+      }
+      if (tempContainer && tempContainer.parentNode) {
+        tempContainer.parentNode.removeChild(tempContainer);
+      }
       setExportingImage(false);
-      setExportDrawId(null);
+      setExportingDrawId(null);
     }
   };
 
@@ -1169,7 +1202,7 @@ export default function DrawPage() {
                       disabled={exportingImage}
                       className="flex items-center gap-1 text-xs text-foreground font-medium px-2.5 py-1.5 rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer disabled:opacity-40"
                     >
-                      {exportingImage && exportDrawId === draw.id ? (
+                      {exportingImage && exportingDrawId === draw.id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
                         <Share2 className="w-3.5 h-3.5" />
@@ -1420,28 +1453,6 @@ export default function DrawPage() {
         )}
       </Modal>
 
-      {/* ── Hidden container for image export (off-screen rendering) ── */}
-      {draws.length > 0 && (
-        <div
-          ref={imageContainerRef}
-          aria-hidden
-          style={{
-            position: 'fixed',
-            left: '-9999px',
-            top: '0px',
-            zIndex: -1,
-            pointerEvents: 'none',
-            opacity: 1,
-          }}
-        >
-          {(() => {
-            const draw = draws.find((d) => d.id === exportDrawId) || draws[0];
-            const props = getDrawImageProps(draw);
-            if (!props) return null;
-            return <DrawShareImage {...props} />;
-          })()}
-        </div>
-      )}
     </>
   );
 }
