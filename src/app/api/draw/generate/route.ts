@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     const { data: match } = await supabase
       .from('matches')
       .select(`
-        id, title, court_count, format, created_by, club_id,
+        id, title, court_count, format, status, created_by, club_id,
         match_participants (
           id, user_id, guest_name, guest_gender, participant_type, status, ntrp_override,
           profiles:user_id (id, display_name, avatar_url, ntrp_level, gender)
@@ -35,6 +35,10 @@ export async function POST(request: Request) {
 
     if (!match) {
       return NextResponse.json({ error: '경기를 찾을 수 없습니다' }, { status: 404 });
+    }
+
+    if (match.status === 'completed' || match.status === 'cancelled') {
+      return NextResponse.json({ error: '종료되거나 취소된 경기에는 대진표를 생성할 수 없습니다' }, { status: 400 });
     }
 
     // Normalize profiles from Supabase join (may be array)

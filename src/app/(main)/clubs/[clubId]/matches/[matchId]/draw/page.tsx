@@ -210,6 +210,7 @@ export default function DrawPage() {
   const [loading, setLoading] = useState(true);
   const [myRole, setMyRole] = useState<ClubRole | null>(null);
   const [matchCourtCount, setMatchCourtCount] = useState(2);
+  const [matchStatus, setMatchStatus] = useState<string>('upcoming');
   const [matchTitle, setMatchTitle] = useState('');
   const [matchDate, setMatchDate] = useState('');
 
@@ -268,7 +269,8 @@ export default function DrawPage() {
   }>({ team_a_player1_id: '', team_a_player2_id: '', team_b_player1_id: '', team_b_player2_id: '' });
   const [savingEdit, setSavingEdit] = useState(false);
 
-  const canManageDraw = hasPermission(myRole, 'draw.manage');
+  const isMatchEnded = matchStatus === 'completed' || matchStatus === 'cancelled';
+  const canManageDraw = hasPermission(myRole, 'draw.manage') && !isMatchEnded;
   const canInputScore = hasPermission(myRole, 'result.input');
 
   // Whether editing is blocked by another user's lock
@@ -381,7 +383,7 @@ export default function DrawPage() {
     // Get match info for court_count, start_time, title, date
     const { data: matchData } = await supabase
       .from('matches')
-      .select('court_count, start_time, title, match_date')
+      .select('court_count, start_time, title, match_date, status')
       .eq('id', matchId)
       .maybeSingle();
     if (matchData?.start_time) {
@@ -390,6 +392,7 @@ export default function DrawPage() {
     }
     if (matchData?.title) setMatchTitle(matchData.title);
     if (matchData?.match_date) setMatchDate(matchData.match_date);
+    if (matchData?.status) setMatchStatus(matchData.status);
     if (matchData?.court_count) {
       setMatchCourtCount(matchData.court_count);
       // Init court names
