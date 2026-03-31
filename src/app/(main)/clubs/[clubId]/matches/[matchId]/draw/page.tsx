@@ -686,7 +686,7 @@ export default function DrawPage() {
       if (!blob) return;
 
       const file = new File([blob], `대진표_${matchTitle || 'draw'}.png`, { type: 'image/png' });
-      const shareData = { files: [file], title: `${matchTitle} 대진표` };
+      const shareData = { files: [file] };
 
       if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare(shareData)) {
         await navigator.share(shareData);
