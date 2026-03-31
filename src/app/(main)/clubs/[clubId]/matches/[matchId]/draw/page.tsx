@@ -629,16 +629,27 @@ export default function DrawPage() {
       // Dynamically import html2canvas
       const html2canvasModule = await import('html2canvas').catch(() => null);
       if (!html2canvasModule) {
-        alert('이미지 생성 라이브러리를 로드할 수 없습니다. html2canvas가 설치되어 있는지 확인해주세요.');
+        alert('이미지 생성 라이브러리를 로드할 수 없습니다.');
         return;
       }
       const html2canvas = html2canvasModule.default;
 
-      const container = imageContainerRef.current;
-      if (!container) return;
+      // Build props and render to a temporary off-screen div
+      const props = getDrawImageProps(draw);
+      if (!props) {
+        alert('대진표 데이터를 가져올 수 없습니다.');
+        return;
+      }
 
-      // Wait for React to render the selected draw
-      await new Promise((r) => setTimeout(r, 200));
+      // Create a temporary container, render via innerHTML approach won't work with React
+      // Instead, wait for React to re-render with the correct exportDrawId
+      await new Promise((r) => setTimeout(r, 500));
+
+      const container = imageContainerRef.current;
+      if (!container || !container.firstElementChild) {
+        alert('이미지 렌더링에 실패했습니다. 다시 시도해주세요.');
+        return;
+      }
 
       const canvas = await html2canvas(container.firstElementChild as HTMLElement, {
         backgroundColor: '#0F0F0F',
@@ -1416,10 +1427,11 @@ export default function DrawPage() {
           aria-hidden
           style={{
             position: 'fixed',
-            left: -9999,
-            top: 0,
+            left: '-9999px',
+            top: '0px',
             zIndex: -1,
             pointerEvents: 'none',
+            opacity: 1,
           }}
         >
           {(() => {
