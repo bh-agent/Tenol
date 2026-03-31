@@ -32,7 +32,6 @@ import {
   PenLine,
   ArrowRightLeft,
   Replace,
-  Download,
   Share2,
   Loader2,
 } from 'lucide-react';
@@ -623,7 +622,7 @@ export default function DrawPage() {
     };
   };
 
-  const handleExportImage = async (draw: DrawData, mode: 'download' | 'share') => {
+  const handleExportImage = async (draw: DrawData) => {
     setExportingImage(true);
     setExportDrawId(draw.id);
     try {
@@ -657,17 +656,19 @@ export default function DrawPage() {
         return;
       }
 
-      if (mode === 'share' && typeof navigator.share === 'function') {
+      // Always try share first, fall back to download
+      if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
         const file = new File([blob], `대진표_${matchTitle || 'draw'}.png`, {
           type: 'image/png',
         });
-        try {
-          await navigator.share({
-            title: `${matchTitle} 대진표`,
-            files: [file],
-          });
-        } catch {
-          // User cancelled share or share not supported with files - fall back to download
+        const shareData = { files: [file], title: `${matchTitle} 대진표` };
+        if (navigator.canShare(shareData)) {
+          try {
+            await navigator.share(shareData);
+          } catch {
+            // User cancelled - do nothing
+          }
+        } else {
           downloadBlob(blob);
         }
       } else {
@@ -1153,27 +1154,17 @@ export default function DrawPage() {
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     {/* Image export buttons */}
                     <button
-                      onClick={() => handleExportImage(draw, 'download')}
+                      onClick={() => handleExportImage(draw)}
                       disabled={exportingImage}
                       className="flex items-center gap-1 text-xs text-foreground font-medium px-2.5 py-1.5 rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer disabled:opacity-40"
                     >
-                      {exportingImage ? (
+                      {exportingImage && exportDrawId === draw.id ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                       ) : (
-                        <Download className="w-3.5 h-3.5" />
-                      )}
-                      이미지
-                    </button>
-                    {typeof navigator !== 'undefined' && typeof navigator.share === 'function' && (
-                      <button
-                        onClick={() => handleExportImage(draw, 'share')}
-                        disabled={exportingImage}
-                        className="flex items-center gap-1 text-xs text-foreground font-medium px-2.5 py-1.5 rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer disabled:opacity-40"
-                      >
                         <Share2 className="w-3.5 h-3.5" />
-                        공유
-                      </button>
-                    )}
+                      )}
+                      공유
+                    </button>
                     {canManageDraw && (
                       <>
                         <button
