@@ -33,6 +33,7 @@ import {
   ArrowRightLeft,
   Replace,
   Share2,
+  Download,
   Loader2,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
@@ -623,119 +624,117 @@ export default function DrawPage() {
     };
   };
 
-  const handleExportImage = async (draw: DrawData) => {
-    setExportingImage(true);
-    setExportingDrawId(draw.id);
+  const generateDrawImage = async (draw: DrawData): Promise<Blob | null> => {
+    const html2canvasModule = await import('html2canvas').catch(() => null);
+    if (!html2canvasModule) {
+      alert('이미지 생성 라이브러리를 로드할 수 없습니다.');
+      return null;
+    }
+    const html2canvas = html2canvasModule.default;
 
-    // Temporary container for rendering
-    let tempContainer: HTMLDivElement | null = null;
+    const props = getDrawImageProps(draw);
+    if (!props) {
+      alert('대진표 데이터를 가져올 수 없습니다.');
+      return null;
+    }
+
+    // Create a temporary VISIBLE container (html2canvas needs it in layout)
+    const tempContainer = document.createElement('div');
+    tempContainer.style.cssText = 'position:absolute;left:0;top:0;z-index:99999;pointer-events:none;';
+    document.body.appendChild(tempContainer);
+
     let root: ReturnType<typeof createRoot> | null = null;
-
     try {
-      // Dynamically import html2canvas
-      const html2canvasModule = await import('html2canvas').catch(() => null);
-      if (!html2canvasModule) {
-        alert('이미지 생성 라이브러리를 로드할 수 없습니다.');
-        return;
-      }
-      const html2canvas = html2canvasModule.default;
-
-      // Build props for the DrawShareImage component
-      const props = getDrawImageProps(draw);
-      if (!props) {
-        alert('대진표 데이터를 가져올 수 없습니다.');
-        return;
-      }
-
-      // Create a temporary container attached to document.body.
-      // Position it on-screen but visually hidden so html2canvas can render it.
-      tempContainer = document.createElement('div');
-      tempContainer.style.position = 'fixed';
-      tempContainer.style.left = '0';
-      tempContainer.style.top = '0';
-      tempContainer.style.zIndex = '-9999';
-      tempContainer.style.opacity = '0';
-      tempContainer.style.pointerEvents = 'none';
-      // Must NOT use display:none or off-screen left:-9999px — html2canvas needs layout
-      document.body.appendChild(tempContainer);
-
-      // Render the DrawShareImage component into the temp container synchronously
       root = createRoot(tempContainer);
       flushSync(() => {
         root!.render(createElement(DrawShareImage, props));
       });
 
-      // Wait for the browser to actually paint the DOM
-      await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+      // Ensure browser has painted
+      await new Promise<void>((r) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => r()));
+      });
+      // Extra safety delay for iOS Safari
+      await new Promise((r) => setTimeout(r, 100));
 
       const target = tempContainer.firstElementChild as HTMLElement;
-      if (!target) {
-        alert('이미지 렌더링에 실패했습니다. 다시 시도해주세요.');
-        return;
-      }
-
-      // Make the container visible to html2canvas during capture
-      tempContainer.style.opacity = '1';
+      if (!target) return null;
 
       const canvas = await html2canvas(target, {
         backgroundColor: '#0F0F0F',
         scale: 2,
         useCORS: true,
         logging: false,
+        windowWidth: 1200,
       });
 
       const blob = await new Promise<Blob | null>((resolve) =>
         canvas.toBlob(resolve, 'image/png')
       );
-
-      if (!blob) {
-        alert('이미지 생성에 실패했습니다');
-        return;
-      }
-
-      // Try native share first (mobile), fall back to download (PC)
-      if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
-        const file = new File([blob], `대진표_${matchTitle || 'draw'}.png`, {
-          type: 'image/png',
-        });
-        const shareData = { files: [file], title: `${matchTitle} 대진표` };
-        if (navigator.canShare(shareData)) {
-          try {
-            await navigator.share(shareData);
-          } catch {
-            // User cancelled share - do nothing
-          }
-        } else {
-          downloadBlob(blob);
-        }
-      } else {
-        downloadBlob(blob);
-      }
-    } catch (e) {
-      console.error('Image export failed:', e);
-      alert('이미지 생성 중 오류가 발생했습니다');
+      return blob;
     } finally {
-      // Clean up: unmount React tree and remove temp container
-      if (root) {
-        root.unmount();
+      if (root) root.unmount();
+      if (tempContainer.parentNode) tempContainer.parentNode.removeChild(tempContainer);
+    }
+  };
+
+  const handleShareDraw = async (draw: DrawData) => {
+    setExportingImage(true);
+    setExportingDrawId(draw.id);
+    try {
+      const blob = await generateDrawImage(draw);
+      if (!blob) return;
+
+      const file = new File([blob], `대진표_${matchTitle || 'draw'}.png`, { type: 'image/png' });
+      const shareData = { files: [file], title: `${matchTitle} 대진표` };
+
+      if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare(shareData)) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: open image in new tab (works on all browsers including iOS Safari)
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
       }
-      if (tempContainer && tempContainer.parentNode) {
-        tempContainer.parentNode.removeChild(tempContainer);
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        console.error('Share failed:', e);
+        alert('공유에 실패했습니다. 저장 버튼을 사용해주세요.');
       }
+    } finally {
       setExportingImage(false);
       setExportingDrawId(null);
     }
   };
 
-  const downloadBlob = (blob: Blob) => {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `대진표_${matchTitle || 'draw'}.png`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleDownloadDraw = async (draw: DrawData) => {
+    setExportingImage(true);
+    setExportingDrawId(draw.id);
+    try {
+      const blob = await generateDrawImage(draw);
+      if (!blob) return;
+
+      // iOS Safari doesn't support a.download — open in new tab instead
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      } else {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `대진표_${matchTitle || 'draw'}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      console.error('Download failed:', e);
+      alert('이미지 저장에 실패했습니다');
+    } finally {
+      setExportingImage(false);
+      setExportingDrawId(null);
+    }
   };
 
   // ── Participant chip renderer ──
@@ -1198,7 +1197,7 @@ export default function DrawPage() {
                   <div className="flex items-center gap-1.5 flex-wrap justify-end">
                     {/* Image export buttons */}
                     <button
-                      onClick={() => handleExportImage(draw)}
+                      onClick={() => handleShareDraw(draw)}
                       disabled={exportingImage}
                       className="flex items-center gap-1 text-xs text-foreground font-medium px-2.5 py-1.5 rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer disabled:opacity-40"
                     >
@@ -1208,6 +1207,14 @@ export default function DrawPage() {
                         <Share2 className="w-3.5 h-3.5" />
                       )}
                       공유
+                    </button>
+                    <button
+                      onClick={() => handleDownloadDraw(draw)}
+                      disabled={exportingImage}
+                      className="flex items-center gap-1 text-xs text-foreground font-medium px-2.5 py-1.5 rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer disabled:opacity-40"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      저장
                     </button>
                     {canManageDraw && (
                       <>
