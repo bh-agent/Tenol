@@ -546,10 +546,24 @@ export default function DrawPage() {
     if (!confirm('대진표를 재생성하시겠습니까? 기존 게임 기록과 점수가 모두 삭제됩니다.')) return;
     setRegenerating(draw.id);
     try {
+      const courtNameArray = Array.from(
+        { length: matchCourtCount },
+        (_, i) => courtNames[i + 1] || `${i + 1}코트`
+      );
+      const overrides = Object.keys(genderOverrides).length > 0 ? genderOverrides : undefined;
       const res = await fetch('/api/draw/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ matchId, drawType: draw.draw_type, roundNumber: draw.round_number }),
+        body: JSON.stringify({
+          matchId,
+          drawType: draw.draw_type,
+          roundNumber: draw.round_number,
+          gamesPerCourt,
+          timeSlotMinutes: Number(gameDuration),
+          startTime,
+          courtNames: courtNameArray,
+          genderOverrides: overrides,
+        }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error);
