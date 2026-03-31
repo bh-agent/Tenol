@@ -576,6 +576,9 @@ export function generateDrawV2(input: DrawInputV2): DrawResultV2 {
   // Also verify game count balance.
   repairGameCounts(games, confirmed, courts, totalGames, totalTimeSlots, gameCount, quota, gameTypeCounts, startTime, timeSlotMinutes, effectiveMode);
 
+  // === Post-generation balance: swap players to equalize game counts ===
+  balanceGameCounts(games, confirmed, effectiveMode);
+
   // === Validation ===
   validateDraw(games, confirmed, totalGames, effectiveMode);
 
@@ -656,8 +659,15 @@ function selectPlayersForGame(
       score += tc[typeKey] * 100;
     }
 
-    // Tiny random factor to break ties
-    score += Math.random() * 10;
+    // Deterministic tiebreaker based on player ID to reduce regeneration variance.
+    // The initial shuffle of quota assignment provides variety across regenerations,
+    // while this keeps the greedy assignment stable for a given quota distribution.
+    let hash = 0;
+    const pid2 = getPlayerId(p);
+    for (let c = 0; c < pid2.length; c++) {
+      hash = ((hash << 5) - hash + pid2.charCodeAt(c)) | 0;
+    }
+    score += (Math.abs(hash) % 100) * 0.01;
 
     return score;
   }
@@ -782,6 +792,161 @@ function repairGameCounts(
         endTime: slotEnd,
       });
     }
+  }
+}
+
+/**
+ * Post-generation balance pass: swap overplayed players with underplayed ones.
+ *
+ * After the greedy slot-by-slot assignment, some players may have more games
+ * than others due to gender constraints limiting choices. This function iterates
+ * over games, finds swaps between overplayed and underplayed players that
+ * preserve team composition validity and time-slot uniqueness, and applies them.
+ *
+ * Target: max - min game count <= 1.
+ */
+function balanceGameCounts(
+  games: GameSlot[],
+  confirmed: MatchParticipant[],
+  mode: DrawMode,
+): void {
+  const MAX_ITERATIONS = 200; // safety cap
+
+  // Helper: rebuild game count map from scratch
+  function buildGameCounts(): Map<string, number> {
+    const counts = new Map<string, number>();
+    confirmed.forEach(p => counts.set(getPlayerId(p), 0));
+    for (const g of games) {
+      for (const p of [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2]) {
+        counts.set(getPlayerId(p), (counts.get(getPlayerId(p)) || 0) + 1);
+      }
+    }
+    return counts;
+  }
+
+  // Helper: get all player IDs in a time slot (excluding a specific game)
+  function playersInSlot(slotIndex: number, excludeGame: GameSlot): Set<string> {
+    const ids = new Set<string>();
+    for (const g of games) {
+      if (g === excludeGame) continue;
+      if (g.timeSlotIndex !== slotIndex) continue;
+      for (const p of [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2]) {
+        ids.add(getPlayerId(p));
+      }
+    }
+    return ids;
+  }
+
+  // Helper: check if swapping playerOut for playerIn in a game keeps valid composition
+  function isValidSwap(
+    game: GameSlot,
+    playerOut: MatchParticipant,
+    playerIn: MatchParticipant,
+  ): { valid: boolean; newGameType?: GameType } {
+    // Build the 4-player list after swap
+    const allPlayers = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
+    const outIdx = allPlayers.findIndex(p => getPlayerId(p) === getPlayerId(playerOut));
+    if (outIdx === -1) return { valid: false };
+
+    const newPlayers = [...allPlayers];
+    newPlayers[outIdx] = playerIn;
+
+    // Check no duplicates
+    const ids = new Set(newPlayers.map(p => getPlayerId(p)));
+    if (ids.size !== 4) return { valid: false };
+
+    const males = newPlayers.filter(p => getGender(p) === 'M').length;
+    const females = newPlayers.filter(p => getGender(p) === 'F').length;
+
+    if (mode === 'free') {
+      return { valid: true, newGameType: 'free' };
+    }
+
+    // Determine what game type the new composition supports
+    if (males === 2 && females === 2) {
+      // Can be mixed - also verify each team is 1M+1F after re-pairing
+      return { valid: true, newGameType: 'mixed' };
+    }
+    if (males === 4) {
+      if (mode === 'mixed_only') return { valid: false }; // mixed_only doesn't allow mens
+      return { valid: true, newGameType: 'mens' };
+    }
+    if (females === 4) {
+      if (mode === 'mixed_only') return { valid: false }; // mixed_only doesn't allow womens
+      return { valid: true, newGameType: 'womens' };
+    }
+
+    // Invalid composition (e.g., 3M+1F) - not allowed in any gendered mode
+    return { valid: false };
+  }
+
+  // Helper: apply a swap - replace playerOut with playerIn in the game, re-pair by NTRP
+  function applySwap(
+    game: GameSlot,
+    playerOut: MatchParticipant,
+    playerIn: MatchParticipant,
+    newGameType: GameType,
+  ): void {
+    const allPlayers = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
+    const outIdx = allPlayers.findIndex(p => getPlayerId(p) === getPlayerId(playerOut));
+    allPlayers[outIdx] = playerIn;
+
+    // Re-pair by NTRP for the new game type
+    const { teamA, teamB } = pairByNtrp(allPlayers, newGameType);
+    game.teamA = teamA;
+    game.teamB = teamB;
+    game.gameType = newGameType;
+  }
+
+  for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
+    const counts = buildGameCounts();
+    const values = Array.from(counts.values());
+    const minCount = Math.min(...values);
+    const maxCount = Math.max(...values);
+
+    if (maxCount - minCount <= 1) break; // balanced!
+
+    // Find overplayed (max) and underplayed (min) players
+    const overplayed = confirmed.filter(p => (counts.get(getPlayerId(p)) || 0) === maxCount);
+    const underplayed = confirmed.filter(p => (counts.get(getPlayerId(p)) || 0) === minCount);
+
+    let swapped = false;
+
+    // Try to find a beneficial swap
+    for (const overPlayer of overplayed) {
+      if (swapped) break;
+      const overId = getPlayerId(overPlayer);
+
+      // Find games where the overplayed player participates
+      for (const game of games) {
+        if (swapped) break;
+        const gamePlayers = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
+        if (!gamePlayers.some(p => getPlayerId(p) === overId)) continue;
+
+        const slotPlayers = playersInSlot(game.timeSlotIndex, game);
+
+        for (const underPlayer of underplayed) {
+          const underId = getPlayerId(underPlayer);
+
+          // Skip if underplayed player is already in this time slot (would double-book)
+          if (slotPlayers.has(underId)) continue;
+
+          // Skip if underplayed player is already in this game
+          if (gamePlayers.some(p => getPlayerId(p) === underId)) continue;
+
+          // Check if the swap produces a valid team composition
+          const { valid, newGameType } = isValidSwap(game, overPlayer, underPlayer);
+          if (!valid || !newGameType) continue;
+
+          // Apply the swap
+          applySwap(game, overPlayer, underPlayer, newGameType);
+          swapped = true;
+          break;
+        }
+      }
+    }
+
+    if (!swapped) break; // no beneficial swap found, stop
   }
 }
 
