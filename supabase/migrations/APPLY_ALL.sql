@@ -130,3 +130,21 @@ DROP POLICY IF EXISTS "Media viewable by club members" ON public.media;
 DROP POLICY IF EXISTS "Media viewable by authenticated" ON public.media;
 CREATE POLICY "Media viewable by authenticated" ON public.media
   FOR SELECT TO authenticated USING (true);
+
+-- 00028: 대진표 동시 편집 방지 잠금 테이블
+CREATE TABLE IF NOT EXISTS public.draw_edit_locks (
+  match_id UUID PRIMARY KEY REFERENCES public.matches(id) ON DELETE CASCADE,
+  locked_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  locked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  display_name TEXT
+);
+
+ALTER TABLE public.draw_edit_locks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Locks viewable" ON public.draw_edit_locks;
+CREATE POLICY "Locks viewable" ON public.draw_edit_locks
+  FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Lock management" ON public.draw_edit_locks;
+CREATE POLICY "Lock management" ON public.draw_edit_locks
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);

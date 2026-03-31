@@ -12,6 +12,7 @@ import { PlayerGameSummary } from '@/components/match/player-game-summary';
 import { GameRoundCard } from '@/components/match/game-round-card';
 import { addOfflineParticipant, removeParticipant, replaceParticipant, replaceWithOffline } from '@/lib/actions/matches';
 import { deleteDraw, updateGamePlayers, createManualDraw } from '@/lib/actions/games';
+import { acquireDrawLock, releaseDrawLock, checkDrawLock, type DrawLockResult } from '@/lib/actions/draw-lock';
 import { createClient } from '@/lib/supabase/client';
 import { hasPermission } from '@/lib/utils/permissions';
 import { cn } from '@/lib/utils/cn';
@@ -35,6 +36,7 @@ import {
   Share2,
   Download,
   Loader2,
+  Lock,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, createElement } from 'react';
@@ -250,6 +252,12 @@ export default function DrawPage() {
   const [substituteTarget, setSubstituteTarget] = useState<Participant | null>(null);
   const [substituting, setSubstituting] = useState(false);
 
+  // Draw edit lock
+  const [drawLocked, setDrawLocked] = useState(false);
+  const [lockHolder, setLockHolder] = useState<string>('');
+  const [lockStartTime, setLockStartTime] = useState<string>('');
+  const drawLockedRef = useRef(false);
+
   // Edit game modal
   const [editGame, setEditGame] = useState<GameData | null>(null);
   const [editPlayers, setEditPlayers] = useState<{
@@ -262,6 +270,96 @@ export default function DrawPage() {
 
   const canManageDraw = hasPermission(myRole, 'draw.manage');
   const canInputScore = hasPermission(myRole, 'result.input');
+
+  // Whether editing is blocked by another user's lock
+  const isEditBlocked = drawLocked && canManageDraw;
+
+  // ── Draw edit lock ──
+
+  const applyLockResult = useCallback((result: DrawLockResult) => {
+    if (result.locked) {
+      setDrawLocked(true);
+      drawLockedRef.current = true;
+      setLockHolder(result.lockedBy);
+      setLockStartTime(result.lockedAt);
+    } else {
+      setDrawLocked(false);
+      drawLockedRef.current = false;
+      setLockHolder('');
+      setLockStartTime('');
+    }
+  }, []);
+
+  // Acquire lock on mount (for admins), release on unmount
+  useEffect(() => {
+    if (!canManageDraw) return;
+
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+
+    const init = async () => {
+      try {
+        const result = await acquireDrawLock(matchId);
+        applyLockResult(result);
+
+        // Poll every 30s: refresh own lock or check if still locked
+        pollInterval = setInterval(async () => {
+          try {
+            if (drawLockedRef.current) {
+              // We're blocked - just check status
+              const status = await checkDrawLock(matchId);
+              applyLockResult(status);
+              // If lock expired, try to acquire
+              if (!status.locked) {
+                const acq = await acquireDrawLock(matchId);
+                applyLockResult(acq);
+              }
+            } else {
+              // We hold the lock - refresh it
+              const result = await acquireDrawLock(matchId);
+              applyLockResult(result);
+            }
+          } catch {
+            // Polling failure is non-fatal
+          }
+        }, 30000);
+      } catch {
+        // Lock acquisition failure is non-fatal
+      }
+    };
+
+    init();
+
+    // Release on unmount
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+      // Fire-and-forget release
+      releaseDrawLock(matchId).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchId, canManageDraw]);
+
+  // Release lock on page close/navigation (beacon fallback)
+  useEffect(() => {
+    if (!canManageDraw) return;
+
+    const handleBeforeUnload = () => {
+      // Use fetch with keepalive for reliable delivery on page close
+      const url = `${window.location.origin}/api/draw/release-lock`;
+      try {
+        fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ matchId }),
+          keepalive: true,
+        });
+      } catch {
+        // Best-effort
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [matchId, canManageDraw]);
 
   // ── Load data ──
 
@@ -766,7 +864,7 @@ export default function DrawPage() {
         {isOverridden && (
           <span className="text-[10px] text-yellow-400 font-semibold">(이동)</span>
         )}
-        {canManageDraw && (
+        {canManageDraw && !isEditBlocked && (
           <>
             <button
               onClick={() => toggleGenderOverride(p)}
@@ -804,6 +902,29 @@ export default function DrawPage() {
     <>
       <TopBar title="대진표" backHref={`/clubs/${clubId}/matches/${matchId}`} />
 
+      {/* Draw edit lock banner */}
+      {isEditBlocked && (
+        <div className="mx-4 mt-3 px-4 py-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center gap-3">
+          <Lock className="w-4 h-4 text-yellow-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-yellow-300">
+              {lockHolder}님이 대진표를 수정 중입니다
+            </p>
+            {lockStartTime && (
+              <p className="text-xs text-yellow-400/70 mt-0.5">
+                {new Date(lockStartTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}부터
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+      {canManageDraw && !drawLocked && (
+        <div className="mx-4 mt-3 px-4 py-2 rounded-xl bg-primary/5 border border-primary/20 flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+          <p className="text-xs text-primary/80">수정 중</p>
+        </div>
+      )}
+
       <div className="px-4 py-4 space-y-4 animate-fade-in">
         {/* ── Participants ── */}
         <Card variant="glass" padding="lg">
@@ -812,7 +933,7 @@ export default function DrawPage() {
               <Users className="w-4 h-4 text-primary" />
               참가자 ({participants.length}명)
             </h3>
-            {canManageDraw && (
+            {canManageDraw && !isEditBlocked && (
               <button
                 onClick={() => setShowAddModal(true)}
                 className="flex items-center gap-1.5 text-sm text-primary font-medium px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors cursor-pointer"
@@ -866,7 +987,7 @@ export default function DrawPage() {
         </Card>
 
         {/* ── Draw Config Panel ── */}
-        {canManageDraw && (
+        {canManageDraw && !isEditBlocked && (
           <Card variant="glow" padding="lg">
             <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
               <Shuffle className="w-4 h-4 text-primary" />
@@ -1052,7 +1173,7 @@ export default function DrawPage() {
         )}
 
         {/* ── Manual Draw Editor ── */}
-        {manualMode && canManageDraw && (
+        {manualMode && canManageDraw && !isEditBlocked && (
           <Card variant="glass" padding="lg">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-foreground flex items-center gap-2">
@@ -1216,7 +1337,7 @@ export default function DrawPage() {
                       <Download className="w-3.5 h-3.5" />
                       저장
                     </button>
-                    {canManageDraw && (
+                    {canManageDraw && !isEditBlocked && (
                       <>
                         <button
                           onClick={() => handleRegenerate(draw)}
@@ -1264,7 +1385,7 @@ export default function DrawPage() {
                         games={slotGames}
                         participantMap={participantMap}
                         courtNames={courtNames}
-                        canManage={canManageDraw}
+                        canManage={canManageDraw && !isEditBlocked}
                         canInputScore={canInputScore}
                         sitOutNames={sitOutNames.length > 0 ? sitOutNames : undefined}
                         onEditGame={handleEditGame}
