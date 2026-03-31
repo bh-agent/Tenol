@@ -56,7 +56,7 @@ export default function ResultsPage() {
   const [saving, setSaving] = useState(false);
   const [myRole, setMyRole] = useState<ClubRole | null>(null);
   const [loading, setLoading] = useState(true);
-  const [matchMvp, setMatchMvp] = useState<MatchMvpData | null>(null);
+  const [matchMvps, setMatchMvps] = useState<MatchMvpData[]>([]);
 
   const canInputResult = hasPermission(myRole, 'result.input');
 
@@ -152,35 +152,39 @@ export default function ResultsPage() {
       });
 
       if (sorted.length > 0) {
-        const [topPid, topAgg] = sorted[0];
-        const topPart = parts?.find((p: any) => p.id === topPid);
-        const userId = topPart?.user_id;
+        const topScore = sorted[0][1].totalScore;
+        // Find ALL players with the top score (co-MVPs)
+        const coMvps = sorted.filter(([, agg]) => agg.totalScore === topScore);
 
-        // Get profile for avatar
-        let avatarUrl: string | null = null;
-        let ntrpLevel: number | null = null;
-        if (userId) {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('avatar_url, ntrp_level')
-            .eq('id', userId)
-            .maybeSingle();
-          avatarUrl = profile?.avatar_url || null;
-          ntrpLevel = profile?.ntrp_level ?? null;
+        const mvpList: MatchMvpData[] = [];
+        for (const [pid, agg] of coMvps) {
+          const part = parts?.find((p: any) => p.id === pid);
+          const userId = part?.user_id;
+          let avatarUrl: string | null = null;
+          let ntrpLevel: number | null = null;
+          if (userId) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('avatar_url, ntrp_level')
+              .eq('id', userId)
+              .maybeSingle();
+            avatarUrl = profile?.avatar_url || null;
+            ntrpLevel = profile?.ntrp_level ?? null;
+          }
+          mvpList.push({
+            user_id: userId || pid,
+            display_name: pMap[pid] || '???',
+            avatar_url: avatarUrl,
+            ntrp_level: ntrpLevel,
+            total_score: agg.totalScore,
+            games_played: agg.gamesPlayed,
+            wins: agg.wins,
+          });
         }
-
-        setMatchMvp({
-          user_id: userId || topPid,
-          display_name: pMap[topPid] || '???',
-          avatar_url: avatarUrl,
-          ntrp_level: ntrpLevel,
-          total_score: topAgg.totalScore,
-          games_played: topAgg.gamesPlayed,
-          wins: topAgg.wins,
-        });
+        setMatchMvps(mvpList);
       }
     } else {
-      setMatchMvp(null);
+      setMatchMvps([]);
     }
 
     setLoading(false);
@@ -216,53 +220,57 @@ export default function ResultsPage() {
       <TopBar title="경기 결과" backHref={`/clubs/${clubId}/matches/${matchId}`} />
 
       <div className="px-4 py-4 space-y-3 animate-fade-in">
-        {/* Match MVP */}
-        {!loading && matchMvp && (
+        {/* Match MVP(s) */}
+        {!loading && matchMvps.length > 0 && (
           <Card variant="glow" padding="md" className="relative overflow-hidden">
             <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-[#FFD740]/8 blur-xl pointer-events-none" />
 
             <div className="flex items-center gap-2 mb-3">
               <Trophy className="w-4 h-4 text-[#FFD740]" />
               <span className="text-sm font-bold text-[#FFD740]">
-                이 경기의 MVP
+                {matchMvps.length > 1 ? `공동 MVP (${matchMvps.length}명)` : '이 경기의 MVP'}
               </span>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="absolute inset-0 rounded-full bg-[#FFD740]/15 blur-sm scale-110" />
-                <Avatar
-                  src={matchMvp.avatar_url}
-                  alt={matchMvp.display_name}
-                  fallback={matchMvp.display_name}
-                  size="lg"
-                  active
-                />
-                <Crown className="absolute -top-1.5 -right-1.5 w-4 h-4 text-[#FFD740] drop-shadow-[0_0_4px_rgba(255,215,64,0.5)]" />
-              </div>
+            <div className="space-y-3">
+              {matchMvps.map((mvp) => (
+                <div key={mvp.user_id} className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="absolute inset-0 rounded-full bg-[#FFD740]/15 blur-sm scale-110" />
+                    <Avatar
+                      src={mvp.avatar_url}
+                      alt={mvp.display_name}
+                      fallback={mvp.display_name}
+                      size="lg"
+                      active
+                    />
+                    <Crown className="absolute -top-1.5 -right-1.5 w-4 h-4 text-[#FFD740] drop-shadow-[0_0_4px_rgba(255,215,64,0.5)]" />
+                  </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <p className="font-bold text-foreground truncate">
-                    {matchMvp.display_name}
-                  </p>
-                  {matchMvp.ntrp_level && (
-                    <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                      {matchMvp.ntrp_level}
-                    </Badge>
-                  )}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="font-bold text-foreground truncate">
+                        {mvp.display_name}
+                      </p>
+                      {mvp.ntrp_level && (
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                          {mvp.ntrp_level}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {mvp.total_score}점 | {mvp.wins}승 {mvp.games_played - mvp.wins}패
+                    </p>
+                  </div>
+
+                  <div className="text-right flex-shrink-0">
+                    <p className="text-xl font-bold text-[#FFD740]">
+                      {mvp.total_score}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">득점</p>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {matchMvp.total_score}점 | {matchMvp.wins}승 {matchMvp.games_played - matchMvp.wins}패
-                </p>
-              </div>
-
-              <div className="text-right flex-shrink-0">
-                <p className="text-xl font-bold text-[#FFD740]">
-                  {matchMvp.total_score}
-                </p>
-                <p className="text-[10px] text-muted-foreground">득점</p>
-              </div>
+              ))}
             </div>
           </Card>
         )}
