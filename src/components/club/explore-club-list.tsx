@@ -4,7 +4,6 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/search/search-input';
-import { FilterChips } from '@/components/search/filter-chips';
 import { SearchEmpty } from '@/components/search/search-empty';
 import { REGIONS, getSigunguList } from '@/lib/constants/regions';
 import { MapPin, Users, Star, Clock, X } from 'lucide-react';
@@ -194,31 +193,58 @@ export function ExploreClubList({
   }
 
   return (
-    <div className="px-4 py-4 space-y-4">
+    <div className="py-4 space-y-4">
       {/* 검색 */}
-      <SearchInput
-        placeholder="클럽 이름으로 검색"
-        value={initialQuery}
-        onChange={handleQueryChange}
-      />
+      <div className="px-4">
+        <SearchInput
+          placeholder="클럽 이름으로 검색"
+          value={initialQuery}
+          onChange={handleQueryChange}
+        />
+      </div>
 
-      {/* 시/도 필터 */}
-      <FilterChips
-        chips={SIDO_CHIPS}
-        selected={currentSido}
-        onChange={handleSidoChange}
-      />
+      {/* 시/도 필터 — overflow를 위해 px-4를 직접 적용 */}
+      <div className="overflow-x-auto scrollbar-hide px-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <div className="flex gap-2 w-max pb-1">
+          {SIDO_CHIPS.map((chip) => (
+            <button
+              key={chip.key}
+              onClick={() => handleSidoChange(chip.key)}
+              className={`flex-shrink-0 px-3.5 py-1.5 min-h-[44px] min-w-[44px] rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                currentSido === chip.key
+                  ? 'bg-primary text-black shadow-[0_0_12px_rgba(0,230,118,0.25)]'
+                  : 'bg-surface-elevated text-muted-foreground hover:bg-surface-hover hover:text-foreground'
+              }`}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* 시/군/구 필터 (시/도 선택 시) */}
       {sigunguChips.length > 0 && (
-        <FilterChips
-          chips={sigunguChips}
-          selected={currentSigungu}
-          onChange={handleSigunguChange}
-        />
+        <div className="overflow-x-auto scrollbar-hide px-4" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex gap-2 w-max pb-1">
+            {sigunguChips.map((chip) => (
+              <button
+                key={chip.key}
+                onClick={() => handleSigunguChange(chip.key)}
+                className={`flex-shrink-0 px-3.5 py-1.5 min-h-[44px] min-w-[44px] rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                  currentSigungu === chip.key
+                    ? 'bg-primary text-black shadow-[0_0_12px_rgba(0,230,118,0.25)]'
+                    : 'bg-surface-elevated text-muted-foreground hover:bg-surface-hover hover:text-foreground'
+                }`}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* 결과 */}
+      <div className="px-4">
       {clubs.length === 0 ? (
         <SearchEmpty
           query={initialQuery}
@@ -282,6 +308,7 @@ export function ExploreClubList({
           ))}
         </div>
       )}
+      </div>
       {/* Join Application Modal */}
       <Modal
         isOpen={!!joinModalClubId}
