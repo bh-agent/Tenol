@@ -158,7 +158,9 @@ export const updateProfileSchema = z.object({
 
 export const completeOnboardingSchema = z.object({
   display_name: sanitizedText.pipe(z.string().min(1, '닉네임을 입력해주세요').max(30)),
+  real_name: sanitizedText.pipe(z.string().min(1, '실명을 입력해주세요').max(30)),
   gender: genderSchema,
+  region: sanitizedText.pipe(z.string().max(100)).nullable(),
   bio: sanitizedText.pipe(z.string().max(200)).nullable(),
   ntrp_level: z.number().min(1.0).max(7.0).nullable(),
 });

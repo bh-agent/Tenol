@@ -3,16 +3,15 @@
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { RegionPicker } from '@/components/ui/region-picker';
 import { completeOnboarding, uploadOnboardingAvatar } from '@/lib/actions/profile';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils/cn';
-import { Camera, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, ChevronLeft, ChevronRight, MapPin, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 
 const NTRP_OPTIONS = [
-  { value: '', label: 'NTRP 레벨 선택' },
   { value: '1.0', label: '1.0 - 입문' },
   { value: '1.5', label: '1.5 - 초보' },
   { value: '2.0', label: '2.0 - 초급' },
@@ -34,10 +33,18 @@ export default function OnboardingPage() {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [gender, setGender] = useState<string>('');
+
+  // Step 1: Identity
   const [displayName, setDisplayName] = useState('');
-  const [bio, setBio] = useState('');
+  const [realName, setRealName] = useState('');
+  const [gender, setGender] = useState<string>('');
+
+  // Step 2: Tennis info
+  const [region, setRegion] = useState('');
   const [ntrp, setNtrp] = useState('');
+
+  // Step 3: Profile
+  const [bio, setBio] = useState('');
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -77,20 +84,15 @@ export default function OnboardingPage() {
     }
   };
 
-  const handleGenderSelect = (g: string) => {
-    setGender(g);
-    // 닉네임이 이미 입력되어 있으면 자동으로 다음 단계로
-    if (displayName.trim()) {
-      setError('');
-      setTimeout(() => setStep(2), 300);
-    }
-  };
-
   const handleNext = () => {
     setError('');
     if (step === 1) {
       if (!displayName.trim()) {
         setError('닉네임을 입력해주세요');
+        return;
+      }
+      if (!realName.trim()) {
+        setError('실명을 입력해주세요');
         return;
       }
       if (!gender) {
@@ -112,7 +114,9 @@ export default function OnboardingPage() {
     try {
       const formData = new FormData();
       formData.set('display_name', displayName);
+      formData.set('real_name', realName);
       formData.set('gender', gender);
+      formData.set('region', region);
       formData.set('bio', bio);
       formData.set('ntrp_level', ntrp);
       await completeOnboarding(formData);
@@ -139,9 +143,8 @@ export default function OnboardingPage() {
         <h2 className="text-lg font-bold text-gradient">테놀에 오신 것을 환영합니다!</h2>
       </div>
 
-      {/* Top bar with progress */}
+      {/* Progress */}
       <div className="relative z-10 px-6 pt-4 pb-4">
-        {/* Step indicator dots */}
         <div className="flex items-center justify-center gap-2 mb-8">
           {Array.from({ length: TOTAL_STEPS }, (_, i) => (
             <div
@@ -157,8 +160,6 @@ export default function OnboardingPage() {
             />
           ))}
         </div>
-
-        {/* Step label */}
         <p className="text-xs text-muted-foreground text-center mb-1">
           {step} / {TOTAL_STEPS}
         </p>
@@ -167,7 +168,7 @@ export default function OnboardingPage() {
       {/* Content area */}
       <div className="relative z-10 flex-1 flex flex-col items-center px-6">
         <div className="w-full max-w-sm">
-          {/* Step 1: Profile basics */}
+          {/* ── Step 1: Identity (필수) ── */}
           {step === 1 && (
             <div className="animate-fade-in">
               <h1 className="text-2xl font-bold text-foreground mb-1 text-center">
@@ -190,7 +191,23 @@ export default function OnboardingPage() {
                   className="bg-surface border-border focus:border-primary"
                 />
 
-                {/* Gender Selection */}
+                <div>
+                  <Input
+                    id="real_name"
+                    name="real_name"
+                    label="실명"
+                    placeholder="대진표에 표시될 이름"
+                    required
+                    value={realName}
+                    onChange={(e) => setRealName(e.target.value)}
+                    className="bg-surface border-border focus:border-primary"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    대진표에서 실명(닉네임) 형태로 표시됩니다
+                  </p>
+                </div>
+
+                {/* Gender */}
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
                     성별 <span className="text-destructive">*</span>
@@ -198,7 +215,7 @@ export default function OnboardingPage() {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       type="button"
-                      onClick={() => handleGenderSelect('M')}
+                      onClick={() => setGender('M')}
                       className={cn(
                         'h-12 rounded-xl border text-sm font-medium transition-all duration-200',
                         gender === 'M'
@@ -210,7 +227,7 @@ export default function OnboardingPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleGenderSelect('F')}
+                      onClick={() => setGender('F')}
                       className={cn(
                         'h-12 rounded-xl border text-sm font-medium transition-all duration-200',
                         gender === 'F'
@@ -226,8 +243,70 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Step 2: Avatar & Bio */}
+          {/* ── Step 2: Tennis Info (선택) ── */}
           {step === 2 && (
+            <div className="animate-fade-in">
+              <h1 className="text-2xl font-bold text-foreground mb-1 text-center">
+                테니스 정보를 알려주세요
+              </h1>
+              <p className="text-muted-foreground text-sm mb-8 text-center">
+                클럽 탐색과 매칭에 활용됩니다
+              </p>
+
+              <div className="space-y-6 stagger">
+                {/* Region */}
+                <RegionPicker
+                  value={region}
+                  onChange={setRegion}
+                  label="활동 지역"
+                  placeholder="주로 테니스를 치는 지역"
+                />
+
+                {/* NTRP */}
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    NTRP 레벨
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {NTRP_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => setNtrp(option.value)}
+                        className={cn(
+                          'h-12 rounded-xl border text-sm font-medium transition-all duration-200',
+                          ntrp === option.value
+                            ? 'border-primary bg-primary/10 text-primary glow-primary-sm'
+                            : 'border-border bg-surface text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                        )}
+                      >
+                        {option.value}
+                      </button>
+                    ))}
+                  </div>
+                  {ntrp && (
+                    <p className="mt-2 text-xs text-primary/80 text-center animate-fade-in">
+                      {NTRP_OPTIONS.find((o) => o.value === ntrp)?.label}
+                    </p>
+                  )}
+                </div>
+
+                {/* NTRP guide */}
+                <div className="rounded-xl bg-surface-elevated/50 border border-border p-3 space-y-1.5">
+                  <p className="text-xs font-medium text-foreground mb-1">레벨 가이드</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">1.0-2.0</span> 입문자</p>
+                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">2.5-3.0</span> 초급</p>
+                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">3.5-4.0</span> 중급</p>
+                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">4.5-5.0</span> 상급</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Step 3: Profile (선택) ── */}
+          {step === 3 && (
             <div className="animate-fade-in">
               <h1 className="text-2xl font-bold text-foreground mb-1 text-center">
                 프로필을 꾸며보세요
@@ -237,7 +316,7 @@ export default function OnboardingPage() {
               </p>
 
               <div className="space-y-6 stagger">
-                {/* Avatar upload area */}
+                {/* Avatar */}
                 <div className="flex flex-col items-center">
                   <button
                     type="button"
@@ -259,7 +338,6 @@ export default function OnboardingPage() {
                         <span className="text-xs text-muted-foreground">사진 추가</span>
                       </div>
                     )}
-                    {/* Camera badge overlay */}
                     {avatarUrl && (
                       <div className="absolute -bottom-1 -right-1 w-9 h-9 bg-primary rounded-full flex items-center justify-center shadow-lg">
                         <Camera className="w-4 h-4 text-black" />
@@ -292,66 +370,7 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* Step 3: Tennis level */}
-          {step === 3 && (
-            <div className="animate-fade-in">
-              <h1 className="text-2xl font-bold text-foreground mb-1 text-center">
-                테니스 실력은 어느 정도인가요?
-              </h1>
-              <p className="text-muted-foreground text-sm mb-8 text-center">
-                적절한 매칭을 위해 알려주세요
-              </p>
-
-              <div className="space-y-5 stagger">
-                {/* NTRP Level Selector */}
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">
-                    NTRP 레벨
-                  </label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {NTRP_OPTIONS.filter((o) => o.value).map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => setNtrp(option.value)}
-                        className={cn(
-                          'h-12 rounded-xl border text-sm font-medium transition-all duration-200',
-                          ntrp === option.value
-                            ? 'border-primary bg-primary/10 text-primary glow-primary-sm'
-                            : 'border-border bg-surface text-muted-foreground hover:border-primary/30 hover:text-foreground'
-                        )}
-                      >
-                        {option.value}
-                      </button>
-                    ))}
-                  </div>
-                  {ntrp && (
-                    <p className="mt-2 text-xs text-primary/80 text-center animate-fade-in">
-                      {NTRP_OPTIONS.find((o) => o.value === ntrp)?.label}
-                    </p>
-                  )}
-                </div>
-
-                {/* NTRP 레벨 간단 가이드 */}
-                <div className="rounded-xl bg-surface-elevated/50 border border-border p-3 space-y-1.5">
-                  <p className="text-xs font-medium text-foreground mb-1">레벨 가이드</p>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">1.0-2.0</span> 입문자</p>
-                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">2.5-3.0</span> 초급</p>
-                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">3.5-4.0</span> 중급</p>
-                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">4.5-5.0</span> 상급</p>
-                  </div>
-                </div>
-
-                <p className="text-xs text-subtle text-center leading-relaxed">
-                  잘 모르겠다면 건너뛰어도 괜찮아요.<br />
-                  나중에 프로필에서 수정할 수 있습니다.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Error message */}
+          {/* Error */}
           {error && (
             <p className="mt-4 text-sm text-destructive text-center animate-fade-in">
               {error}
@@ -383,7 +402,7 @@ export default function OnboardingPage() {
               onClick={handleNext}
               className="glow-primary"
             >
-              다음
+              {step === 1 ? '다음' : '다음'}
               <ChevronRight className="w-4 h-4" />
             </Button>
           ) : (
@@ -400,20 +419,11 @@ export default function OnboardingPage() {
           )}
         </div>
 
-        {/* 건너뛰기 옵션 (step 2: 사진/자기소개, step 3: NTRP) */}
-        {step >= 2 && step < TOTAL_STEPS && (
+        {/* 건너뛰기 (Step 2, 3만) */}
+        {step >= 2 && (
           <button
             type="button"
-            onClick={handleNext}
-            className="mt-3 w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            건너뛰기
-          </button>
-        )}
-        {step === TOTAL_STEPS && (
-          <button
-            type="button"
-            onClick={() => { setNtrp(''); handleSubmit(); }}
+            onClick={step === TOTAL_STEPS ? handleSubmit : handleNext}
             disabled={submitting}
             className="mt-3 w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
           >

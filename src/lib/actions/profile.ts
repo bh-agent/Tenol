@@ -92,14 +92,18 @@ export async function completeOnboarding(formData: FormData) {
 
   const validated = completeOnboardingSchema.parse({
     display_name: formData.get('display_name'),
+    real_name: formData.get('real_name'),
     gender: formData.get('gender'),
-    bio: formData.get('bio') as string || null,
+    region: (formData.get('region') as string) || null,
+    bio: (formData.get('bio') as string) || null,
     ntrp_level: ntrpRaw ? Number(ntrpRaw) : null,
   });
 
   const updateData: Record<string, unknown> = {
     display_name: validated.display_name,
+    real_name: validated.real_name,
     gender: validated.gender,
+    region: validated.region,
     bio: validated.bio,
     ntrp_level: validated.ntrp_level,
     is_onboarded: true,
