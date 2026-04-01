@@ -52,7 +52,10 @@ export function ProfileFeed({ userId, isOwnProfile = true }: ProfileFeedProps) {
 
     const { data } = await supabase
       .from('media_with_counts')
-      .select('id, file_url, file_urls, file_type, caption, created_at, uploaded_by, like_count, comment_count')
+      .select(`
+        id, file_url, file_urls, file_type, caption, created_at, uploaded_by, like_count, comment_count,
+        profiles:uploaded_by (display_name, avatar_url)
+      `)
       .eq('uploaded_by', userId)
       .eq('feed_type', 'personal')
       .order('created_at', { ascending: false });

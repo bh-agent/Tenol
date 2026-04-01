@@ -113,6 +113,7 @@ export default async function MembersPage({
                     targetUserId={profileId}
                     currentRole={member.role}
                     myRole={myRole!}
+                    customPermissions={member.custom_permissions as string[] | null}
                   />
                 )}
               </div>

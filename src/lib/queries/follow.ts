@@ -19,7 +19,8 @@ export async function getFollowStatus(targetUserId: string) {
     supabase
       .from('media')
       .select('*', { count: 'exact', head: true })
-      .eq('uploaded_by', targetUserId),
+      .eq('uploaded_by', targetUserId)
+      .eq('feed_type', 'personal'),
     user
       ? supabase
           .from('follows')

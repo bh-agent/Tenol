@@ -228,6 +228,41 @@ export async function updateMemberRole(clubId: string, targetUserId: string, new
   }
 }
 
+export async function updateMemberPermissions(
+  clubId: string,
+  targetUserId: string,
+  permissions: string[] | null
+) {
+  const validClubId = uuidSchema.parse(clubId);
+  const validTargetUserId = uuidSchema.parse(targetUserId);
+  const { role } = await requirePermission(validClubId, 'member.manage');
+
+  // owner만 권한 커스텀 가능
+  if (role !== 'owner') throw new Error('클럽장만 권한을 변경할 수 있습니다');
+
+  // 대상이 owner인지 확인
+  const supabase = await createClient();
+  const { data: target } = await supabase
+    .from('club_members')
+    .select('role')
+    .eq('club_id', validClubId)
+    .eq('user_id', validTargetUserId)
+    .maybeSingle();
+
+  if (!target) throw new Error('멤버를 찾을 수 없습니다');
+  if (target.role === 'owner') throw new Error('클럽장의 권한은 변경할 수 없습니다');
+
+  const { error } = await supabase
+    .from('club_members')
+    .update({ custom_permissions: permissions })
+    .eq('club_id', validClubId)
+    .eq('user_id', validTargetUserId);
+
+  if (error) throw new Error('권한 변경에 실패했습니다');
+
+  revalidatePath(`/clubs/${validClubId}/members`);
+}
+
 export async function updateClubLogo(clubId: string, logoUrl: string) {
   const validClubId = uuidSchema.parse(clubId);
   await requirePermission(validClubId, 'club.edit');

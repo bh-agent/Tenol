@@ -270,14 +270,16 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                           style={{
                             fontSize: 12,
                             fontWeight: 700,
-                            padding: '4px 10px',
+                            padding: '5px 14px',
                             borderRadius: 8,
                             background: typeStyle.bg,
                             color: typeStyle.text,
-                            lineHeight: '1',
+                            lineHeight: '1.2',
                             display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
+                            whiteSpace: 'nowrap',
+                            letterSpacing: '0.5px',
                           }}
                         >
                           {typeStyle.label}

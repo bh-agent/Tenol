@@ -39,7 +39,7 @@ export async function getClubMembers(clubId: string) {
   const { data } = await supabase
     .from('club_members')
     .select(`
-      id, role, joined_at,
+      id, role, joined_at, custom_permissions,
       profiles:user_id (
         id, display_name, avatar_url, ntrp_level, gender
       )

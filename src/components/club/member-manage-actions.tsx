@@ -1,11 +1,11 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
-import { removeMember, updateMemberRole, transferOwnership } from '@/lib/actions/clubs';
-import { getPermissions, getPermissionLabel } from '@/lib/utils/permissions';
+import { removeMember, updateMemberRole, transferOwnership, updateMemberPermissions } from '@/lib/actions/clubs';
+import { getPermissions, getPermissionLabel, getAllPermissions, getDefaultPermissions } from '@/lib/utils/permissions';
 import type { ClubRole } from '@/types';
 import type { ClubPermission } from '@/lib/utils/permissions';
-import { MoreVertical, ShieldCheck, ShieldOff, UserMinus, KeyRound, Crown, X } from 'lucide-react';
+import { MoreVertical, ShieldCheck, ShieldOff, UserMinus, KeyRound, Crown, X, RotateCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -15,14 +15,24 @@ interface MemberManageActionsProps {
   targetUserId: string;
   currentRole: ClubRole;
   myRole: ClubRole;
+  customPermissions?: string[] | null;
 }
 
-export function MemberManageActions({ clubId, targetUserId, currentRole, myRole }: MemberManageActionsProps) {
+export function MemberManageActions({ clubId, targetUserId, currentRole, myRole, customPermissions }: MemberManageActionsProps) {
   const router = useRouter();
   const [showMenu, setShowMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPermissions, setShowPermissions] = useState(false);
   const [showTransferConfirm, setShowTransferConfirm] = useState(false);
+  const [permSaving, setPermSaving] = useState(false);
+
+  // 현재 유효 권한: 커스텀이 있으면 커스텀, 없으면 역할 기본
+  const defaultPerms = getPermissions(currentRole);
+  const isCustomized = customPermissions !== null && customPermissions !== undefined;
+  const [editPerms, setEditPerms] = useState<string[]>(
+    isCustomized ? customPermissions! : defaultPerms
+  );
+  const [hasChanges, setHasChanges] = useState(false);
 
   // 운영진은 다른 운영진을 제명할 수 없음
   const canRemove = myRole === 'owner' || (myRole === 'admin' && currentRole === 'member');
@@ -69,7 +79,43 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
     }
   };
 
-  const permissions = getPermissions(currentRole);
+  const togglePerm = (perm: ClubPermission) => {
+    setEditPerms((prev) => {
+      const next = prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm];
+      return next;
+    });
+    setHasChanges(true);
+  };
+
+  const handleResetToDefault = () => {
+    setEditPerms([...defaultPerms]);
+    setHasChanges(true);
+  };
+
+  const handleSavePermissions = async () => {
+    setPermSaving(true);
+    try {
+      // 현재 역할 기본값과 동일하면 null로 저장 (커스텀 해제)
+      const defaultSet = new Set(defaultPerms);
+      const editSet = new Set(editPerms);
+      const isSameAsDefault =
+        defaultSet.size === editSet.size &&
+        [...defaultSet].every((p) => editSet.has(p));
+
+      await updateMemberPermissions(clubId, targetUserId, isSameAsDefault ? null : editPerms);
+      setHasChanges(false);
+      router.refresh();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '오류가 발생했습니다');
+    } finally {
+      setPermSaving(false);
+    }
+  };
+
+  const allPerms = getAllPermissions();
+  // owner 전용 권한(club.edit)은 owner가 아닌 멤버에겐 토글 불가이므로 제외하지 않고 전체 표시
+  // 단, owner만 커스텀 권한을 변경 가능
+  const canEdit = myRole === 'owner';
 
   return (
     <>
@@ -129,6 +175,9 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
                   <button
                     onClick={() => {
                       setShowMenu(false);
+                      // 모달 열 때 현재 상태로 초기화
+                      setEditPerms(isCustomized ? [...customPermissions!] : [...defaultPerms]);
+                      setHasChanges(false);
                       setShowPermissions(true);
                     }}
                     className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
@@ -221,18 +270,31 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
             </div>
 
             <div className="p-4 space-y-3">
-              <div className="flex items-center gap-2 mb-3">
-                <Badge variant={currentRole === 'admin' ? 'success' : 'default'}>
-                  {currentRole === 'admin' ? '운영진' : '멤버'}
-                </Badge>
-                <span className="text-xs text-muted-foreground">
-                  역할 기반 권한
-                </span>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant={currentRole === 'admin' ? 'success' : 'default'}>
+                    {currentRole === 'admin' ? '운영진' : '멤버'}
+                  </Badge>
+                  {isCustomized && !hasChanges && (
+                    <span className="text-[10px] text-primary font-medium px-1.5 py-0.5 bg-primary/10 rounded-full">
+                      커스텀
+                    </span>
+                  )}
+                </div>
+                {canEdit && (
+                  <button
+                    onClick={handleResetToDefault}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    기본값
+                  </button>
+                )}
               </div>
 
               <div className="space-y-2">
-                {(['club.edit', 'member.manage', 'match.create', 'draw.manage', 'result.input', 'media.upload', 'guest.manage'] as ClubPermission[]).map((perm) => {
-                  const hasIt = permissions.includes(perm);
+                {allPerms.map((perm) => {
+                  const hasIt = editPerms.includes(perm);
                   return (
                     <div
                       key={perm}
@@ -241,25 +303,40 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole 
                       <span className="text-sm text-foreground">
                         {getPermissionLabel(perm)}
                       </span>
-                      <div
+                      <button
+                        type="button"
+                        onClick={() => canEdit && togglePerm(perm)}
+                        disabled={!canEdit}
                         className={`w-9 h-5 rounded-full transition-colors ${
                           hasIt ? 'bg-primary' : 'bg-muted'
-                        } relative cursor-not-allowed`}
+                        } relative ${canEdit ? 'cursor-pointer' : 'cursor-not-allowed'}`}
                       >
                         <div
                           className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${
                             hasIt ? 'translate-x-4' : 'translate-x-0.5'
                           }`}
                         />
-                      </div>
+                      </button>
                     </div>
                   );
                 })}
               </div>
 
-              <p className="text-xs text-muted-foreground pt-2">
-                현재 권한은 역할에 따라 자동으로 부여됩니다. 역할을 변경하려면 메뉴에서 승격/강등을 사용하세요.
-              </p>
+              {canEdit && hasChanges && (
+                <button
+                  onClick={handleSavePermissions}
+                  disabled={permSaving}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium bg-primary text-black hover:bg-primary-light transition-colors disabled:opacity-50 mt-2"
+                >
+                  {permSaving ? '저장 중...' : '권한 저장'}
+                </button>
+              )}
+
+              {!canEdit && (
+                <p className="text-xs text-muted-foreground pt-2">
+                  권한 변경은 클럽장만 가능합니다.
+                </p>
+              )}
             </div>
           </div>
         </>,
