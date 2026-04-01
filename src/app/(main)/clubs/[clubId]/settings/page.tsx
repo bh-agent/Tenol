@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { RegionPicker } from '@/components/ui/region-picker';
 import { Modal } from '@/components/ui/modal';
 import { TopBar } from '@/components/layout/top-bar';
 import { ClubAvatar } from '@/components/club/club-avatar';
@@ -214,12 +215,10 @@ export default function ClubSettingsPage() {
               defaultValue={clubDescription}
               key={`desc-${clubDescription}`}
             />
-            <Input
-              id="region"
+            <RegionPicker
+              value={clubRegion}
+              onChange={setClubRegion}
               name="region"
-              label="활동 지역"
-              defaultValue={clubRegion}
-              key={`region-${clubRegion}`}
             />
             <Input
               id="main_court"

@@ -92,7 +92,12 @@ export async function searchPublicClubs(query?: string, region?: string) {
   }
 
   if (region && region !== 'all') {
-    q = q.eq('region', region);
+    // "서울 강남구" → exact match, "서울" → "서울%" 부분 매치
+    if (region.includes(' ')) {
+      q = q.eq('region', region);
+    } else {
+      q = q.ilike('region', `${region}%`);
+    }
   }
 
   q = q.order('bookmark_count', { ascending: false })

@@ -6,35 +6,20 @@ import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/search/search-input';
 import { FilterChips } from '@/components/search/filter-chips';
 import { SearchEmpty } from '@/components/search/search-empty';
+import { REGIONS, getSigunguList } from '@/lib/constants/regions';
 import { MapPin, Users, Star, Clock, X } from 'lucide-react';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import { BookmarkButton } from '@/components/club/bookmark-button';
 import { Modal } from '@/components/ui/modal';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { joinPublicClub, cancelJoinRequest } from '@/lib/actions/clubs';
 import type { ClubJoinRequest } from '@/types';
 
-const REGION_CHIPS = [
+const SIDO_CHIPS = [
   { key: 'all', label: '전체' },
-  { key: '서울', label: '서울' },
-  { key: '경기', label: '경기' },
-  { key: '인천', label: '인천' },
-  { key: '부산', label: '부산' },
-  { key: '대구', label: '대구' },
-  { key: '광주', label: '광주' },
-  { key: '대전', label: '대전' },
-  { key: '울산', label: '울산' },
-  { key: '세종', label: '세종' },
-  { key: '강원', label: '강원' },
-  { key: '충북', label: '충북' },
-  { key: '충남', label: '충남' },
-  { key: '전북', label: '전북' },
-  { key: '전남', label: '전남' },
-  { key: '경북', label: '경북' },
-  { key: '경남', label: '경남' },
-  { key: '제주', label: '제주' },
+  ...REGIONS.map((r) => ({ key: r.short, label: r.short })),
 ];
 
 interface ExploreClubListProps {
@@ -65,6 +50,20 @@ export function ExploreClubList({
   const [joinModalClubId, setJoinModalClubId] = useState<string | null>(null);
   const [joinIntroduction, setJoinIntroduction] = useState('');
 
+  // 현재 선택된 시/도에서 시/군/구 칩 생성
+  const currentSido = initialRegion.split(' ')[0] || 'all';
+  const currentSigungu = initialRegion.includes(' ') ? initialRegion.split(' ').slice(1).join(' ') : 'all';
+
+  const sigunguChips = useMemo(() => {
+    if (currentSido === 'all') return [];
+    const list = getSigunguList(currentSido);
+    if (list.length === 0) return [];
+    return [
+      { key: 'all', label: '전체' },
+      ...list.map((gu) => ({ key: gu, label: gu })),
+    ];
+  }, [currentSido]);
+
   function updateSearch(query: string, region: string) {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
@@ -74,13 +73,21 @@ export function ExploreClubList({
   }
 
   function handleQueryChange(query: string) {
-    const region = searchParams.get('region') || 'all';
-    updateSearch(query, region);
+    updateSearch(query, initialRegion);
   }
 
-  function handleRegionChange(region: string) {
+  function handleSidoChange(sido: string) {
     const query = searchParams.get('q') || '';
-    updateSearch(query, region);
+    updateSearch(query, sido);
+  }
+
+  function handleSigunguChange(sigungu: string) {
+    const query = searchParams.get('q') || '';
+    if (sigungu === 'all') {
+      updateSearch(query, currentSido);
+    } else {
+      updateSearch(query, `${currentSido} ${sigungu}`);
+    }
   }
 
   function openJoinModal(clubId: string) {
@@ -195,12 +202,21 @@ export function ExploreClubList({
         onChange={handleQueryChange}
       />
 
-      {/* 지역 필터 */}
+      {/* 시/도 필터 */}
       <FilterChips
-        chips={REGION_CHIPS}
-        selected={initialRegion}
-        onChange={handleRegionChange}
+        chips={SIDO_CHIPS}
+        selected={currentSido}
+        onChange={handleSidoChange}
       />
+
+      {/* 시/군/구 필터 (시/도 선택 시) */}
+      {sigunguChips.length > 0 && (
+        <FilterChips
+          chips={sigunguChips}
+          selected={currentSigungu}
+          onChange={handleSigunguChange}
+        />
+      )}
 
       {/* 결과 */}
       {clubs.length === 0 ? (

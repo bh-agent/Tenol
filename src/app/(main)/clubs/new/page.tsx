@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { RegionPicker } from '@/components/ui/region-picker';
 import { TopBar } from '@/components/layout/top-bar';
 import { createClub, joinClubByCode } from '@/lib/actions/clubs';
 import { cn } from '@/lib/utils/cn';
@@ -15,6 +16,7 @@ export default function NewClubPage() {
   const [inviteInput, setInviteInput] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [region, setRegion] = useState('');
   const router = useRouter();
 
   /** Extract invite code from a link or raw code */
@@ -110,11 +112,10 @@ export default function NewClubPage() {
                 label="클럽 소개"
                 placeholder="클럽에 대해 간단히 소개해주세요"
               />
-              <Input
-                id="region"
+              <RegionPicker
+                value={region}
+                onChange={setRegion}
                 name="region"
-                label="활동 지역"
-                placeholder="예: 서울 강남구"
               />
               <Input
                 id="main_court"
