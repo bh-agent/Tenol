@@ -142,22 +142,11 @@ export async function signOut() {
 }
 
 /**
- * 계정 삭제 - 프로필 삭제 후 로그아웃
- * CASCADE 설정으로 관련 데이터도 함께 삭제됨
+ * 계정 삭제 - API 라우트를 통해 auth.users까지 완전 삭제
+ * 서버 액션에서는 service_role 키를 쓸 수 없으므로 API 라우트로 위임
  */
 export async function deleteAccount() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('인증이 필요합니다');
-
-  // 프로필 삭제 (CASCADE로 관련 데이터 정리)
-  const { error } = await supabase
-    .from('profiles')
-    .delete()
-    .eq('id', user.id);
-
-  if (error) throw new Error('계정 삭제에 실패했습니다');
-
-  // 로그아웃
-  await supabase.auth.signOut();
+  // 이 함수는 더 이상 직접 삭제하지 않음
+  // 클라이언트에서 /api/account/delete를 직접 호출해야 함
+  throw new Error('클라이언트에서 API를 직접 호출하세요');
 }

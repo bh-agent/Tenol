@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
-import { signOut, deleteAccount } from '@/lib/actions/profile';
+import { signOut } from '@/lib/actions/profile';
 import { LogOut, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -20,10 +20,14 @@ export function SignOutButton() {
   const handleDeleteAccount = async () => {
     setDeleting(true);
     try {
-      await deleteAccount();
+      const res = await fetch('/api/account/delete', { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || '계정 삭제에 실패했습니다');
+      }
       router.push('/login');
-    } catch {
-      alert('계정 삭제에 실패했습니다. 다시 시도해주세요.');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : '계정 삭제에 실패했습니다. 다시 시도해주세요.');
       setDeleting(false);
     }
   };
