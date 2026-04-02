@@ -14,15 +14,19 @@ export async function getPlayerStats(userId: string, clubId?: string) {
 
   const { data } = await query;
 
-  if (!data) return { wins: 0, losses: 0, total: 0, winRate: 0 };
+  if (!data) return { wins: 0, losses: 0, draws: 0, total: 0, winRate: 0 };
 
-  const wins = data.filter((g) => g.result === 'win').length;
-  const losses = data.filter((g) => g.result === 'loss').length;
-  const total = wins + losses;
+  // 점수가 입력된 모든 경기 포함 (무승부 포함)
+  const scored = data.filter((g) => g.score_team_a !== null);
+  const wins = scored.filter((g) => g.result === 'win').length;
+  const losses = scored.filter((g) => g.result === 'loss').length;
+  const draws = scored.filter((g) => g.result === null).length;
+  const total = scored.length;
 
   return {
     wins,
     losses,
+    draws,
     total,
     winRate: total > 0 ? Math.round((wins / total) * 100) : 0,
   };
@@ -78,24 +82,26 @@ export async function getClubLeaderboard(clubId: string) {
 
   const { data } = await supabase
     .from('player_game_stats')
-    .select('user_id, result')
+    .select('user_id, result, score_team_a')
     .eq('club_id', clubId)
-    .not('result', 'is', null);
+    .not('score_team_a', 'is', null);
 
   if (!data || data.length === 0) return [];
 
-  // Aggregate stats per player
-  const playerStats: Record<string, { wins: number; losses: number; total: number }> = {};
+  // Aggregate stats per player (점수 입력된 모든 경기 포함)
+  const playerStats: Record<string, { wins: number; losses: number; draws: number; total: number }> = {};
 
   for (const row of data) {
     if (!playerStats[row.user_id]) {
-      playerStats[row.user_id] = { wins: 0, losses: 0, total: 0 };
+      playerStats[row.user_id] = { wins: 0, losses: 0, draws: 0, total: 0 };
     }
     const stats = playerStats[row.user_id];
     if (row.result === 'win') {
       stats.wins++;
-    } else {
+    } else if (row.result === 'loss') {
       stats.losses++;
+    } else {
+      stats.draws++;
     }
     stats.total++;
   }
@@ -109,8 +115,8 @@ export async function getClubLeaderboard(clubId: string) {
 
   const profileMap = new Map(profiles?.map((p) => [p.id, p]) || []);
 
-  // Build leaderboard sorted by win rate (min 1 game), then by total games
-  return userIds
+  // Build leaderboard sorted by win rate, then by total games
+  const sorted = userIds
     .map((userId) => {
       const stats = playerStats[userId];
       const profile = profileMap.get(userId);
@@ -121,14 +127,30 @@ export async function getClubLeaderboard(clubId: string) {
         ntrpLevel: profile?.ntrp_level || null,
         wins: stats.wins,
         losses: stats.losses,
+        draws: stats.draws,
         total: stats.total,
         winRate: stats.total > 0 ? Math.round((stats.wins / stats.total) * 100) : 0,
+        rank: 0,
       };
     })
     .sort((a, b) => {
       if (b.winRate !== a.winRate) return b.winRate - a.winRate;
       return b.total - a.total;
     });
+
+  // 동점 순위 부여
+  sorted.forEach((entry, i) => {
+    if (i === 0) {
+      entry.rank = 1;
+    } else {
+      const prev = sorted[i - 1];
+      entry.rank = (entry.winRate === prev.winRate && entry.total === prev.total)
+        ? prev.rank
+        : i + 1;
+    }
+  });
+
+  return sorted;
 }
 
 export async function getMatchMVP(matchId: string) {

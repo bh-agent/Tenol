@@ -12,8 +12,10 @@ export interface LeaderboardEntry {
   ntrpLevel: number | null;
   wins: number;
   losses: number;
+  draws?: number;
   total: number;
   winRate: number;
+  rank?: number;
 }
 
 interface LeaderboardProps {
@@ -34,7 +36,7 @@ export function Leaderboard({ entries, currentUserId, className }: LeaderboardPr
   return (
     <div className={cn('space-y-2 stagger', className)}>
       {entries.map((entry, index) => {
-        const rank = index + 1;
+        const rank = entry.rank ?? (index + 1);
         const isCurrentUser = entry.userId === currentUserId;
 
         return (

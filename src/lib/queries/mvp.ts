@@ -42,7 +42,7 @@ async function buildMvpRanking(
     .from('player_game_stats')
     .select('user_id, result, score_team_a, score_team_b, team, match_date')
     .eq('club_id', clubId)
-    .not('result', 'is', null);
+    .not('score_team_a', 'is', null);
 
   if (startDate) {
     query = query.gte('match_date', startDate);
@@ -91,11 +91,13 @@ async function buildMvpRanking(
     if (qualified.length === 0) return [];
   }
 
-  // Sort by total score desc, tiebreaker: more games played
+  // Sort by avg score (total/games) desc, tiebreaker: total score, then wins
   qualified.sort((a, b) => {
-    if (b[1].totalScore !== a[1].totalScore)
-      return b[1].totalScore - a[1].totalScore;
-    return b[1].gamesPlayed - a[1].gamesPlayed;
+    const avgA = a[1].gamesPlayed > 0 ? a[1].totalScore / a[1].gamesPlayed : 0;
+    const avgB = b[1].gamesPlayed > 0 ? b[1].totalScore / b[1].gamesPlayed : 0;
+    if (avgB !== avgA) return avgB - avgA;
+    if (b[1].totalScore !== a[1].totalScore) return b[1].totalScore - a[1].totalScore;
+    return b[1].wins - a[1].wins;
   });
 
   const topEntries = qualified.slice(0, limit);
@@ -127,13 +129,12 @@ async function buildMvpRanking(
   });
 }
 
-/** Returns the single top player for the period */
+/** Returns top 3 players for the period (with co-MVP support for ties) */
 export async function getClubMvp(
   clubId: string,
   period: MvpPeriod
-): Promise<MvpEntry | null> {
-  const ranking = await buildMvpRanking(clubId, period, 1);
-  return ranking[0] || null;
+): Promise<MvpEntry[]> {
+  return buildMvpRanking(clubId, period, 3);
 }
 
 /** Returns top N players ranked by score */
@@ -145,7 +146,7 @@ export async function getClubMvpRanking(
   return buildMvpRanking(clubId, period, limit);
 }
 
-/** MVP for a specific match (highest scorer) */
+/** MVP for a specific match (highest avg scorer) */
 export async function getMatchMvp(
   matchId: string
 ): Promise<MvpEntry | null> {
@@ -155,7 +156,7 @@ export async function getMatchMvp(
     .from('player_game_stats')
     .select('user_id, result, score_team_a, score_team_b, team')
     .eq('match_id', matchId)
-    .not('result', 'is', null);
+    .not('score_team_a', 'is', null);
 
   if (!data || data.length === 0) return null;
 
@@ -184,9 +185,11 @@ export async function getMatchMvp(
   if (entries.length === 0) return null;
 
   entries.sort((a, b) => {
-    if (b[1].totalScore !== a[1].totalScore)
-      return b[1].totalScore - a[1].totalScore;
-    return b[1].gamesPlayed - a[1].gamesPlayed;
+    const avgA = a[1].gamesPlayed > 0 ? a[1].totalScore / a[1].gamesPlayed : 0;
+    const avgB = b[1].gamesPlayed > 0 ? b[1].totalScore / b[1].gamesPlayed : 0;
+    if (avgB !== avgA) return avgB - avgA;
+    if (b[1].totalScore !== a[1].totalScore) return b[1].totalScore - a[1].totalScore;
+    return b[1].wins - a[1].wins;
   });
 
   const [mvpId, agg] = entries[0];

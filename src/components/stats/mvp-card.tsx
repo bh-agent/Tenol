@@ -16,9 +16,12 @@ const PERIOD_LABELS: Record<MvpPeriod, string> = {
   all: '전체',
 };
 
+const MEDAL_EMOJI = ['👑', '🥈', '🥉'];
+const MEDAL_COLORS = ['#FFD740', '#C0C0C0', '#CD7F32'];
+
 interface MvpCardProps {
   /** MVP entries keyed by period. Pre-fetched from the server. */
-  mvpByPeriod: Partial<Record<MvpPeriod, MvpEntry | null>>;
+  mvpByPeriod: Partial<Record<MvpPeriod, MvpEntry[] | MvpEntry | null>>;
   /** Which periods to show tabs for */
   periods?: MvpPeriod[];
   className?: string;
@@ -33,7 +36,9 @@ export function MvpCard({
     periods.includes('month') ? 'month' : periods[0]
   );
 
-  const mvp = mvpByPeriod[activePeriod] ?? null;
+  // 배열 또는 단일 MvpEntry 처리 (하위 호환)
+  const raw = mvpByPeriod[activePeriod];
+  const mvpList: MvpEntry[] = Array.isArray(raw) ? raw : raw ? [raw] : [];
 
   return (
     <Card
@@ -51,9 +56,9 @@ export function MvpCard({
           <Trophy className="w-5 h-5 text-[#FFD740]" />
         </div>
         <div>
-          <h3 className="font-bold text-foreground text-base">MVP</h3>
+          <h3 className="font-bold text-foreground text-base">MVP Top 3</h3>
           <p className="text-[11px] text-muted-foreground">
-            {PERIOD_LABELS[activePeriod]} 최고의 선수
+            {PERIOD_LABELS[activePeriod]} 평균 득점 기준
           </p>
         </div>
       </div>
@@ -76,61 +81,65 @@ export function MvpCard({
         ))}
       </div>
 
-      {/* MVP Display */}
-      {mvp ? (
-        <div className="flex flex-col items-center text-center relative">
-          {/* Crown icon */}
-          <div className="relative mb-1">
-            <Crown className="w-6 h-6 text-[#FFD740] mx-auto drop-shadow-[0_0_8px_rgba(255,215,64,0.5)] animate-pulse" />
-          </div>
+      {/* MVP Top 3 Display */}
+      {mvpList.length > 0 ? (
+        <div className="space-y-3 relative">
+          {mvpList.map((mvp, i) => {
+            const avgScore = mvp.games_played > 0
+              ? Math.round((mvp.total_score / mvp.games_played) * 10) / 10
+              : 0;
+            return (
+              <div
+                key={mvp.user_id}
+                className={cn(
+                  'flex items-center gap-3 p-3 rounded-xl',
+                  i === 0 ? 'bg-[#FFD740]/8 border border-[#FFD740]/20' : 'bg-surface-elevated/50'
+                )}
+              >
+                {/* Medal */}
+                <span className="text-xl w-8 text-center flex-shrink-0">{MEDAL_EMOJI[i] || `${i + 1}`}</span>
 
-          {/* Avatar with glow ring */}
-          <div className="relative mb-3">
-            <div className="absolute inset-0 rounded-full bg-[#FFD740]/20 blur-md scale-110" />
-            <Avatar
-              src={mvp.avatar_url}
-              alt={mvp.display_name}
-              fallback={mvp.display_name}
-              size="xl"
-              active
-            />
-          </div>
+                {/* Avatar */}
+                <div className="relative">
+                  <Avatar
+                    src={mvp.avatar_url}
+                    alt={mvp.display_name}
+                    fallback={mvp.display_name}
+                    size={i === 0 ? 'lg' : 'md'}
+                    active={i === 0}
+                  />
+                  {i === 0 && (
+                    <Crown className="absolute -top-1.5 -right-1.5 w-4 h-4 text-[#FFD740] drop-shadow-[0_0_4px_rgba(255,215,64,0.5)]" />
+                  )}
+                </div>
 
-          {/* Name + NTRP */}
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-bold text-lg text-foreground">
-              {mvp.display_name}
-            </h4>
-            {mvp.ntrp_level && (
-              <Badge variant="outline" className="text-[9px] px-1.5 py-0">
-                {mvp.ntrp_level}
-              </Badge>
-            )}
-          </div>
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className={cn('font-bold truncate', i === 0 ? 'text-base' : 'text-sm')} style={{ color: i < 3 ? MEDAL_COLORS[i] : undefined }}>
+                      {mvp.display_name}
+                    </p>
+                    {mvp.ntrp_level && (
+                      <Badge variant="outline" className="text-[9px] px-1.5 py-0">
+                        {mvp.ntrp_level}
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {mvp.wins}승 · {mvp.games_played}경기 · 승률 {mvp.win_rate}%
+                  </p>
+                </div>
 
-          {/* Stats row */}
-          <div className="flex items-center gap-4 mt-2">
-            <div className="text-center">
-              <p className="text-lg font-bold text-[#FFD740]">
-                {mvp.total_score}
-              </p>
-              <p className="text-[10px] text-muted-foreground">총 득점</p>
-            </div>
-            <div className="w-px h-8 bg-border" />
-            <div className="text-center">
-              <p className="text-lg font-bold text-foreground">
-                {mvp.games_played}
-              </p>
-              <p className="text-[10px] text-muted-foreground">경기 수</p>
-            </div>
-            <div className="w-px h-8 bg-border" />
-            <div className="text-center">
-              <p className="text-lg font-bold text-primary">
-                {mvp.win_rate}%
-              </p>
-              <p className="text-[10px] text-muted-foreground">승률</p>
-            </div>
-          </div>
+                {/* Avg Score */}
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xl font-bold" style={{ color: MEDAL_COLORS[i] || '#EEEEEE' }}>
+                    {avgScore}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">평균</p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="text-center py-6 relative">

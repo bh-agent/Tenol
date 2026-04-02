@@ -129,7 +129,7 @@ export async function getClubAchievements(
       'user_id, game_id, match_id, result, score_team_a, score_team_b, team, match_date'
     )
     .eq('club_id', clubId)
-    .not('result', 'is', null);
+    .not('score_team_a', 'is', null);
 
   if (!allStats || allStats.length === 0) return [];
 
@@ -143,44 +143,22 @@ export async function getClubAchievements(
   const getName = (uid: string) =>
     profileMap.get(uid)?.display_name || '알 수 없음';
 
-  // ── current_mvp ──
-  const monthMvp = await getClubMvp(clubId, 'month');
-  if (monthMvp && monthMvp.games_played >= 3) {
-    achievements.push(
-      makeAchievement(
-        'current_mvp',
-        monthMvp.user_id,
-        monthMvp.display_name,
-        monthMvp.total_score
-      )
-    );
+  // ── current_mvp (동점자 모두 부여) ──
+  const monthMvps = await getClubMvp(clubId, 'month');
+  const monthMvpIds = new Set<string>();
+  for (const mvp of monthMvps) {
+    if (mvp.games_played >= 3) {
+      achievements.push(makeAchievement('current_mvp', mvp.user_id, mvp.display_name, mvp.total_score));
+      monthMvpIds.add(mvp.user_id);
+    }
   }
 
-  // ── all_time_mvp ──
-  const allTimeMvp = await getClubMvp(clubId, 'all');
-  if (
-    allTimeMvp &&
-    allTimeMvp.games_played >= 3 &&
-    allTimeMvp.user_id !== monthMvp?.user_id
-  ) {
-    achievements.push(
-      makeAchievement(
-        'all_time_mvp',
-        allTimeMvp.user_id,
-        allTimeMvp.display_name,
-        allTimeMvp.total_score
-      )
-    );
-  } else if (allTimeMvp && allTimeMvp.games_played >= 3) {
-    // Same person holds both - still show all_time_mvp
-    achievements.push(
-      makeAchievement(
-        'all_time_mvp',
-        allTimeMvp.user_id,
-        allTimeMvp.display_name,
-        allTimeMvp.total_score
-      )
-    );
+  // ── all_time_mvp (동점자 모두 부여) ──
+  const allTimeMvps = await getClubMvp(clubId, 'all');
+  for (const mvp of allTimeMvps) {
+    if (mvp.games_played >= 3) {
+      achievements.push(makeAchievement('all_time_mvp', mvp.user_id, mvp.display_name, mvp.total_score));
+    }
   }
 
   // ── most_games ──
@@ -188,18 +166,14 @@ export async function getClubAchievements(
   for (const s of allStats) {
     gameCountByUser[s.user_id] = (gameCountByUser[s.user_id] || 0) + 1;
   }
-  const mostGamesEntry = Object.entries(gameCountByUser).sort(
-    (a, b) => b[1] - a[1]
-  )[0];
-  if (mostGamesEntry && mostGamesEntry[1] >= 5) {
-    achievements.push(
-      makeAchievement(
-        'most_games',
-        mostGamesEntry[0],
-        getName(mostGamesEntry[0]),
-        mostGamesEntry[1]
-      )
-    );
+  const maxGameCount = Math.max(...Object.values(gameCountByUser), 0);
+  if (maxGameCount >= 5) {
+    // 동점자 모두 부여
+    for (const [uid, count] of Object.entries(gameCountByUser)) {
+      if (count === maxGameCount) {
+        achievements.push(makeAchievement('most_games', uid, getName(uid), count));
+      }
+    }
   }
 
   // ── win_streak ──
@@ -213,8 +187,8 @@ export async function getClubAchievements(
     });
   }
 
-  let bestStreakUser = '';
   let bestStreak = 0;
+  const streakPerUser: Record<string, number> = {};
   for (const [uid, games] of Object.entries(userGames)) {
     games.sort((a, b) => a.date.localeCompare(b.date));
     let currentStreak = 0;
@@ -227,20 +201,16 @@ export async function getClubAchievements(
         currentStreak = 0;
       }
     }
-    if (maxStreak > bestStreak) {
-      bestStreak = maxStreak;
-      bestStreakUser = uid;
-    }
+    streakPerUser[uid] = maxStreak;
+    if (maxStreak > bestStreak) bestStreak = maxStreak;
   }
   if (bestStreak >= 3) {
-    achievements.push(
-      makeAchievement(
-        'win_streak',
-        bestStreakUser,
-        getName(bestStreakUser),
-        bestStreak
-      )
-    );
+    // 동점자 모두 부여
+    for (const [uid, streak] of Object.entries(streakPerUser)) {
+      if (streak === bestStreak) {
+        achievements.push(makeAchievement('win_streak', uid, getName(uid), streak));
+      }
+    }
   }
 
   // ── iron_man ── (most distinct matches this month)

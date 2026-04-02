@@ -17,7 +17,7 @@ export async function getClubRecords(clubId: string): Promise<ClubRecord[]> {
     .from('player_game_stats')
     .select('*')
     .eq('club_id', clubId)
-    .not('result', 'is', null)
+    .not('score_team_a', 'is', null)
     .order('match_date', { ascending: true });
 
   if (!statsData || statsData.length === 0) return [];
@@ -35,31 +35,27 @@ export async function getClubRecords(clubId: string): Promise<ClubRecord[]> {
 
   const records: ClubRecord[] = [];
 
-  // 1. Highest single game score (최고 점수 기록)
+  // 1. Highest single game score (최고 점수 기록) — 동점자 모두 표시
   let highestScore = 0;
-  let highestScoreUserId: string | null = null;
-  let highestScoreDate: string | null = null;
-
   for (const stat of statsData) {
-    const myScore =
-      stat.team === 'team_a' ? stat.score_team_a : stat.score_team_b;
-    if (myScore !== null && myScore > highestScore) {
-      highestScore = myScore;
-      highestScoreUserId = stat.user_id;
-      highestScoreDate = stat.match_date;
-    }
+    const myScore = stat.team === 'team_a' ? stat.score_team_a : stat.score_team_b;
+    if (myScore !== null && myScore > highestScore) highestScore = myScore;
   }
-
-  if (highestScoreUserId) {
-    const profile = profileMap.get(highestScoreUserId);
+  if (highestScore > 0) {
+    const holders = statsData.filter((s) => {
+      const myScore = s.team === 'team_a' ? s.score_team_a : s.score_team_b;
+      return myScore === highestScore;
+    });
+    const holderNames = [...new Set(holders.map((h) => profileMap.get(h.user_id)?.name || '알 수 없음'))];
+    const firstHolder = holders[0];
     records.push({
       type: 'highest_score',
       emoji: '🎯',
       title: '최고 점수 기록',
-      holderName: profile?.name || '알 수 없음',
-      holderAvatarUrl: profile?.avatarUrl || null,
+      holderName: holderNames.join(', '),
+      holderAvatarUrl: profileMap.get(firstHolder.user_id)?.avatarUrl || null,
       value: `${highestScore}점`,
-      date: highestScoreDate,
+      date: firstHolder.match_date,
     });
   }
 
@@ -74,8 +70,7 @@ export async function getClubRecords(clubId: string): Promise<ClubRecord[]> {
   }
 
   let longestStreak = 0;
-  let streakUserId: string | null = null;
-  let streakEndDate: string | null = null;
+  const streakByUser: Record<string, { streak: number; endDate: string | null }> = {};
 
   for (const [userId, games] of Object.entries(userGames)) {
     let currentStreak = 0;
@@ -94,23 +89,22 @@ export async function getClubRecords(clubId: string): Promise<ClubRecord[]> {
       }
     }
 
-    if (bestStreak > longestStreak) {
-      longestStreak = bestStreak;
-      streakUserId = userId;
-      streakEndDate = bestEndDate;
-    }
+    streakByUser[userId] = { streak: bestStreak, endDate: bestEndDate };
+    if (bestStreak > longestStreak) longestStreak = bestStreak;
   }
 
-  if (streakUserId && longestStreak >= 2) {
-    const profile = profileMap.get(streakUserId);
+  if (longestStreak >= 2) {
+    // 동점자 모두 표시
+    const holders = Object.entries(streakByUser).filter(([, v]) => v.streak === longestStreak);
+    const holderNames = holders.map(([uid]) => profileMap.get(uid)?.name || '알 수 없음');
     records.push({
       type: 'longest_streak',
       emoji: '🔥',
       title: '최장 연승 기록',
-      holderName: profile?.name || '알 수 없음',
-      holderAvatarUrl: profile?.avatarUrl || null,
+      holderName: holderNames.join(', '),
+      holderAvatarUrl: profileMap.get(holders[0][0])?.avatarUrl || null,
       value: `${longestStreak}연승`,
-      date: streakEndDate,
+      date: holders[0][1].endDate,
     });
   }
 
