@@ -208,11 +208,9 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                     color: '#00E676',
                     fontSize: 15,
                     fontWeight: 800,
-                    padding: '0 16px',
+                    padding: '4px 16px 6px',
                     borderRadius: 10,
-                    height: 32,
-                    lineHeight: '32px',
-                    textAlign: 'center',
+                    lineHeight: '1',
                   }}
                 >
                   {order}경기
@@ -270,13 +268,11 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                           style={{
                             fontSize: 12,
                             fontWeight: 700,
-                            padding: '0 14px',
+                            padding: '3px 14px 5px',
                             borderRadius: 8,
                             background: typeStyle.bg,
                             color: typeStyle.text,
-                            height: 26,
-                            lineHeight: '26px',
-                            textAlign: 'center',
+                            lineHeight: '1',
                             whiteSpace: 'nowrap',
                             letterSpacing: '0.5px',
                           }}
