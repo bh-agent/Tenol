@@ -31,12 +31,26 @@ export async function requirePermission(clubId: string, permission: Permission):
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('인증이 필요합니다');
 
-  const { data: membership } = await supabase
+  // custom_permissions 컬럼이 아직 없을 수 있으므로 에러 시 fallback
+  let membership: any = null;
+  const { data: m1, error: e1 } = await supabase
     .from('club_members')
     .select('role, custom_permissions')
     .eq('club_id', clubId)
     .eq('user_id', user.id)
     .maybeSingle();
+
+  if (!e1) {
+    membership = m1;
+  } else {
+    const { data: m2 } = await supabase
+      .from('club_members')
+      .select('role')
+      .eq('club_id', clubId)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    membership = m2;
+  }
 
   const role = (membership?.role as ClubRole) || null;
   const customPermissions = (membership?.custom_permissions as string[] | null) ?? null;
@@ -64,12 +78,25 @@ export async function requireMatchPermission(matchId: string, permission: Permis
 
   if (!match) throw new Error('경기를 찾을 수 없습니다');
 
-  const { data: membership } = await supabase
+  let membership: any = null;
+  const { data: m1, error: e1 } = await supabase
     .from('club_members')
     .select('role, custom_permissions')
     .eq('club_id', match.club_id)
     .eq('user_id', user.id)
     .maybeSingle();
+
+  if (!e1) {
+    membership = m1;
+  } else {
+    const { data: m2 } = await supabase
+      .from('club_members')
+      .select('role')
+      .eq('club_id', match.club_id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    membership = m2;
+  }
 
   const role = (membership?.role as ClubRole) || null;
   const customPermissions = (membership?.custom_permissions as string[] | null) ?? null;
