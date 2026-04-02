@@ -10,9 +10,12 @@ import { createClient } from '@/lib/supabase/client';
 import { hasPermission } from '@/lib/utils/permissions';
 import type { ClubRole } from '@/types';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Trophy, RefreshCw, Crown } from 'lucide-react';
+import { ResultsShareImage, type ResultsShareImageProps } from '@/components/match/results-share-image';
+import { Trophy, RefreshCw, Crown, Share2, Download } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { flushSync } from 'react-dom';
 import { cn } from '@/lib/utils/cn';
 
 // ── Types ──
@@ -77,6 +80,9 @@ export default function ResultsPage() {
   const [mvpTop3, setMvpTop3] = useState<MvpEntry[]>([]);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [funStats, setFunStats] = useState<FunStat[]>([]);
+  const [matchTitle, setMatchTitle] = useState('');
+  const [matchDate, setMatchDate] = useState('');
+  const [sharing, setSharing] = useState(false);
 
   const canInputResult = hasPermission(myRole, 'result.input');
 
@@ -93,6 +99,17 @@ export default function ResultsPage() {
         .eq('user_id', user.id)
         .maybeSingle();
       setMyRole((membership?.role as ClubRole) || null);
+    }
+
+    // 매치 정보 조회
+    const { data: matchData } = await supabase
+      .from('matches')
+      .select('title, match_date')
+      .eq('id', matchId)
+      .maybeSingle();
+    if (matchData) {
+      setMatchTitle(matchData.title || '');
+      setMatchDate(matchData.match_date || '');
     }
 
     const { data: draws } = await supabase
@@ -112,7 +129,7 @@ export default function ResultsPage() {
 
     const { data: parts } = await supabase
       .from('match_participants')
-      .select('id, user_id, guest_name, profiles:user_id (display_name, avatar_url, ntrp_level)')
+      .select('id, user_id, guest_name, profiles:user_id (display_name, real_name, avatar_url, ntrp_level)')
       .eq('match_id', matchId);
 
     const pMap: Record<string, string> = {};
@@ -122,7 +139,10 @@ export default function ResultsPage() {
 
     parts?.forEach((p: any) => {
       const profile = Array.isArray(p.profiles) ? p.profiles[0] : p.profiles;
-      pMap[p.id] = profile?.display_name || p.guest_name || '???';
+      const displayName = profile?.display_name || p.guest_name || '???';
+      const realName = profile?.real_name;
+      // 실명(닉네임) 형식, 실명 없으면 닉네임만
+      pMap[p.id] = realName ? `${realName}(${displayName})` : displayName;
       avatarMap[p.id] = profile?.avatar_url || null;
       ntrpMap[p.id] = profile?.ntrp_level ?? null;
       userIdMap[p.id] = p.user_id || null;
@@ -281,6 +301,70 @@ export default function ResultsPage() {
 
   const getName = (id: string | null) => id ? participants[id] || '???' : '-';
 
+  // ── Image share ──
+  const handleShare = async () => {
+    setSharing(true);
+    try {
+      const html2canvasModule = await import('html2canvas').catch(() => null);
+      if (!html2canvasModule) { alert('이미지 생성 라이브러리를 로드할 수 없습니다.'); return; }
+      const html2canvas = html2canvasModule.default;
+
+      const completed = games.filter((g) => g.score_team_a !== null && g.score_team_b !== null);
+      const gameResults = completed.map((g) => ({
+        gameOrder: g.game_order,
+        courtNumber: g.court_number,
+        teamANames: [g.team_a_player1_id, g.team_a_player2_id].filter(Boolean).map((id) => getName(id)).join(', '),
+        teamBNames: [g.team_b_player1_id, g.team_b_player2_id].filter(Boolean).map((id) => getName(id)).join(', '),
+        scoreA: g.score_team_a ?? 0,
+        scoreB: g.score_team_b ?? 0,
+        winner: g.winner,
+      }));
+
+      const props: ResultsShareImageProps = { matchTitle, matchDate, mvpTop3, highlights, funStats, gameResults };
+
+      const tempContainer = document.createElement('div');
+      tempContainer.style.cssText = 'position:absolute;left:0;top:0;z-index:99999;pointer-events:none;';
+      document.body.appendChild(tempContainer);
+
+      let root: ReturnType<typeof createRoot> | null = null;
+      try {
+        root = createRoot(tempContainer);
+        flushSync(() => { root!.render(createElement(ResultsShareImage, props)); });
+        await new Promise((r) => setTimeout(r, 100));
+
+        const target = tempContainer.firstElementChild as HTMLElement;
+        if (!target) return;
+
+        const canvas = await html2canvas(target, { backgroundColor: '#0F0F0F', scale: 2, useCORS: true, logging: false });
+        const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+        if (!blob) return;
+
+        if (navigator.share && navigator.canShare?.({ files: [new File([blob], 'results.png', { type: 'image/png' })] })) {
+          await navigator.share({
+            files: [new File([blob], `경기결과_${matchTitle}.png`, { type: 'image/png' })],
+            title: `${matchTitle} 경기 결과`,
+          });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `경기결과_${matchTitle}.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+      } finally {
+        root?.unmount();
+        document.body.removeChild(tempContainer);
+      }
+    } catch (e) {
+      if ((e as Error)?.name !== 'AbortError') {
+        alert('이미지 공유에 실패했습니다');
+      }
+    } finally {
+      setSharing(false);
+    }
+  };
+
   const handleEdit = (game: GameWithDraw) => {
     setEditingGame(game.id);
     setScoreA(game.score_team_a || 0);
@@ -320,6 +404,22 @@ export default function ResultsPage() {
       <TopBar title="경기 결과" backHref={`/clubs/${clubId}/matches/${matchId}`} />
 
       <div className="px-4 py-4 space-y-6 animate-fade-in">
+        {/* 공유 버튼 */}
+        {!loading && games.length > 0 && (
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShare}
+              disabled={sharing}
+              className="gap-1.5"
+            >
+              {sharing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Share2 className="w-3.5 h-3.5" />}
+              {sharing ? '생성 중...' : '결과 공유'}
+            </Button>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <RefreshCw className="w-6 h-6 text-primary animate-spin" />
