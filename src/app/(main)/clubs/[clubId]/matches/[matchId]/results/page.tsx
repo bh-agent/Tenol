@@ -133,7 +133,8 @@ export default function ResultsPage() {
     const allGames = (gamesData as GameWithDraw[]) || [];
     setGames(allGames);
 
-    const completed = allGames.filter((g) => g.winner !== null);
+    // 점수가 입력된 모든 경기 (무승부 포함)
+    const completed = allGames.filter((g) => g.score_team_a !== null && g.score_team_b !== null);
 
     // ── Compute MVP Top 3 ──
     if (completed.length > 0) {
