@@ -193,26 +193,18 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
 
           return (
             <div key={order} style={{ marginBottom: slotIdx < sortedOrders.length - 1 ? 32 : 0 }}>
-              {/* Slot header — no flexbox for html2canvas */}
+              {/* Slot header */}
               <div style={{ marginBottom: 16 }}>
                 <span
                   style={{
-                    display: 'inline-block',
-                    background: '#00E67620',
-                    color: '#00E676',
                     fontSize: 15,
                     fontWeight: 800,
-                    height: 30,
-                    lineHeight: '30px',
-                    padding: '0 16px',
-                    borderRadius: 10,
-                    verticalAlign: 'middle',
-                    textAlign: 'center',
+                    color: '#00E676',
                   }}
                 >
                   {order}경기
                 </span>
-                <span style={{ fontSize: 14, color: '#777777', marginLeft: 12, verticalAlign: 'middle' }}>
+                <span style={{ fontSize: 14, color: '#777777', marginLeft: 12 }}>
                   {slot?.startTime || '--:--'} ~ {slot?.endTime || '--:--'}
                 </span>
               </div>
@@ -243,33 +235,22 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                         boxSizing: 'border-box',
                       }}
                     >
-                      {/* Court name + game type — no flexbox for html2canvas */}
+                      {/* Court name + game type */}
                       <div style={{ marginBottom: 16 }}>
                         <span
                           style={{
                             fontSize: 14,
                             fontWeight: 700,
                             color: '#DDDDDD',
-                            verticalAlign: 'middle',
                           }}
                         >
                           {courtName}
                         </span>
                         <span
                           style={{
-                            display: 'inline-block',
                             fontSize: 12,
                             fontWeight: 700,
-                            height: 22,
-                            lineHeight: '22px',
-                            padding: '0 14px',
-                            borderRadius: 8,
-                            background: typeStyle.bg,
                             color: typeStyle.text,
-                            verticalAlign: 'middle',
-                            textAlign: 'center',
-                            whiteSpace: 'nowrap',
-                            letterSpacing: '0.5px',
                             marginLeft: 10,
                           }}
                         >
