@@ -193,31 +193,28 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
 
           return (
             <div key={order} style={{ marginBottom: slotIdx < sortedOrders.length - 1 ? 32 : 0 }}>
-              {/* Slot header */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  marginBottom: 16,
-                }}
-              >
-                <div
+              {/* Slot header — no flexbox for html2canvas */}
+              <div style={{ marginBottom: 16 }}>
+                <span
                   style={{
+                    display: 'inline-block',
                     background: '#00E67620',
                     color: '#00E676',
                     fontSize: 15,
                     fontWeight: 800,
-                    padding: '4px 16px 6px',
+                    height: 30,
+                    lineHeight: '30px',
+                    padding: '0 16px',
                     borderRadius: 10,
-                    lineHeight: '1',
+                    verticalAlign: 'middle',
+                    textAlign: 'center',
                   }}
                 >
                   {order}경기
-                </div>
-                <div style={{ fontSize: 14, color: '#777777' }}>
+                </span>
+                <span style={{ fontSize: 14, color: '#777777', marginLeft: 12, verticalAlign: 'middle' }}>
                   {slot?.startTime || '--:--'} ~ {slot?.endTime || '--:--'}
-                </div>
+                </span>
               </div>
 
               {/* Court cards */}
@@ -246,35 +243,34 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                         boxSizing: 'border-box',
                       }}
                     >
-                      {/* Court name + game type */}
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 10,
-                          marginBottom: 16,
-                        }}
-                      >
+                      {/* Court name + game type — no flexbox for html2canvas */}
+                      <div style={{ marginBottom: 16 }}>
                         <span
                           style={{
                             fontSize: 14,
                             fontWeight: 700,
                             color: '#DDDDDD',
+                            verticalAlign: 'middle',
                           }}
                         >
                           {courtName}
                         </span>
                         <span
                           style={{
+                            display: 'inline-block',
                             fontSize: 12,
                             fontWeight: 700,
-                            padding: '3px 14px 5px',
+                            height: 22,
+                            lineHeight: '22px',
+                            padding: '0 14px',
                             borderRadius: 8,
                             background: typeStyle.bg,
                             color: typeStyle.text,
-                            lineHeight: '1',
+                            verticalAlign: 'middle',
+                            textAlign: 'center',
                             whiteSpace: 'nowrap',
                             letterSpacing: '0.5px',
+                            marginLeft: 10,
                           }}
                         >
                           {typeStyle.label}
