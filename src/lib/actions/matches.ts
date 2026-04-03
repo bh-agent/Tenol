@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission, requireMatchPermission } from '@/lib/utils/check-permission';
+import { logError, logInfo, logWarn } from '@/lib/logger';
 import { redirect } from 'next/navigation';
 import {
   createMatchSchema,
@@ -25,8 +26,8 @@ export async function createMatch(formData: FormData) {
   if (participantsRaw) {
     try {
       participants = JSON.parse(participantsRaw);
-    } catch {
-      // ignore invalid JSON
+    } catch (e) {
+      logWarn('match', 'Invalid participants JSON in createMatch', { userId, error: e });
     }
   }
 
@@ -53,7 +54,12 @@ export async function createMatch(formData: FormData) {
     .select()
     .single();
 
-  if (error) throw new Error('경기 생성에 실패했습니다');
+  if (error) {
+    logError('match', 'Failed to create match', { userId, clubId, error });
+    throw new Error('경기 생성에 실패했습니다');
+  }
+
+  logInfo('match', 'Match created', { userId, matchId: match.id, clubId });
 
   // Auto-add creator as participant
   await supabase.from('match_participants').insert({
@@ -161,6 +167,8 @@ export async function joinMatch(matchId: string) {
       throw new Error('참가 신청에 실패했습니다');
     }
   }
+
+  logInfo('match', 'Joined match', { userId: user.id, matchId: validMatchId });
 }
 
 export async function applyAsGuest(matchId: string, name: string, phone?: string | null, introduction?: string | null) {
@@ -271,7 +279,16 @@ export async function respondToGuest(participantId: string, matchId: string, app
     })
     .eq('id', validParticipantId);
 
-  if (error) throw new Error('처리에 실패했습니다');
+  if (error) {
+    logError('match', 'Failed to respond to guest', { userId: user.id, matchId: validMatchId, error });
+    throw new Error('처리에 실패했습니다');
+  }
+
+  logInfo('match', `Guest ${approved ? 'approved' : 'rejected'}`, {
+    userId: user.id,
+    matchId: validMatchId,
+    metadata: { participantId: validParticipantId, guestName: participant?.guest_name },
+  });
 
   // 게스트 승인/거절 알림 전송
   if (participant?.user_id) {
@@ -293,8 +310,8 @@ export async function respondToGuest(participantId: string, matchId: string, app
             : `"${match.title}" 경기의 게스트 참가가 거절되었습니다.`,
           { match_id: validMatchId, club_id: match.club_id }
         );
-      } catch {
-        // 알림 전송 실패해도 주요 기능은 계속 진행
+      } catch (e) {
+        logWarn('match', 'Failed to send guest response notification', { matchId: validMatchId, error: e });
       }
     }
   }
@@ -334,6 +351,8 @@ export async function withdrawFromMatch(matchId: string) {
     .eq('match_id', validMatchId)
     .eq('user_id', user.id);
 
+  logInfo('match', 'Withdrew from match', { userId: user.id, matchId: validMatchId });
+
   // If a confirmed participant withdrew, promote the next waitlisted participant
   if (wasConfirmed) {
     const { data: promotedId } = await supabase.rpc('promote_waitlist', {
@@ -367,8 +386,8 @@ export async function withdrawFromMatch(matchId: string) {
             );
           }
         }
-      } catch {
-        // Notification failure should not block the main flow
+      } catch (e) {
+        logWarn('match', 'Failed to send waitlist promotion notification', { matchId: validMatchId, error: e });
       }
     }
   }
@@ -433,8 +452,11 @@ export async function addOfflineParticipant(matchId: string, name: string, gende
   });
 
   if (error) {
+    logError('match', 'Failed to add offline participant', { matchId: validMatchId, error });
     throw new Error('참가자 추가에 실패했습니다');
   }
+
+  logInfo('match', 'Offline participant added', { matchId: validMatchId, metadata: { name: validated.name, gender: validated.gender } });
 }
 
 /**
@@ -490,7 +512,12 @@ export async function removeParticipant(participantId: string, matchId: string):
       .delete()
       .eq('id', validParticipantId);
 
-    if (error) return { error: '참가자 삭제에 실패했습니다: ' + error.message };
+    if (error) {
+      logError('match', 'Failed to remove participant', { matchId: validMatchId, error, metadata: { participantId: validParticipantId } });
+      return { error: '참가자 삭제에 실패했습니다: ' + error.message };
+    }
+
+    logInfo('match', 'Participant removed', { matchId: validMatchId, metadata: { participantId: validParticipantId } });
 
     // Promote waitlisted participant if a confirmed one was removed
     if (wasConfirmed) {
@@ -499,6 +526,7 @@ export async function removeParticipant(participantId: string, matchId: string):
 
     return {};
   } catch (e) {
+    logError('match', 'Failed to remove participant', { error: e });
     return { error: e instanceof Error ? e.message : '참가자 삭제에 실패했습니다' };
   }
 }

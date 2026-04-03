@@ -13,6 +13,20 @@ export default function ExploreError({
 }) {
   useEffect(() => {
     console.error(error);
+    // Report to server
+    fetch('/api/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        level: 'error',
+        category: 'client',
+        message: error.message || 'Unknown error',
+        errorName: error.name,
+        errorStack: error.stack,
+        errorDigest: error.digest,
+        path: window.location.pathname,
+      }),
+    }).catch(() => {}); // Never block on logging
   }, [error]);
 
   return (

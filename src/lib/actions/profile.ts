@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { logError, logInfo } from '@/lib/logger';
 import {
   updateProfileSchema,
   completeOnboardingSchema,
@@ -58,11 +59,18 @@ export async function updateProfile(formData: FormData) {
         .from('profiles')
         .update(updateData)
         .eq('id', user.id);
-      if (retryError) throw new Error('프로필 수정에 실패했습니다');
+      if (retryError) {
+        logError('profile', 'Failed to update profile (retry)', { userId: user.id, error: retryError });
+        throw new Error('프로필 수정에 실패했습니다');
+      }
+      logInfo('profile', 'Profile updated (without tennis_start_date)', { userId: user.id });
       return;
     }
+    logError('profile', 'Failed to update profile', { userId: user.id, error });
     throw new Error('프로필 수정에 실패했습니다');
   }
+
+  logInfo('profile', 'Profile updated', { userId: user.id });
 }
 
 export async function updateProfileAvatar(avatarUrl: string) {
@@ -77,7 +85,12 @@ export async function updateProfileAvatar(avatarUrl: string) {
     .update({ avatar_url: validUrl, updated_at: new Date().toISOString() })
     .eq('id', user.id);
 
-  if (error) throw new Error('프로필 사진 변경에 실패했습니다');
+  if (error) {
+    logError('profile', 'Failed to update avatar', { userId: user.id, error });
+    throw new Error('프로필 사진 변경에 실패했습니다');
+  }
+
+  logInfo('profile', 'Avatar updated', { userId: user.id });
 }
 
 /**
@@ -115,7 +128,12 @@ export async function completeOnboarding(formData: FormData) {
     .update(updateData)
     .eq('id', user.id);
 
-  if (error) throw new Error('프로필 설정에 실패했습니다');
+  if (error) {
+    logError('profile', 'Failed to complete onboarding', { userId: user.id, error });
+    throw new Error('프로필 설정에 실패했습니다');
+  }
+
+  logInfo('profile', 'Onboarding completed', { userId: user.id });
 }
 
 /**

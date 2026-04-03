@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/utils/check-permission';
+import { logError, logInfo, logWarn } from '@/lib/logger';
 import {
   uuidSchema,
   saveMediaSchema,
@@ -56,8 +57,8 @@ async function processTagsAndMentions(
               '게시물에서 회원님을 언급했습니다',
               { media_id: mediaId }
             );
-          } catch {
-            // Notification failure should not block the post
+          } catch (e) {
+            logWarn('media', 'Failed to send mention notification', { metadata: { mediaId, mentionedUserId: profile.id }, error: e });
           }
         }
       }
@@ -88,7 +89,12 @@ export async function saveClubMedia(
     feed_type: 'club',
   }).select('id').single();
 
-  if (error || !data) throw new Error('저장에 실패했습니다');
+  if (error || !data) {
+    logError('media', 'Failed to save club media', { userId, clubId: validClubId, error });
+    throw new Error('저장에 실패했습니다');
+  }
+
+  logInfo('media', 'Club media saved', { userId, clubId: validClubId, metadata: { mediaId: data.id, fileCount: validated.files.length } });
 
   await processTagsAndMentions(data.id, validated.caption, userId);
 }
@@ -125,7 +131,12 @@ export async function savePersonalMedia(
     feed_type: 'personal',
   }).select('id').single();
 
-  if (error || !data) throw new Error('저장에 실패했습니다');
+  if (error || !data) {
+    logError('media', 'Failed to save personal media', { userId: user.id, error });
+    throw new Error('저장에 실패했습니다');
+  }
+
+  logInfo('media', 'Personal media saved', { userId: user.id, metadata: { mediaId: data.id, fileCount: validated.files.length } });
 
   await processTagsAndMentions(data.id, validated.caption, user.id);
 }
@@ -205,11 +216,16 @@ export async function deleteMedia(mediaId: string) {
       if (storagePath) {
         await supabase.storage.from('club-media').remove([storagePath]);
       }
-    } catch {
-      // Storage 삭제 실패해도 DB 삭제는 진행
+    } catch (e) {
+      logWarn('media', 'Failed to delete file from storage', { userId: user.id, error: e, metadata: { mediaId: validMediaId, fileUrl: file.url } });
     }
   }
 
   const { error } = await supabase.from('media').delete().eq('id', validMediaId);
-  if (error) throw new Error('삭제에 실패했습니다');
+  if (error) {
+    logError('media', 'Failed to delete media', { userId: user.id, error, metadata: { mediaId: validMediaId } });
+    throw new Error('삭제에 실패했습니다');
+  }
+
+  logInfo('media', 'Media deleted', { userId: user.id, metadata: { mediaId: validMediaId, clubId: media.club_id } });
 }

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/utils/check-permission';
+import { logError, logInfo } from '@/lib/logger';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createRecruitmentSchema, uuidSchema } from '@/lib/validations';
@@ -58,7 +59,12 @@ export async function createRecruitmentPost(formData: FormData) {
     ntrp_max: validated.ntrp_max ?? null,
   });
 
-  if (error) throw new Error('모집글 작성에 실패했습니다');
+  if (error) {
+    logError('recruitment', 'Failed to create recruitment post', { userId: user.id, clubId, error });
+    throw new Error('모집글 작성에 실패했습니다');
+  }
+
+  logInfo('recruitment', 'Recruitment post created', { userId: user.id, clubId, metadata: { title: validated.title, type: validated.type } });
 
   revalidatePath(`/clubs/${clubId}`);
   revalidatePath('/recruit');
@@ -85,7 +91,12 @@ export async function closeRecruitmentPost(postId: string) {
     .update({ status: 'closed', updated_at: new Date().toISOString() })
     .eq('id', validPostId);
 
-  if (error) throw new Error('모집 마감에 실패했습니다');
+  if (error) {
+    logError('recruitment', 'Failed to close recruitment post', { userId: user.id, clubId: post.club_id, error });
+    throw new Error('모집 마감에 실패했습니다');
+  }
+
+  logInfo('recruitment', 'Recruitment post closed', { userId: user.id, clubId: post.club_id, metadata: { postId: validPostId } });
 
   revalidatePath(`/clubs/${post.club_id}`);
   revalidatePath('/recruit');
@@ -111,7 +122,12 @@ export async function deleteRecruitmentPost(postId: string) {
     .delete()
     .eq('id', validPostId);
 
-  if (error) throw new Error('모집글 삭제에 실패했습니다');
+  if (error) {
+    logError('recruitment', 'Failed to delete recruitment post', { userId: user.id, clubId: post.club_id, error });
+    throw new Error('모집글 삭제에 실패했습니다');
+  }
+
+  logInfo('recruitment', 'Recruitment post deleted', { userId: user.id, clubId: post.club_id, metadata: { postId: validPostId } });
 
   revalidatePath(`/clubs/${post.club_id}`);
   revalidatePath('/recruit');

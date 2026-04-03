@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/utils/check-permission';
+import { logError, logInfo } from '@/lib/logger';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createMatchTemplateSchema, uuidSchema } from '@/lib/validations';
@@ -50,7 +51,12 @@ export async function createTemplate(formData: FormData) {
     created_by: user.id,
   });
 
-  if (error) throw new Error('템플릿 생성에 실패했습니다');
+  if (error) {
+    logError('template', 'Failed to create template', { userId: user.id, clubId, error });
+    throw new Error('템플릿 생성에 실패했습니다');
+  }
+
+  logInfo('template', 'Template created', { userId: user.id, clubId, metadata: { name: validated.name } });
 
   revalidatePath(`/clubs/${clubId}/templates`);
   redirect(`/clubs/${clubId}/templates`);
@@ -75,7 +81,12 @@ export async function deleteTemplate(templateId: string) {
     .delete()
     .eq('id', validId);
 
-  if (error) throw new Error('템플릿 삭제에 실패했습니다');
+  if (error) {
+    logError('template', 'Failed to delete template', { userId: user.id, clubId: template.club_id, error });
+    throw new Error('템플릿 삭제에 실패했습니다');
+  }
+
+  logInfo('template', 'Template deleted', { userId: user.id, clubId: template.club_id, metadata: { templateId: validId } });
 
   revalidatePath(`/clubs/${template.club_id}/templates`);
 }
@@ -127,7 +138,12 @@ export async function createMatchFromTemplate(templateId: string) {
     .select('id')
     .single();
 
-  if (matchError || !match) throw new Error('경기 생성에 실패했습니다');
+  if (matchError || !match) {
+    logError('template', 'Failed to create match from template', { userId: user.id, clubId: template.club_id, error: matchError, metadata: { templateId: validId } });
+    throw new Error('경기 생성에 실패했습니다');
+  }
+
+  logInfo('template', 'Match created from template', { userId: user.id, matchId: match.id, clubId: template.club_id, metadata: { templateId: validId } });
 
   // Auto-add creator as participant
   await supabase.from('match_participants').insert({

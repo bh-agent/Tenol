@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/utils/check-permission';
+import { logError, logInfo, logWarn } from '@/lib/logger';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import {
@@ -31,7 +32,12 @@ export async function createClub(formData: FormData) {
     .select()
     .single();
 
-  if (error) throw new Error('클럽 생성에 실패했습니다');
+  if (error) {
+    logError('club', 'Failed to create club', { userId: user.id, error });
+    throw new Error('클럽 생성에 실패했습니다');
+  }
+
+  logInfo('club', 'Club created', { userId: user.id, clubId: club.id });
 
   // Auto-join as owner
   await supabase.from('club_members').insert({
@@ -123,8 +129,8 @@ export async function joinClubByCode(inviteCode: string, introduction?: string) 
         { club_id: club.id }
       ).catch(() => {});
     }
-  } catch {
-    // 알림 실패해도 가입 신청은 성공
+  } catch (e) {
+    logWarn('club', 'Failed to send join request notification to admins', { clubId: club.id, error: e });
   }
 }
 
@@ -149,7 +155,12 @@ export async function updateClub(clubId: string, formData: FormData) {
     })
     .eq('id', validClubId);
 
-  if (error) throw new Error('클럽 정보 수정에 실패했습니다');
+  if (error) {
+    logError('club', 'Failed to update club', { clubId: validClubId, error });
+    throw new Error('클럽 정보 수정에 실패했습니다');
+  }
+
+  logInfo('club', 'Club updated', { clubId: validClubId });
 
   redirect(`/clubs/${validClubId}`);
 }
@@ -179,6 +190,8 @@ export async function removeMember(clubId: string, targetUserId: string) {
     .delete()
     .eq('club_id', validClubId)
     .eq('user_id', validTargetUserId);
+
+  logInfo('club', 'Member removed', { userId, clubId: validClubId, metadata: { targetUserId: validTargetUserId } });
 }
 
 // member.manage 권한 필요 (회장, 운영진)
@@ -202,7 +215,12 @@ export async function updateMemberRole(clubId: string, targetUserId: string, new
     .eq('club_id', validClubId)
     .eq('user_id', validTargetUserId);
 
-  if (error) throw new Error('역할 변경에 실패했습니다');
+  if (error) {
+    logError('club', 'Failed to update member role', { clubId: validClubId, error, metadata: { targetUserId: validTargetUserId, newRole: validRole } });
+    throw new Error('역할 변경에 실패했습니다');
+  }
+
+  logInfo('club', 'Member role updated', { clubId: validClubId, metadata: { targetUserId: validTargetUserId, newRole: validRole } });
 
   // 역할 변경 알림 전송
   const { data: club } = await supabase
@@ -222,8 +240,8 @@ export async function updateMemberRole(clubId: string, targetUserId: string, new
         `"${club.name}" 클럽에서 역할이 ${roleLabels[validRole] || validRole}(으)로 변경되었습니다.`,
         { club_id: validClubId }
       );
-    } catch {
-      // 알림 전송 실패해도 주요 기능은 계속 진행
+    } catch (e) {
+      logWarn('club', 'Failed to send role change notification', { clubId: validClubId, error: e });
     }
   }
 }
@@ -356,8 +374,8 @@ export async function joinPublicClub(clubId: string, introduction?: string) {
         { club_id: validClubId }
       ).catch(() => {});
     }
-  } catch {
-    // 알림 실패해도 가입 신청은 성공
+  } catch (e) {
+    logWarn('club', 'Failed to send public join request notification to admins', { clubId: validClubId, error: e });
   }
 }
 
@@ -408,7 +426,16 @@ export async function respondToJoinRequest(requestId: string, approved: boolean)
     })
     .eq('id', validRequestId);
 
-  if (updateError) throw new Error('신청 처리에 실패했습니다');
+  if (updateError) {
+    logError('club', 'Failed to respond to join request', { userId: user.id, clubId: request.club_id, error: updateError });
+    throw new Error('신청 처리에 실패했습니다');
+  }
+
+  logInfo('club', `Join request ${approved ? 'approved' : 'rejected'}`, {
+    userId: user.id,
+    clubId: request.club_id,
+    metadata: { requestId: validRequestId, applicantId: request.user_id },
+  });
 
   revalidatePath(`/clubs/${request.club_id}`);
 
@@ -430,8 +457,8 @@ export async function respondToJoinRequest(requestId: string, approved: boolean)
         : `"${club?.name || '클럽'}" 클럽 가입이 거절되었습니다.`,
       { club_id: request.club_id }
     );
-  } catch {
-    // 알림 실패해도 주요 기능은 계속 진행
+  } catch (e) {
+    logWarn('club', 'Failed to send join request response notification', { clubId: request.club_id, error: e });
   }
 }
 
@@ -487,7 +514,12 @@ export async function deleteClub(clubId: string) {
     .delete()
     .eq('id', validClubId);
 
-  if (error) throw new Error('클럽 삭제에 실패했습니다');
+  if (error) {
+    logError('club', 'Failed to delete club', { userId: user.id, clubId: validClubId, error });
+    throw new Error('클럽 삭제에 실패했습니다');
+  }
+
+  logInfo('club', 'Club deleted', { userId: user.id, clubId: validClubId });
 
   redirect('/clubs');
 }
@@ -545,8 +577,11 @@ export async function transferOwnership(clubId: string, targetUserId: string) {
       .update({ role: 'owner' })
       .eq('club_id', validClubId)
       .eq('user_id', user.id);
+    logError('club', 'Failed to transfer ownership', { userId: user.id, clubId: validClubId, error: promoteError, metadata: { targetUserId: validTargetUserId } });
     throw new Error('클럽장 양도에 실패했습니다');
   }
+
+  logInfo('club', 'Ownership transferred', { userId: user.id, clubId: validClubId, metadata: { newOwnerId: validTargetUserId } });
 
   // clubs 테이블의 created_by도 업데이트
   await supabase
@@ -571,8 +606,8 @@ export async function transferOwnership(clubId: string, targetUserId: string) {
         `"${club.name}" 클럽의 클럽장으로 임명되었습니다.`,
         { club_id: validClubId }
       );
-    } catch {
-      // 알림 전송 실패해도 주요 기능은 계속 진행
+    } catch (e) {
+      logWarn('club', 'Failed to send ownership transfer notification', { clubId: validClubId, error: e });
     }
   }
 

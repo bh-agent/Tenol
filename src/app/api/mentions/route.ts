@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { logError } from '@/lib/logger';
 import type { NextRequest } from 'next/server';
 
 export type MentionSource = 'recent_match' | 'following' | 'club_member' | 'search';
@@ -190,7 +191,8 @@ export async function GET(request: NextRequest) {
       .slice(0, query ? 8 : 10);
 
     return Response.json({ users });
-  } catch {
+  } catch (error) {
+    logError('api', 'Mentions query failed', { error, path: '/api/mentions' });
     return Response.json({ users: [] }, { status: 500 });
   }
 }

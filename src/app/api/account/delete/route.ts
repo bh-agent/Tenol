@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
+import { logError, logInfo } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 
 export async function POST() {
@@ -51,17 +52,21 @@ export async function POST() {
     .eq('id', user.id);
 
   if (profileError) {
+    logError('profile', 'Profile deletion failed', { error: profileError, path: '/api/account/delete', userId: user.id });
     return NextResponse.json({ error: '프로필 삭제 실패' }, { status: 500 });
   }
 
   // 4. auth.users에서 유저 삭제
   const { error: authError } = await adminClient.auth.admin.deleteUser(user.id);
   if (authError) {
+    logError('auth', 'Auth user deletion failed', { error: authError, path: '/api/account/delete', userId: user.id });
     return NextResponse.json({ error: '계정 삭제 실패' }, { status: 500 });
   }
 
   // 5. 세션 쿠키 정리
   await supabase.auth.signOut();
+
+  logInfo('auth', 'Account deleted', { userId: user.id, path: '/api/account/delete' });
 
   return NextResponse.json({ success: true });
 }

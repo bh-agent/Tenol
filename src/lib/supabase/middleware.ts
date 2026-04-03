@@ -40,6 +40,7 @@ export async function updateSession(request: NextRequest) {
 
   // 미인증 유저 → 로그인으로
   if (!user && !isAuthRoute) {
+    console.warn(JSON.stringify({ level: 'warn', category: 'auth', message: 'Unauthenticated access', path: pathname }));
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);

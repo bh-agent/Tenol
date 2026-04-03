@@ -6,6 +6,7 @@ import { requireMatchPermission } from '@/lib/utils/check-permission';
 import { generateDrawSchema } from '@/lib/validations';
 import { NextResponse } from 'next/server';
 import { DRAW_MODES } from '@/lib/constants';
+import { logError, logInfo } from '@/lib/logger';
 
 const V1_DRAW_TYPES: Set<string> = new Set(['mixed_doubles', 'mens_doubles', 'womens_doubles', 'free']);
 const V2_DRAW_MODES: Set<string> = new Set(DRAW_MODES.map(m => m.value));
@@ -137,7 +138,7 @@ export async function POST(request: Request) {
       .eq('round_number', roundNumber);
 
     if (deleteError) {
-      console.error('[draw/generate] Delete existing draw error:', deleteError);
+      logError('draw', 'Delete existing draw error', { error: deleteError, path: '/api/draw/generate', userId, matchId: validated.matchId });
       // Continue anyway - might not exist
     }
 
@@ -154,7 +155,7 @@ export async function POST(request: Request) {
       .single();
 
     if (drawError) {
-      console.error('[draw/generate] Draw insert error:', drawError);
+      logError('draw', 'Draw insert error', { error: drawError, path: '/api/draw/generate', userId, matchId: validated.matchId });
       return NextResponse.json({ error: `대진표 DB 저장 실패: ${drawError.message} (code: ${drawError.code})` }, { status: 500 });
     }
 
@@ -191,7 +192,7 @@ export async function POST(request: Request) {
       .insert(gameInserts);
 
     if (gamesError) {
-      console.error('[draw/generate] Games insert error:', gamesError);
+      logError('draw', 'Games insert error', { error: gamesError, path: '/api/draw/generate', userId, matchId: validated.matchId });
       return NextResponse.json({ error: `게임 DB 저장 실패: ${gamesError.message} (code: ${gamesError.code})` }, { status: 500 });
     }
 
@@ -219,6 +220,8 @@ export async function POST(request: Request) {
       ? v2Result.sitOuts.reduce((sum, s) => sum + s.players.length, 0)
       : sitOuts.length;
 
+    logInfo('draw', 'Draw generated successfully', { userId, matchId: validated.matchId, path: '/api/draw/generate', metadata: { drawId: draw.id, gameCount, sitOutCount, drawType: validated.drawType } });
+
     return NextResponse.json({
       success: true,
       drawId: draw.id,
@@ -229,7 +232,7 @@ export async function POST(request: Request) {
       playerSummary: v2Result ? v2Result.playerSummary : undefined,
     });
   } catch (error) {
-    console.error('[draw/generate] Error:', error);
+    logError('draw', 'Draw generation failed', { error, path: '/api/draw/generate' });
     if (error instanceof Error && error.name === 'ZodError') {
       return NextResponse.json({ error: '잘못된 요청 데이터입니다', details: (error as any).issues }, { status: 400 });
     }

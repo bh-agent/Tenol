@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { logError } from '@/lib/logger';
 import { NextRequest } from 'next/server';
 
 export async function GET(request: NextRequest) {
@@ -49,12 +50,13 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Search error:', error);
+      logError('api', 'Search query failed', { error, path: '/api/search', userId: user.id });
       return Response.json({ error: '검색 중 오류가 발생했습니다' }, { status: 500 });
     }
 
     return Response.json({ results: data ?? [] });
-  } catch {
+  } catch (error) {
+    logError('api', 'Search endpoint error', { error, path: '/api/search' });
     return Response.json({ error: '서버 오류가 발생했습니다' }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { getHeadToHead } from '@/lib/queries/h2h';
 import { createClient } from '@/lib/supabase/server';
+import { logError } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 
 export async function GET(
@@ -28,7 +29,8 @@ export async function GET(
 
     const result = await getHeadToHead(clubId, player1, player2);
     return NextResponse.json(result);
-  } catch {
+  } catch (error) {
+    logError('api', 'H2H query failed', { error, path: '/api/clubs/[clubId]/h2h' });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,5 +1,6 @@
 import { getMoreFeed } from '@/lib/queries/feed';
 import { getSuggestedUsers } from '@/lib/queries/follow';
+import { logError } from '@/lib/logger';
 
 /**
  * @deprecated Use /api/feed/more instead. Kept for backwards compatibility.
@@ -12,7 +13,8 @@ export async function GET() {
     ]);
 
     return Response.json({ feed, suggestedUsers });
-  } catch {
+  } catch (error) {
+    logError('api', 'Feed discover failed', { error, path: '/api/feed/discover' });
     return Response.json({ feed: [], suggestedUsers: [] }, { status: 500 });
   }
 }

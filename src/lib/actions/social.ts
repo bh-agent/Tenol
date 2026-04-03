@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { logError, logWarn } from '@/lib/logger';
 import { uuidSchema, commentBodySchema } from '@/lib/validations';
 import { createNotification } from '@/lib/actions/notifications';
 
@@ -62,8 +63,8 @@ export async function toggleLike(mediaId: string) {
           { media_id: validMediaId, liker_id: user.id }
         );
       }
-    } catch {
-      // 알림 실패는 좋아요 동작에 영향을 주지 않음
+    } catch (e) {
+      logWarn('media', 'Failed to send like notification', { userId: user.id, error: e, metadata: { mediaId: validMediaId } });
     }
   }
 
@@ -109,7 +110,10 @@ export async function addComment(mediaId: string, body: string) {
     `)
     .single();
 
-  if (error) throw new Error('댓글 작성에 실패했습니다');
+  if (error) {
+    logError('media', 'Failed to add comment', { userId: user.id, error, metadata: { mediaId: validMediaId } });
+    throw new Error('댓글 작성에 실패했습니다');
+  }
 
   // 게시물 작성자에게 댓글 알림 (본인 제외)
   try {
@@ -136,8 +140,8 @@ export async function addComment(mediaId: string, body: string) {
         { media_id: validMediaId, commenter_id: user.id }
       );
     }
-  } catch {
-    // 알림 실패는 댓글 동작에 영향을 주지 않음
+  } catch (e) {
+    logWarn('media', 'Failed to send comment notification', { userId: user.id, error: e, metadata: { mediaId: validMediaId } });
   }
 
   return data;
@@ -183,5 +187,8 @@ export async function deleteComment(commentId: string) {
     .delete()
     .eq('id', validCommentId);
 
-  if (error) throw new Error('댓글 삭제에 실패했습니다');
+  if (error) {
+    logError('media', 'Failed to delete comment', { userId: user.id, error, metadata: { commentId: validCommentId } });
+    throw new Error('댓글 삭제에 실패했습니다');
+  }
 }
