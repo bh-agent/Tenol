@@ -460,6 +460,53 @@ export async function addOfflineParticipant(matchId: string, name: string, gende
 }
 
 /**
+ * 클럽 멤버를 경기 참가자로 추가 (운영진 전용)
+ */
+export async function addMemberParticipant(matchId: string, userId: string) {
+  const validMatchId = uuidSchema.parse(matchId);
+  const validUserId = uuidSchema.parse(userId);
+  await requireMatchPermission(validMatchId, 'match.create');
+
+  const supabase = await createClient();
+
+  const { data: match } = await supabase
+    .from('matches')
+    .select('status')
+    .eq('id', validMatchId)
+    .maybeSingle();
+
+  if (match?.status === 'completed' || match?.status === 'cancelled') {
+    throw new Error('종료되었거나 취소된 경기에는 참가자를 추가할 수 없습니다');
+  }
+
+  // 중복 확인
+  const { data: existing } = await supabase
+    .from('match_participants')
+    .select('id')
+    .eq('match_id', validMatchId)
+    .eq('user_id', validUserId)
+    .maybeSingle();
+
+  if (existing) {
+    throw new Error('이미 참가 중인 멤버입니다');
+  }
+
+  const { error } = await supabase.from('match_participants').insert({
+    match_id: validMatchId,
+    user_id: validUserId,
+    participant_type: 'member',
+    status: 'confirmed',
+  });
+
+  if (error) {
+    logError('match', 'Failed to add member participant', { matchId: validMatchId, userId: validUserId, error });
+    throw new Error('참가자 추가에 실패했습니다');
+  }
+
+  logInfo('match', 'Member participant added by admin', { matchId: validMatchId, userId: validUserId });
+}
+
+/**
  * 참가자 삭제 (비회원 또는 본인)
  */
 export async function removeParticipant(participantId: string, matchId: string): Promise<{ error?: string }> {

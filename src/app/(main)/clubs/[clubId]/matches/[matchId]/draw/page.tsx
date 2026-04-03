@@ -11,7 +11,7 @@ import { TopBar } from '@/components/layout/top-bar';
 import { NTRP_LEVELS } from '@/lib/constants';
 import { PlayerGameSummary } from '@/components/match/player-game-summary';
 import { GameRoundCard } from '@/components/match/game-round-card';
-import { addOfflineParticipant, removeParticipant, replaceParticipant, replaceWithOffline } from '@/lib/actions/matches';
+import { addOfflineParticipant, addMemberParticipant, removeParticipant, replaceParticipant, replaceWithOffline } from '@/lib/actions/matches';
 import { deleteDraw, updateGamePlayers, createManualDraw } from '@/lib/actions/games';
 import { acquireDrawLock, releaseDrawLock, checkDrawLock, type DrawLockResult } from '@/lib/actions/draw-lock';
 import { createClient } from '@/lib/supabase/client';
@@ -38,6 +38,7 @@ import {
   Download,
   Loader2,
   Lock,
+  Search,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, createElement } from 'react';
@@ -234,10 +235,14 @@ export default function DrawPage() {
 
   // Add participant modal
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addTab, setAddTab] = useState<'member' | 'offline'>('member');
   const [addName, setAddName] = useState('');
   const [addGender, setAddGender] = useState<string>('');
   const [addNtrp, setAddNtrp] = useState('');
   const [adding, setAdding] = useState(false);
+  const [clubMembers, setClubMembers] = useState<{ userId: string; name: string; gender: 'M' | 'F' | null; ntrp: number | null }[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
 
   // Delete / regenerate
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
@@ -526,6 +531,50 @@ export default function DrawPage() {
       setAdding(false);
     }
   };
+
+  const handleAddMember = async (userId: string) => {
+    setAdding(true);
+    try {
+      await addMemberParticipant(matchId, userId);
+      setShowAddModal(false);
+      setMemberSearch('');
+      await loadData();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '추가에 실패했습니다');
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  // Load club members when add modal opens on member tab
+  useEffect(() => {
+    if (!showAddModal || addTab !== 'member') return;
+    const load = async () => {
+      setLoadingMembers(true);
+      const supabase = createClient();
+      const { data } = await supabase
+        .from('club_members')
+        .select('user_id, profiles:user_id (display_name, gender, ntrp_level)')
+        .eq('club_id', clubId);
+      if (data) {
+        const existingUserIds = new Set(participants.filter(p => p.user_id).map(p => p.user_id!));
+        const mapped = data
+          .map((m: any) => {
+            const profile = Array.isArray(m.profiles) ? m.profiles[0] : m.profiles;
+            return {
+              userId: m.user_id,
+              name: profile?.display_name || '???',
+              gender: (profile?.gender as 'M' | 'F') || null,
+              ntrp: profile?.ntrp_level || null,
+            };
+          })
+          .filter(m => !existingUserIds.has(m.userId));
+        setClubMembers(mapped);
+      }
+      setLoadingMembers(false);
+    };
+    load();
+  }, [showAddModal, addTab, clubId, participants]);
 
   const handleRemoveParticipant = async (pid: string, name: string) => {
     setConfirmAction({
@@ -1464,63 +1513,153 @@ export default function DrawPage() {
         </div>
       </Modal>
 
-      {/* ── Add offline participant modal ── */}
-      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)} title="참가자 추가">
-        <p className="text-sm text-muted-foreground mb-5">
-          앱에 가입하지 않은 참가자를 직접 추가할 수 있습니다.
-        </p>
-        <div className="space-y-4">
-          <Input
-            id="add_name"
-            label="이름"
-            placeholder="참가자 이름"
-            value={addName}
-            onChange={(e) => setAddName(e.target.value)}
-            required
-          />
-          <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-1.5">
-              성별 <span className="text-destructive">*</span>
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => setAddGender('M')}
-                className={cn(
-                  'h-11 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer',
-                  addGender === 'M'
-                    ? 'border-info bg-info/15 text-info glow-primary-sm'
-                    : 'border-border text-muted-foreground hover:border-foreground/30'
-                )}
-              >
-                남성
-              </button>
-              <button
-                type="button"
-                onClick={() => setAddGender('F')}
-                className={cn(
-                  'h-11 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer',
-                  addGender === 'F'
-                    ? 'border-pink-500 bg-pink-500/15 text-pink-400'
-                    : 'border-border text-muted-foreground hover:border-foreground/30'
-                )}
-              >
-                여성
-              </button>
+      {/* ── Add participant modal ── */}
+      <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); setMemberSearch(''); }} title="참가자 추가">
+        {/* Tabs */}
+        <div className="flex gap-1 p-1 rounded-xl bg-muted mb-4">
+          <button
+            type="button"
+            onClick={() => setAddTab('member')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer',
+              addTab === 'member'
+                ? 'bg-surface-elevated text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <Users className="w-3.5 h-3.5" />
+            클럽 멤버
+          </button>
+          <button
+            type="button"
+            onClick={() => setAddTab('offline')}
+            className={cn(
+              'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer',
+              addTab === 'offline'
+                ? 'bg-surface-elevated text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground'
+            )}
+          >
+            <UserPlus className="w-3.5 h-3.5" />
+            직접 입력
+          </button>
+        </div>
+
+        {/* Member tab */}
+        {addTab === 'member' && (
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder="멤버 검색..."
+                className="w-full h-10 pl-9 pr-4 rounded-xl bg-muted border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50"
+              />
+            </div>
+            <div className="max-h-60 overflow-y-auto space-y-1.5">
+              {loadingMembers ? (
+                <p className="text-sm text-muted-foreground text-center py-6">로딩 중...</p>
+              ) : (clubMembers.filter(m => !memberSearch || m.name.toLowerCase().includes(memberSearch.toLowerCase()))).length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">
+                  {memberSearch ? '검색 결과가 없습니다' : '추가 가능한 멤버가 없습니다'}
+                </p>
+              ) : (
+                clubMembers
+                  .filter(m => !memberSearch || m.name.toLowerCase().includes(memberSearch.toLowerCase()))
+                  .map((m) => (
+                    <button
+                      key={m.userId}
+                      type="button"
+                      onClick={() => handleAddMember(m.userId)}
+                      disabled={adding}
+                      className={cn(
+                        'w-full flex items-center gap-3 p-3 rounded-xl border border-border',
+                        'hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer',
+                        'disabled:opacity-40 disabled:pointer-events-none'
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
+                          m.gender === 'M'
+                            ? 'bg-info/15 text-info'
+                            : m.gender === 'F'
+                              ? 'bg-pink-500/15 text-pink-400'
+                              : 'bg-muted text-muted-foreground'
+                        )}
+                      >
+                        {m.gender === 'M' ? '남' : m.gender === 'F' ? '여' : '?'}
+                      </div>
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium text-foreground">{m.name}</p>
+                        {m.ntrp && (
+                          <p className="text-xs text-primary font-semibold">NTRP {m.ntrp}</p>
+                        )}
+                      </div>
+                    </button>
+                  ))
+              )}
             </div>
           </div>
-          <Select
-            id="add_ntrp"
-            label="NTRP (선택)"
-            options={NTRP_LEVELS.map((l) => ({ ...l }))}
-            value={addNtrp}
-            onChange={(e) => setAddNtrp(e.target.value)}
-            placeholder="모르면 비워두세요"
-          />
-          <Button onClick={handleAddOffline} disabled={adding} fullWidth>
-            {adding ? '추가 중...' : '추가하기'}
-          </Button>
-        </div>
+        )}
+
+        {/* Offline tab */}
+        {addTab === 'offline' && (
+          <div className="space-y-4">
+            <Input
+              id="add_name"
+              label="이름"
+              placeholder="참가자 이름"
+              value={addName}
+              onChange={(e) => setAddName(e.target.value)}
+              required
+            />
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">
+                성별 <span className="text-destructive">*</span>
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAddGender('M')}
+                  className={cn(
+                    'h-11 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer',
+                    addGender === 'M'
+                      ? 'border-info bg-info/15 text-info glow-primary-sm'
+                      : 'border-border text-muted-foreground hover:border-foreground/30'
+                  )}
+                >
+                  남성
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddGender('F')}
+                  className={cn(
+                    'h-11 rounded-xl border text-sm font-medium transition-all duration-200 cursor-pointer',
+                    addGender === 'F'
+                      ? 'border-pink-500 bg-pink-500/15 text-pink-400'
+                      : 'border-border text-muted-foreground hover:border-foreground/30'
+                  )}
+                >
+                  여성
+                </button>
+              </div>
+            </div>
+            <Select
+              id="add_ntrp"
+              label="NTRP (선택)"
+              options={NTRP_LEVELS.map((l) => ({ ...l }))}
+              value={addNtrp}
+              onChange={(e) => setAddNtrp(e.target.value)}
+              placeholder="모르면 비워두세요"
+            />
+            <Button onClick={handleAddOffline} disabled={adding} fullWidth>
+              {adding ? '추가 중...' : '추가하기'}
+            </Button>
+          </div>
+        )}
       </Modal>
 
       {/* ── Substitute player modal ── */}
