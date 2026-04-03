@@ -19,6 +19,17 @@ export async function createMatch(formData: FormData) {
 
   const supabase = await createClient();
 
+  // Parse participants JSON if provided
+  const participantsRaw = formData.get('participants') as string | null;
+  let participants: { members?: string[]; offline?: { name: string; gender: 'M' | 'F'; ntrp?: number }[] } | undefined;
+  if (participantsRaw) {
+    try {
+      participants = JSON.parse(participantsRaw);
+    } catch {
+      // ignore invalid JSON
+    }
+  }
+
   const validated = createMatchSchema.parse({
     club_id: clubId,
     title: formData.get('title'),
@@ -31,11 +42,14 @@ export async function createMatch(formData: FormData) {
     max_participants: formData.get('max_participants') ? Number(formData.get('max_participants')) : undefined,
     allow_guests: formData.get('allow_guests') !== 'false',
     format: (formData.get('format') as string) || 'doubles',
+    participants,
   });
+
+  const { participants: validatedParticipants, ...matchData } = validated;
 
   const { data: match, error } = await supabase
     .from('matches')
-    .insert({ ...validated, created_by: userId })
+    .insert({ ...matchData, created_by: userId })
     .select()
     .single();
 
@@ -49,7 +63,44 @@ export async function createMatch(formData: FormData) {
     status: 'confirmed',
   });
 
-  redirect(`/clubs/${validated.club_id}/matches/${match.id}`);
+  // Add pre-selected participants
+  if (validatedParticipants) {
+    const inserts: Array<Record<string, unknown>> = [];
+
+    // Add selected club members (skip creator)
+    if (validatedParticipants.members) {
+      for (const memberId of validatedParticipants.members) {
+        if (memberId === userId) continue;
+        inserts.push({
+          match_id: match.id,
+          user_id: memberId,
+          participant_type: 'member',
+          status: 'confirmed',
+        });
+      }
+    }
+
+    // Add offline participants
+    if (validatedParticipants.offline) {
+      for (const p of validatedParticipants.offline) {
+        inserts.push({
+          match_id: match.id,
+          user_id: null,
+          guest_name: p.name,
+          guest_gender: p.gender,
+          participant_type: 'guest',
+          status: 'confirmed',
+          ntrp_override: p.ntrp || null,
+        });
+      }
+    }
+
+    if (inserts.length > 0) {
+      await supabase.from('match_participants').insert(inserts);
+    }
+  }
+
+  redirect(`/clubs/${matchData.club_id}/matches/${match.id}`);
 }
 
 export async function joinMatch(matchId: string) {

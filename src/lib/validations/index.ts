@@ -81,6 +81,15 @@ export const createMatchTemplateSchema = z.object({
   frequency_weeks: z.number().int().min(1).max(4).default(1),
 });
 
+export const preAddParticipantSchema = z.object({
+  members: z.array(uuidSchema).optional(),
+  offline: z.array(z.object({
+    name: z.string().min(1).max(50),
+    gender: genderSchema,
+    ntrp: z.number().min(1.0).max(7.0).optional(),
+  })).optional(),
+});
+
 export const createMatchSchema = z.object({
   club_id: uuidSchema,
   title: sanitizedText.pipe(z.string().min(1, '경기 제목을 입력해주세요').max(100)),
@@ -93,6 +102,7 @@ export const createMatchSchema = z.object({
   max_participants: z.number().int().min(2).max(100).optional(),
   allow_guests: z.boolean().default(true),
   format: matchFormatSchema.default('doubles'),
+  participants: preAddParticipantSchema.optional(),
 });
 
 export const updateMatchSchema = z.object({
