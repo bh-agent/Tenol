@@ -8,6 +8,7 @@ import { Modal } from '@/components/ui/modal';
 import { TopBar } from '@/components/layout/top-bar';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import { updateClub, updateClubLogo, deleteClub } from '@/lib/actions/clubs';
+import { useToast } from '@/components/ui/toast-provider';
 import { createClient } from '@/lib/supabase/client';
 import { Settings, AlertTriangle, Camera, Loader2, RefreshCw } from 'lucide-react';
 import { useParams } from 'next/navigation';
@@ -24,13 +25,16 @@ export default function ClubSettingsPage() {
   const [clubRegion, setClubRegion] = useState('');
   const [clubMainCourt, setClubMainCourt] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmName, setDeleteConfirmName] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const toast = useToast();
 
   // Load existing club data
   const loadClubData = useCallback(async () => {
     setLoading(true);
+    setLoadFailed(false);
     try {
       const supabase = createClient();
       const { data: club } = await supabase
@@ -45,9 +49,11 @@ export default function ClubSettingsPage() {
         setClubRegion(club.region || '');
         setClubMainCourt(club.main_court || '');
         setLogoUrl(club.logo_url || null);
+      } else {
+        setLoadFailed(true);
       }
     } catch {
-      // ignore load error
+      setLoadFailed(true);
     } finally {
       setLoading(false);
     }
@@ -62,12 +68,12 @@ export default function ClubSettingsPage() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('파일 크기는 5MB 이하여야 합니다');
+      toast.error('파일 크기는 5MB 이하여야 합니다');
       return;
     }
 
     if (!file.type.startsWith('image/')) {
-      alert('이미지 파일만 업로드 가능합니다');
+      toast.error('이미지 파일만 업로드 가능합니다');
       return;
     }
 
@@ -90,7 +96,7 @@ export default function ClubSettingsPage() {
       await updateClubLogo(clubId, publicUrl);
       setLogoUrl(publicUrl);
     } catch {
-      alert('로고 업로드에 실패했습니다');
+      toast.error('로고 업로드에 실패했습니다');
     } finally {
       setUploading(false);
     }
@@ -112,14 +118,14 @@ export default function ClubSettingsPage() {
 
   const handleDelete = async () => {
     if (deleteConfirmName !== clubName) {
-      alert('클럽 이름이 일치하지 않습니다');
+      toast.error('클럽 이름이 일치하지 않습니다');
       return;
     }
     setDeleting(true);
     try {
       await deleteClub(clubId);
     } catch (e) {
-      alert(e instanceof Error ? e.message : '클럽 삭제에 실패했습니다');
+      toast.error(e instanceof Error ? e.message : '클럽 삭제에 실패했습니다');
       setDeleting(false);
     }
   };
@@ -230,8 +236,11 @@ export default function ClubSettingsPage() {
             {saveError && (
               <p className="text-sm text-destructive">{saveError}</p>
             )}
+            {loadFailed && (
+              <p className="text-sm text-warning">클럽 정보를 불러오지 못했습니다. 새로고침 후 다시 시도해주세요.</p>
+            )}
             <div className="pt-4">
-              <Button type="submit" fullWidth size="lg" loading={saving}>
+              <Button type="submit" fullWidth size="lg" loading={saving} disabled={loadFailed}>
                 저장
               </Button>
             </div>

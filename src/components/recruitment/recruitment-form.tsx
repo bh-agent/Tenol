@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils/cn';
 import { createRecruitmentPost } from '@/lib/actions/recruitment';
+import { MATCH_FORMATS } from '@/lib/constants';
 import { useState, useTransition } from 'react';
 
 interface UpcomingMatch {
@@ -185,6 +186,17 @@ export function RecruitmentForm({ clubId, upcomingMatches }: RecruitmentFormProp
               }))}
             />
           )}
+
+          {/* Game format */}
+          <Select
+            name="game_format"
+            label="게임 포맷 (선택사항)"
+            placeholder="포맷을 선택하세요"
+            options={MATCH_FORMATS.map((f) => ({
+              value: f.value,
+              label: f.label,
+            }))}
+          />
 
           {/* Match date */}
           <Input

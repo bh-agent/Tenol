@@ -8,7 +8,7 @@ import { getMatch } from '@/lib/queries/matches';
 import { getMyRole } from '@/lib/queries/clubs';
 import { formatDate, formatTime, formatMatchStatus, formatDDayWithStatus } from '@/lib/utils/format';
 import { hasPermission } from '@/lib/utils/permissions';
-import { MapPin, Clock, Users, LayoutGrid, Trophy, ChevronRight, AlertTriangle, CheckCircle } from 'lucide-react';
+import { MapPin, Clock, Users, LayoutGrid, Trophy, ChevronRight, AlertTriangle, CheckCircle, Hourglass } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { MatchActions } from '@/components/match/match-actions';
@@ -42,10 +42,15 @@ export default async function MatchDetailPage({
 
   const confirmed = match.match_participants?.filter((p: any) => p.status === 'confirmed') || [];
   const pending = match.match_participants?.filter((p: any) => p.status === 'pending') || [];
+  const waitlisted = (match.match_participants?.filter((p: any) => p.status === 'waitlisted') || [])
+    .sort((a: any, b: any) => new Date(a.requested_at).getTime() - new Date(b.requested_at).getTime());
 
   const isParticipant = user ? confirmed.some((p: any) => p.user_id === user.id) : false;
   const isPendingGuest = user ? pending.some((p: any) => p.user_id === user.id) : false;
+  const isWaitlisted = user ? waitlisted.some((p: any) => p.user_id === user.id) : false;
+  const waitlistPosition = user ? waitlisted.findIndex((p: any) => p.user_id === user.id) + 1 : 0;
   const registrationClosed = !!match.registration_closed;
+  const isFull = match.max_participants ? confirmed.length >= match.max_participants : false;
 
   // Get user profile for guest application
   let userProfile: { display_name: string; ntrp_level: number | null; tennis_start_date: string | null } | null = null;
@@ -109,7 +114,7 @@ export default async function MatchDetailPage({
                 {formatMatchStatus(match.status)}
               </Badge>
               <Badge variant="outline">
-                {match.format === 'doubles' ? '복식' : match.format === 'singles' ? '단식' : '혼합 복식'}
+                {match.format === 'doubles' ? '복식' : match.format === 'singles' ? '단식' : '혼복'}
               </Badge>
               <Badge
                 variant={
@@ -289,6 +294,54 @@ export default async function MatchDetailPage({
           </div>
         </Card>
 
+        {/* Waitlisted Participants */}
+        {waitlisted.length > 0 && (
+          <Card variant="glass" padding="lg">
+            <div className="space-y-3 mb-4">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <Hourglass className="w-4 h-4 text-warning" />
+                대기자 ({waitlisted.length}명)
+              </h3>
+            </div>
+            <div className="space-y-1.5">
+              {waitlisted.map((p: any, index: number) => (
+                <div key={p.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface-elevated transition-colors">
+                  {p.user_id ? (
+                    <Link href={`/profile/${p.user_id}`} className="flex items-center gap-3 flex-1 min-w-0">
+                      <Avatar
+                        src={p.profiles?.avatar_url}
+                        alt={p.profiles?.display_name || p.guest_name}
+                        fallback={p.profiles?.display_name || p.guest_name}
+                        size="sm"
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                          {p.profiles?.display_name || p.guest_name}
+                        </span>
+                      </div>
+                    </Link>
+                  ) : (
+                    <>
+                      <Avatar
+                        src={p.profiles?.avatar_url}
+                        alt={p.profiles?.display_name || p.guest_name}
+                        fallback={p.profiles?.display_name || p.guest_name}
+                        size="sm"
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-foreground">
+                          {p.profiles?.display_name || p.guest_name}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  <Badge variant="warning">대기 {index + 1}번째</Badge>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+
         {/* Bottom spacer for sticky bar */}
         {(match.status === 'upcoming' || match.status === 'in_progress') && (
           <div className="h-20" />
@@ -302,6 +355,9 @@ export default async function MatchDetailPage({
         registrationClosed={registrationClosed}
         isMember={!!myRole}
         isPendingGuest={isPendingGuest}
+        isWaitlisted={isWaitlisted}
+        waitlistPosition={waitlistPosition}
+        isFull={isFull}
         allowGuests={match.allow_guests}
         canManage={canCreateMatch}
         userProfile={userProfile}

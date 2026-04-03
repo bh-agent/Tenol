@@ -56,9 +56,9 @@ export function InlineScoreInput({
           <div className="flex items-center justify-center gap-1.5">
             <button
               onClick={() => setScoreA(Math.max(0, scoreA - 1))}
-              className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
+              className="w-11 h-11 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
             >
-              <Minus className="w-3.5 h-3.5 text-muted-foreground" />
+              <Minus className="w-4 h-4 text-muted-foreground" />
             </button>
             <span
               className={cn(
@@ -70,9 +70,9 @@ export function InlineScoreInput({
             </span>
             <button
               onClick={() => setScoreA(scoreA + 1)}
-              className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
+              className="w-11 h-11 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
             >
-              <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+              <Plus className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
         </div>
@@ -87,9 +87,9 @@ export function InlineScoreInput({
           <div className="flex items-center justify-center gap-1.5">
             <button
               onClick={() => setScoreB(Math.max(0, scoreB - 1))}
-              className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
+              className="w-11 h-11 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
             >
-              <Minus className="w-3.5 h-3.5 text-muted-foreground" />
+              <Minus className="w-4 h-4 text-muted-foreground" />
             </button>
             <span
               className={cn(
@@ -101,9 +101,9 @@ export function InlineScoreInput({
             </span>
             <button
               onClick={() => setScoreB(scoreB + 1)}
-              className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
+              className="w-11 h-11 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
             >
-              <Plus className="w-3.5 h-3.5 text-muted-foreground" />
+              <Plus className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
         </div>

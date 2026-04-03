@@ -3,6 +3,8 @@
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast-provider';
 import { cn } from '@/lib/utils/cn';
 import { formatRelativeTime, formatDate } from '@/lib/utils/format';
 import type { RecruitmentPost } from '@/types';
@@ -43,6 +45,8 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
   const [showMenu, setShowMenu] = useState(false);
   const [closing, startClosing] = useTransition();
   const [deleting, startDeleting] = useTransition();
+  const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null);
+  const toast = useToast();
 
   const isMemberRecruit = post.type === 'member_recruit';
   const isOwner = currentUserId === post.created_by;
@@ -58,25 +62,30 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
         setShowMenu(false);
         onClose?.(post.id);
       } catch (e) {
-        alert(e instanceof Error ? e.message : '마감에 실패했습니다');
+        toast.error(e instanceof Error ? e.message : '마감에 실패했습니다');
       }
     });
   };
 
   const handleDelete = () => {
-    if (!confirm('이 모집글을 삭제하시겠습니까?')) return;
-    startDeleting(async () => {
-      try {
-        await deleteRecruitmentPost(post.id);
-        setShowMenu(false);
-        onDelete?.(post.id);
-      } catch (e) {
-        alert(e instanceof Error ? e.message : '삭제에 실패했습니다');
-      }
+    setConfirmAction({
+      message: '이 모집글을 삭제하시겠습니까?',
+      onConfirm: () => {
+        startDeleting(async () => {
+          try {
+            await deleteRecruitmentPost(post.id);
+            setShowMenu(false);
+            onDelete?.(post.id);
+          } catch (e) {
+            toast.error(e instanceof Error ? e.message : '삭제에 실패했습니다');
+          }
+        });
+      },
     });
   };
 
   return (
+    <>
     <article
       className={cn(
         'bg-card rounded-2xl border overflow-hidden transition-all duration-200',
@@ -124,6 +133,8 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
               onClick={() => setShowMenu(!showMenu)}
               className="p-2 -mr-2 rounded-full hover:bg-surface-elevated transition-colors"
               aria-label="더보기"
+              aria-haspopup="true"
+              aria-expanded={showMenu}
             >
               <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
             </button>
@@ -131,13 +142,18 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
             {showMenu && createPortal(
               <>
                 <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowMenu(false)} />
-                <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom">
+                <div
+                  className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom"
+                  role="menu"
+                  aria-label="모집글 관리"
+                >
                   <div className="w-10 h-1 rounded-full bg-muted mx-auto mt-3 mb-1" />
                   <div className="py-1">
                     <button
                       onClick={handleClose}
                       disabled={closing}
                       className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                      role="menuitem"
                     >
                       <X className="w-5 h-5" />
                       {closing ? '마감 중...' : '모집 마감'}
@@ -146,6 +162,7 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
                       onClick={handleDelete}
                       disabled={deleting}
                       className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-destructive hover:bg-surface-hover transition-colors"
+                      role="menuitem"
                     >
                       <Trash2 className="w-5 h-5" />
                       {deleting ? '삭제 중...' : '삭제'}
@@ -183,6 +200,11 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-xs text-muted-foreground">
               <Users className="w-3 h-3 text-[#42A5F5]/70" />
               {formatSlots(post)}
+            </span>
+          )}
+          {post.game_format && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-xs text-muted-foreground">
+              {post.game_format === 'doubles' ? '복식' : post.game_format === 'singles' ? '단식' : '혼복'}
             </span>
           )}
           {(post.ntrp_min || post.ntrp_max) && (
@@ -260,5 +282,30 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
         )}
       </div>
     </article>
+
+    <Modal
+      isOpen={!!confirmAction}
+      onClose={() => setConfirmAction(null)}
+      title="확인"
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-foreground">{confirmAction?.message}</p>
+        <div className="flex gap-2">
+          <Button variant="secondary" fullWidth onClick={() => setConfirmAction(null)}>
+            취소
+          </Button>
+          <Button
+            fullWidth
+            onClick={() => {
+              confirmAction?.onConfirm();
+              setConfirmAction(null);
+            }}
+          >
+            확인
+          </Button>
+        </div>
+      </div>
+    </Modal>
+    </>
   );
 }

@@ -10,6 +10,7 @@ import { MapPin, Users, Star, Clock, X } from 'lucide-react';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import { BookmarkButton } from '@/components/club/bookmark-button';
 import { Modal } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast-provider';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
@@ -48,6 +49,7 @@ export function ExploreClubList({
   const [isPending, startTransition] = useTransition();
   const [joinModalClubId, setJoinModalClubId] = useState<string | null>(null);
   const [joinIntroduction, setJoinIntroduction] = useState('');
+  const toast = useToast();
 
   // 현재 선택된 시/도에서 시/군/구 칩 생성
   const currentSido = initialRegion.split(' ')[0] || 'all';
@@ -103,7 +105,7 @@ export function ExploreClubList({
         setJoinModalClubId(null);
         setJoinIntroduction('');
       } catch (error: any) {
-        alert(error.message || '가입 신청에 실패했��니다');
+        toast.error(error.message || '가입 신청에 실패했습니다');
       } finally {
         setJoiningId(null);
       }
@@ -117,7 +119,7 @@ export function ExploreClubList({
         await cancelJoinRequest(requestId);
         setCancelledIds((prev) => new Set(prev).add(clubId));
       } catch (error: any) {
-        alert(error.message || '신청 취소에 실패했습니다');
+        toast.error(error.message || '신청 취소에 실패했습니다');
       } finally {
         setCancellingId(null);
       }

@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast-provider';
 import { TopBar } from '@/components/layout/top-bar';
 import { NTRP_LEVELS } from '@/lib/constants';
 import { PlayerGameSummary } from '@/components/match/player-game-summary';
@@ -99,7 +100,7 @@ const DRAW_MODE_OPTIONS: {
   {
     value: 'mixed_only',
     label: '혼복만',
-    description: '혼합복식만 진행',
+    description: '혼복만 진행',
   },
   {
     value: 'gendered_only',
@@ -202,6 +203,10 @@ export default function DrawPage() {
   const params = useParams();
   const matchId = params.matchId as string;
   const clubId = params.clubId as string;
+  const toast = useToast();
+
+  // Confirm modal state
+  const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   // Data state
   const [draws, setDraws] = useState<DrawData[]>([]);
@@ -465,7 +470,7 @@ export default function DrawPage() {
 
   const handleGenerate = async () => {
     if (participants.length < 4) {
-      alert('복식 경기를 위해 최소 4명의 참가자가 필요합니다');
+      toast.warning('복식 경기를 위해 최소 4명의 참가자가 필요합니다');
       return;
     }
     setGenerating(true);
@@ -498,15 +503,15 @@ export default function DrawPage() {
       }
       await loadData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '대진표 생성에 실패했습니다');
+      toast.error(e instanceof Error ? e.message : '대진표 생성에 실패했습니다');
     } finally {
       setGenerating(false);
     }
   };
 
   const handleAddOffline = async () => {
-    if (!addName.trim()) { alert('이름을 입력해주세요'); return; }
-    if (!addGender) { alert('성별을 선택해주세요'); return; }
+    if (!addName.trim()) { toast.warning('이름을 입력해주세요'); return; }
+    if (!addGender) { toast.warning('성별을 선택해주세요'); return; }
     setAdding(true);
     try {
       await addOfflineParticipant(matchId, addName.trim(), addGender as 'M' | 'F', addNtrp ? Number(addNtrp) : undefined);
@@ -516,20 +521,24 @@ export default function DrawPage() {
       setShowAddModal(false);
       await loadData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '추가에 실패했습니다');
+      toast.error(e instanceof Error ? e.message : '추가에 실패했습니다');
     } finally {
       setAdding(false);
     }
   };
 
   const handleRemoveParticipant = async (pid: string, name: string) => {
-    if (!confirm(`${name}님을 참가자에서 제거하시겠습니까?`)) return;
-    const result = await removeParticipant(pid, matchId);
-    if (result?.error) {
-      alert(result.error);
-    } else {
-      await loadData();
-    }
+    setConfirmAction({
+      message: `${name}님을 참가자에서 제거하시겠습니까?`,
+      onConfirm: async () => {
+        const result = await removeParticipant(pid, matchId);
+        if (result?.error) {
+          toast.error(result.error);
+        } else {
+          await loadData();
+        }
+      },
+    });
   };
 
   const handleDeleteDraw = async (drawId: string) => {
@@ -539,43 +548,47 @@ export default function DrawPage() {
       setShowDeleteModal(null);
       await loadData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '대진표 삭제에 실패했습니다');
+      toast.error(e instanceof Error ? e.message : '대진표 삭제에 실패했습니다');
     } finally {
       setDeleting(false);
     }
   };
 
   const handleRegenerate = async (draw: DrawData) => {
-    if (!confirm('대진표를 재생성하시겠습니까? 기존 게임 기록과 점수가 모두 삭제됩니다.')) return;
-    setRegenerating(draw.id);
-    try {
-      const courtNameArray = Array.from(
-        { length: matchCourtCount },
-        (_, i) => courtNames[i + 1] || `${i + 1}코트`
-      );
-      const overrides = Object.keys(genderOverrides).length > 0 ? genderOverrides : undefined;
-      const res = await fetch('/api/draw/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          matchId,
-          drawType: draw.draw_type,
-          roundNumber: draw.round_number,
-          gamesPerCourt,
-          timeSlotMinutes: Number(gameDuration),
-          startTime,
-          courtNames: courtNameArray,
-          genderOverrides: overrides,
-        }),
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error);
-      await loadData();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '대진표 재생성에 실패했습니다');
-    } finally {
-      setRegenerating(null);
-    }
+    setConfirmAction({
+      message: '대진표를 재생성하시겠습니까? 기존 게임 기록과 점수가 모두 삭제됩니다.',
+      onConfirm: async () => {
+        setRegenerating(draw.id);
+        try {
+          const courtNameArray = Array.from(
+            { length: matchCourtCount },
+            (_, i) => courtNames[i + 1] || `${i + 1}코트`
+          );
+          const overrides = Object.keys(genderOverrides).length > 0 ? genderOverrides : undefined;
+          const res = await fetch('/api/draw/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              matchId,
+              drawType: draw.draw_type,
+              roundNumber: draw.round_number,
+              gamesPerCourt,
+              timeSlotMinutes: Number(gameDuration),
+              startTime,
+              courtNames: courtNameArray,
+              genderOverrides: overrides,
+            }),
+          });
+          const result = await res.json();
+          if (!res.ok) throw new Error(result.error);
+          await loadData();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '대진표 재생성에 실패했습니다');
+        } finally {
+          setRegenerating(null);
+        }
+      },
+    });
   };
 
   // ── Gender override toggle ──
@@ -593,7 +606,7 @@ export default function DrawPage() {
     setSubstituting(true);
     const result = await replaceParticipant(matchId, substituteTarget.id, member.userId);
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
     } else {
       setSubstituteTarget(null);
       await loadData();
@@ -606,7 +619,7 @@ export default function DrawPage() {
     setSubstituting(true);
     const result = await replaceWithOffline(matchId, substituteTarget.id, name, gender, ntrp);
     if (result?.error) {
-      alert(result.error);
+      toast.error(result.error);
     } else {
       setSubstituteTarget(null);
       await loadData();
@@ -637,7 +650,7 @@ export default function DrawPage() {
       setEditGame(null);
       await loadData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '선수 배정 수정에 실패했습니다');
+      toast.error(e instanceof Error ? e.message : '선수 배정 수정에 실패했습니다');
     } finally {
       setSavingEdit(false);
     }
@@ -688,7 +701,7 @@ export default function DrawPage() {
     }
 
     if (gameInserts.length === 0) {
-      alert('최소 1개의 경기에 선수를 배정해주세요');
+      toast.warning('최소 1개의 경기에 선수를 배정해주세요');
       return;
     }
 
@@ -698,7 +711,7 @@ export default function DrawPage() {
       setManualMode(false);
       await loadData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '대진표 저장에 실패했습니다');
+      toast.error(e instanceof Error ? e.message : '대진표 저장에 실패했습니다');
     } finally {
       setSavingManual(false);
     }
@@ -742,14 +755,14 @@ export default function DrawPage() {
   const generateDrawImage = async (draw: DrawData): Promise<Blob | null> => {
     const html2canvasModule = await import('html2canvas').catch(() => null);
     if (!html2canvasModule) {
-      alert('이미지 생성 라이브러리를 로드할 수 없습니다.');
+      toast.error('이미지 생성 라이브러리를 로드할 수 없습니다.');
       return null;
     }
     const html2canvas = html2canvasModule.default;
 
     const props = getDrawImageProps(draw);
     if (!props) {
-      alert('대진표 데이터를 가져올 수 없습니다.');
+      toast.error('대진표 데이터를 가져올 수 없습니다.');
       return null;
     }
 
@@ -813,7 +826,7 @@ export default function DrawPage() {
     } catch (e: any) {
       if (e?.name !== 'AbortError') {
         console.error('Share failed:', e);
-        alert('공유에 실패했습니다. 저장 버튼을 사용해주세요.');
+        toast.error('공유에 실패했습니다. 저장 버튼을 사용해주세요.');
       }
     } finally {
       setExportingImage(false);
@@ -845,7 +858,7 @@ export default function DrawPage() {
       }
     } catch (e) {
       console.error('Download failed:', e);
-      alert('이미지 저장에 실패했습니다');
+      toast.error('이미지 저장에 실패했습니다');
     } finally {
       setExportingImage(false);
       setExportingDrawId(null);
@@ -886,20 +899,20 @@ export default function DrawPage() {
             <button
               onClick={() => toggleGenderOverride(p)}
               title="성별 그룹 이동"
-              className="p-0.5 rounded-full hover:bg-yellow-500/20 transition-colors cursor-pointer"
+              className="p-2 -m-1 rounded-full hover:bg-yellow-500/20 transition-colors cursor-pointer"
             >
               <ArrowRightLeft className="w-3.5 h-3.5 text-muted-foreground hover:text-yellow-400" />
             </button>
             <button
               onClick={() => setSubstituteTarget(p)}
               title="대체 선수"
-              className="p-0.5 rounded-full hover:bg-primary/20 transition-colors cursor-pointer"
+              className="p-2 -m-1 rounded-full hover:bg-primary/20 transition-colors cursor-pointer"
             >
               <Replace className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
             </button>
             <button
               onClick={() => handleRemoveParticipant(p.id, p.name)}
-              className="p-0.5 rounded-full hover:bg-destructive/20 transition-colors cursor-pointer"
+              className="p-2 -m-1 rounded-full hover:bg-destructive/20 transition-colors cursor-pointer"
             >
               <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
             </button>
@@ -1597,6 +1610,17 @@ export default function DrawPage() {
           </div>
         )}
       </Modal>
+
+      {/* ── Confirm action modal ── */}
+      {confirmAction && (
+        <Modal isOpen={!!confirmAction} onClose={() => setConfirmAction(null)} title="확인">
+          <p className="text-sm text-muted-foreground mb-5">{confirmAction.message}</p>
+          <div className="flex gap-3">
+            <Button variant="secondary" fullWidth onClick={() => setConfirmAction(null)}>취소</Button>
+            <Button variant="destructive" fullWidth onClick={() => { confirmAction.onConfirm(); setConfirmAction(null); }}>확인</Button>
+          </div>
+        </Modal>
+      )}
 
     </>
   );

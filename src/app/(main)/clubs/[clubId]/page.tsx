@@ -9,7 +9,7 @@ import { getClubFeedWithCounts } from '@/lib/queries/media';
 import { formatRole } from '@/lib/utils/format';
 import { hasPermission } from '@/lib/utils/permissions';
 import { RefreshButton } from '@/components/ui/refresh-button';
-import { Settings, MapPin, Users, Trophy, BarChart3, Calendar, Swords, Megaphone, ClipboardList } from 'lucide-react';
+import { Settings, MapPin, Users, Trophy, BarChart3, Calendar, Swords, Megaphone, ClipboardList, Repeat } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ClubInviteLink } from '@/components/club/club-invite-link';
@@ -121,8 +121,8 @@ export default async function ClubDetailPage({
               )}
             </div>
 
-            {/* Invite code for managers */}
-            {canManageMembers && (
+            {/* Invite link for all members */}
+            {myRole && (
               <div className="pt-2 border-t border-border">
                 <ClubInviteLink code={club.invite_code} />
               </div>
@@ -229,6 +229,21 @@ export default async function ClubDetailPage({
             <div className="flex-1">
               <span className="text-sm font-semibold text-foreground">모집글 작성</span>
               <p className="text-xs text-muted-foreground">회원 또는 게스트 모집하기</p>
+            </div>
+          </Link>
+        )}
+
+        {canCreateMatch && (
+          <Link
+            href={`/clubs/${clubId}/templates`}
+            className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-200"
+          >
+            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+              <Repeat className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1">
+              <span className="text-sm font-semibold text-foreground">반복 경기 템플릿</span>
+              <p className="text-xs text-muted-foreground">정기 경기를 템플릿으로 관리</p>
             </div>
           </Link>
         )}

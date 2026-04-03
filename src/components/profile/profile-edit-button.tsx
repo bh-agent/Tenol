@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast-provider';
 import { updateProfile, updateProfileAvatar } from '@/lib/actions/profile';
 import { NTRP_LEVELS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
@@ -55,6 +56,7 @@ export function ProfileEditButton({ profile }: ProfileEditButtonProps) {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const toast = useToast();
 
   // 기존 tennis_start_date에서 년/월 파싱 ("2023-05-01" → year: "2023", month: "05")
   const existingYear = profile.tennis_start_date?.substring(0, 4) || '';
@@ -70,12 +72,12 @@ export function ProfileEditButton({ profile }: ProfileEditButtonProps) {
 
     const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
     if (!allowedTypes.includes(file.type)) {
-      alert('이미지 파일(JPEG, PNG, GIF, WebP)만 업로드 가능합니다');
+      toast.error('이미지 파일(JPEG, PNG, GIF, WebP)만 업로드 가능합니다');
       return;
     }
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('5MB 이하의 이미지만 가능합니다');
+      toast.error('5MB 이하의 이미지만 가능합니다');
       return;
     }
 
@@ -99,7 +101,7 @@ export function ProfileEditButton({ profile }: ProfileEditButtonProps) {
       setAvatarPreview(urlData.publicUrl);
       router.refresh();
     } catch {
-      alert('프로필 사진 업로드에 실패했습니다');
+      toast.error('프로필 사진 업로드에 실패했습니다');
     } finally {
       setUploading(false);
     }

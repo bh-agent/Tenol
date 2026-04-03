@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
+import { useToast } from '@/components/ui/toast-provider';
 import { createClient } from '@/lib/supabase/client';
 import { MentionAutocomplete } from '@/components/media/mention-autocomplete';
 import { useMentionInput } from '@/lib/hooks/use-mention-input';
@@ -37,6 +38,7 @@ export function MultiUpload({ storagePath, onUpload, maxFiles = 10, userAvatar, 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const mention = useMentionInput(textareaRef, setCaption);
+  const toast = useToast();
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files || []);
@@ -44,20 +46,20 @@ export function MultiUpload({ storagePath, onUpload, maxFiles = 10, userAvatar, 
 
     const remaining = maxFiles - files.length;
     if (remaining <= 0) {
-      alert(`최대 ${maxFiles}개까지 업로드 가능합니다`);
+      toast.error(`최대 ${maxFiles}개까지 업로드 가능합니다`);
       return;
     }
 
     const toAdd = selected.slice(0, remaining);
     const invalidType = toAdd.filter((f) => !ALLOWED_TYPES.includes(f.type));
     if (invalidType.length > 0) {
-      alert('이미지(JPEG, PNG, GIF, WebP) 또는 동영상(MP4, WebM)만 업로드 가능합니다');
+      toast.error('이미지(JPEG, PNG, GIF, WebP) 또는 동영상(MP4, WebM)만 업로드 가능합니다');
       return;
     }
 
     const oversized = toAdd.filter((f) => f.size > 10 * 1024 * 1024);
     if (oversized.length > 0) {
-      alert('10MB 이하의 파일만 업로드 가능합니다');
+      toast.error('10MB 이하의 파일만 업로드 가능합니다');
       return;
     }
 
@@ -114,7 +116,7 @@ export function MultiUpload({ storagePath, onUpload, maxFiles = 10, userAvatar, 
       setCaption('');
       setCurrentPreview(0);
     } catch (e) {
-      alert(e instanceof Error ? e.message : '업로드에 실패했습니다');
+      toast.error(e instanceof Error ? e.message : '업로드에 실패했습니다');
     } finally {
       setUploading(false);
     }

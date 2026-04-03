@@ -3,6 +3,7 @@
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast-provider';
 import { ShareButton } from '@/components/ui/share-button';
 import { ImageViewer } from './image-viewer';
 import { LikeButton } from './like-button';
@@ -65,7 +66,9 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, onDelete, onUpd
   const [likeCount, setLikeCount] = useState(post.like_count ?? 0);
   const [commentCount, setCommentCount] = useState(post.comment_count ?? 0);
   const [commentSheetOpen, setCommentSheetOpen] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const [, startTransition] = useTransition();
+  const toast = useToast();
 
   // Edit mention support
   const editTextareaRef = useRef<HTMLTextAreaElement>(null);
@@ -88,17 +91,21 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, onDelete, onUpd
   const displayName = post.profiles?.display_name || '알 수 없음';
 
   const handleDelete = async () => {
-    if (!confirm('이 게시물을 삭제하시겠습니까?')) return;
-    setDeleting(true);
-    try {
-      await deleteMedia(post.id);
-      setShowMenu(false);
-      onDelete?.(post.id);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '삭제에 실패했습니다');
-    } finally {
-      setDeleting(false);
-    }
+    setConfirmAction({
+      message: '이 게시물을 삭제하시겠습니까?',
+      onConfirm: async () => {
+        setDeleting(true);
+        try {
+          await deleteMedia(post.id);
+          setShowMenu(false);
+          onDelete?.(post.id);
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '삭제에 실패했습니다');
+        } finally {
+          setDeleting(false);
+        }
+      },
+    });
   };
 
   const handleEdit = async () => {
@@ -108,7 +115,7 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, onDelete, onUpd
       setShowEdit(false);
       onUpdate?.(post.id, editCaption);
     } catch (e) {
-      alert(e instanceof Error ? e.message : '수정에 실패했습니다');
+      toast.error(e instanceof Error ? e.message : '수정에 실패했습니다');
     } finally {
       setSaving(false);
     }
@@ -185,6 +192,8 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, onDelete, onUpd
                 onClick={() => setShowMenu(!showMenu)}
                 className="p-2 -mr-2 rounded-full hover:bg-surface-elevated transition-colors"
                 aria-label="더보기"
+                aria-haspopup="true"
+                aria-expanded={showMenu}
               >
                 <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
               </button>
@@ -192,12 +201,17 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, onDelete, onUpd
               {showMenu && createPortal(
                 <>
                   <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowMenu(false)} />
-                  <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom">
+                  <div
+                    className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom"
+                    role="menu"
+                    aria-label="게시물 관리"
+                  >
                     <div className="w-10 h-1 rounded-full bg-muted mx-auto mt-3 mb-1" />
                     <div className="py-1">
                       <button
                         onClick={() => { setShowMenu(false); setShowEdit(true); }}
                         className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                        role="menuitem"
                       >
                         <Pencil className="w-5 h-5" />
                         수정
@@ -206,6 +220,7 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, onDelete, onUpd
                         onClick={handleDelete}
                         disabled={deleting}
                         className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-destructive hover:bg-surface-hover transition-colors"
+                        role="menuitem"
                       >
                         <Trash2 className="w-5 h-5" />
                         {deleting ? '삭제 중...' : '삭제'}
@@ -283,18 +298,23 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, onDelete, onUpd
 
         {/* ── Dot indicators (below media, not overlaid) ── */}
         {files.length > 1 && (
-          <div className="flex justify-center gap-1.5 py-2.5">
+          <div className="flex justify-center gap-1 py-1">
             {files.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setImageIndex(i)}
-                className={cn(
-                  'w-1.5 h-1.5 rounded-full transition-all duration-200',
-                  i === imageIndex
-                    ? 'bg-primary scale-125'
-                    : 'bg-subtle'
-                )}
-              />
+                aria-label={`이미지 ${i + 1}`}
+                className="p-2 -m-0.5"
+              >
+                <span
+                  className={cn(
+                    'block w-1.5 h-1.5 rounded-full transition-all duration-200',
+                    i === imageIndex
+                      ? 'bg-primary scale-125'
+                      : 'bg-subtle'
+                  )}
+                />
+              </button>
             ))}
           </div>
         )}
@@ -421,6 +441,31 @@ export function PostCard({ post, currentUserId, isAdmin, clubId, onDelete, onUpd
           <Button onClick={handleEdit} disabled={saving} fullWidth>
             {saving ? '저장 중...' : '저장'}
           </Button>
+        </div>
+      </Modal>
+
+      {/* ── Confirm Modal ── */}
+      <Modal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        title="확인"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-foreground">{confirmAction?.message}</p>
+          <div className="flex gap-2">
+            <Button variant="secondary" fullWidth onClick={() => setConfirmAction(null)}>
+              취소
+            </Button>
+            <Button
+              fullWidth
+              onClick={() => {
+                confirmAction?.onConfirm();
+                setConfirmAction(null);
+              }}
+            >
+              확인
+            </Button>
+          </div>
         </div>
       </Modal>
 

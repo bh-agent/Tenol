@@ -1,13 +1,14 @@
 'use client';
 
 import { cn } from '@/lib/utils/cn';
-import { Home, Compass, Users, Trophy, User } from 'lucide-react';
+import { Home, Compass, Search, Users, Trophy, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const navItems = [
   { href: '/feed', label: '홈', icon: Home },
   { href: '/clubs/explore', label: '탐색', icon: Compass },
+  { href: '/search', label: '검색', icon: Search },
   { href: '/clubs', label: '클럽', icon: Users },
   { href: '/my-matches', label: '경기', icon: Trophy },
   { href: '/profile', label: '프로필', icon: User },

@@ -1,6 +1,9 @@
 'use client';
 
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Modal } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast-provider';
 import { removeMember, updateMemberRole, transferOwnership, updateMemberPermissions } from '@/lib/actions/clubs';
 import { getPermissions, getPermissionLabel, getAllPermissions, getDefaultPermissions } from '@/lib/utils/permissions';
 import type { ClubRole } from '@/types';
@@ -20,11 +23,13 @@ interface MemberManageActionsProps {
 
 export function MemberManageActions({ clubId, targetUserId, currentRole, myRole, customPermissions }: MemberManageActionsProps) {
   const router = useRouter();
+  const toast = useToast();
   const [showMenu, setShowMenu] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPermissions, setShowPermissions] = useState(false);
   const [showTransferConfirm, setShowTransferConfirm] = useState(false);
   const [permSaving, setPermSaving] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   // 현재 유효 권한: 커스텀이 있으면 커스텀, 없으면 역할 기본
   const defaultPerms = getPermissions(currentRole);
@@ -38,17 +43,21 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
   const canRemove = myRole === 'owner' || (myRole === 'admin' && currentRole === 'member');
 
   const handleRemove = async () => {
-    if (!confirm('정말 이 멤버를 제명하시겠습니까?')) return;
-    setLoading(true);
-    try {
-      await removeMember(clubId, targetUserId);
-      router.refresh();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '오류가 발생했습니다');
-    } finally {
-      setLoading(false);
-      setShowMenu(false);
-    }
+    setConfirmAction({
+      message: '정말 이 멤버를 제명하시겠습니까?',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          await removeMember(clubId, targetUserId);
+          router.refresh();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
+        } finally {
+          setLoading(false);
+          setShowMenu(false);
+        }
+      },
+    });
   };
 
   const handleTransferOwnership = async () => {
@@ -57,7 +66,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
       await transferOwnership(clubId, targetUserId);
       router.refresh();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '오류가 발생했습니다');
+      toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
     } finally {
       setLoading(false);
       setShowTransferConfirm(false);
@@ -66,17 +75,21 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
 
   const handleRoleChange = async (newRole: string) => {
     const label = newRole === 'admin' ? '운영진' : '멤버';
-    if (!confirm(`이 멤버를 ${label}(으)로 변경하시겠습니까?`)) return;
-    setLoading(true);
-    try {
-      await updateMemberRole(clubId, targetUserId, newRole);
-      router.refresh();
-    } catch (e) {
-      alert(e instanceof Error ? e.message : '오류가 발생했습니다');
-    } finally {
-      setLoading(false);
-      setShowMenu(false);
-    }
+    setConfirmAction({
+      message: `이 멤버를 ${label}(으)로 변경하시겠습니까?`,
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          await updateMemberRole(clubId, targetUserId, newRole);
+          router.refresh();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
+        } finally {
+          setLoading(false);
+          setShowMenu(false);
+        }
+      },
+    });
   };
 
   const togglePerm = (perm: ClubPermission) => {
@@ -106,7 +119,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
       setHasChanges(false);
       router.refresh();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '오류가 발생했습니다');
+      toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
     } finally {
       setPermSaving(false);
     }
@@ -123,6 +136,9 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
         <button
           onClick={() => setShowMenu(!showMenu)}
           className="p-1.5 rounded-full hover:bg-surface-elevated transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+          aria-label="멤버 관리"
+          aria-haspopup="true"
+          aria-expanded={showMenu}
         >
           <MoreVertical className="w-4 h-4 text-muted-foreground" />
         </button>
@@ -130,7 +146,11 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
         {showMenu && createPortal(
           <>
             <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowMenu(false)} />
-            <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom">
+            <div
+              className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom"
+              role="menu"
+              aria-label="멤버 관리"
+            >
               <div className="w-10 h-1 rounded-full bg-muted mx-auto mt-3 mb-1" />
               <div className="py-1">
                 {/* 회장만 운영진 승격/강등 가능 */}
@@ -139,6 +159,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
                     onClick={() => handleRoleChange('admin')}
                     disabled={loading}
                     className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                    role="menuitem"
                   >
                     <ShieldCheck className="w-5 h-5 text-primary" />
                     운영진으로 승격
@@ -149,6 +170,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
                     onClick={() => handleRoleChange('member')}
                     disabled={loading}
                     className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                    role="menuitem"
                   >
                     <ShieldOff className="w-5 h-5 text-muted-foreground" />
                     멤버로 강등
@@ -164,6 +186,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
                     }}
                     disabled={loading}
                     className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                    role="menuitem"
                   >
                     <Crown className="w-5 h-5 text-yellow-500" />
                     클럽장 양도
@@ -181,6 +204,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
                       setShowPermissions(true);
                     }}
                     className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                    role="menuitem"
                   >
                     <KeyRound className="w-5 h-5 text-primary" />
                     권한 관리
@@ -198,6 +222,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
                     onClick={handleRemove}
                     disabled={loading}
                     className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-destructive hover:bg-surface-hover transition-colors"
+                    role="menuitem"
                   >
                     <UserMinus className="w-5 h-5" />
                     제명하기
@@ -253,6 +278,31 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
         </>,
         document.body
       )}
+
+      {/* 확인 모달 */}
+      <Modal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        title="확인"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-foreground">{confirmAction?.message}</p>
+          <div className="flex gap-2">
+            <Button variant="secondary" fullWidth onClick={() => setConfirmAction(null)}>
+              취소
+            </Button>
+            <Button
+              fullWidth
+              onClick={() => {
+                confirmAction?.onConfirm();
+                setConfirmAction(null);
+              }}
+            >
+              확인
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* 권한 관리 모달 */}
       {showPermissions && createPortal(

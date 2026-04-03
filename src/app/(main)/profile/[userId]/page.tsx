@@ -12,9 +12,11 @@ import { ProfileHeader } from '@/components/profile/profile-header';
 import { ProfileStatsBar } from '@/components/profile/profile-stats-bar';
 import { FollowButton } from '@/components/profile/follow-button';
 import { SignOutButton } from '@/components/profile/sign-out-button';
+import { StatShareButton } from '@/components/profile/stat-share-card';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs } from '@/lib/queries/clubs';
 import { getPlayerStats } from '@/lib/queries/stats';
+import { getProfileStats } from '@/lib/queries/profile-stats';
 import { getFollowStatus } from '@/lib/queries/follow';
 import { getBookmarkedClubs } from '@/lib/queries/bookmarks';
 import { BarChart3, Users, ChevronRight, Crown, Shield, Plus, Search, Bookmark, MapPin, Calendar } from 'lucide-react';
@@ -43,8 +45,9 @@ export default async function UserProfilePage({
   if (!profile) notFound();
 
   // Fetch data in parallel
-  const [stats, followStatus, clubsResult] = await Promise.all([
+  const [stats, profileStats, followStatus, clubsResult] = await Promise.all([
     getPlayerStats(userId),
+    getProfileStats(userId),
     getFollowStatus(userId),
     isOwnProfile
       ? getMyClubs()
@@ -140,10 +143,17 @@ export default async function UserProfilePage({
             <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
               <BarChart3 className="w-5 h-5 text-primary" />
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="font-semibold text-foreground">전체 전적</h3>
               <p className="text-xs text-muted-foreground">모든 클럽 통합</p>
             </div>
+            {isOwnProfile && (
+              <StatShareButton
+                displayName={profile.display_name}
+                avatarUrl={profile.avatar_url}
+                stats={profileStats}
+              />
+            )}
           </div>
 
           {stats.total > 0 ? (

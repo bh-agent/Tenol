@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Modal } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast-provider';
 import { updateProfile, updateProfileAvatar } from '@/lib/actions/profile';
 import { NTRP_LEVELS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
@@ -64,6 +65,7 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const toast = useToast();
   const [profile, setProfile] = useState(initialProfile);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
@@ -80,7 +82,7 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
-      alert('5MB 이하의 이미지만 가능합니다');
+      toast.error('5MB 이하의 이미지만 가능합니다');
       return;
     }
 
@@ -103,7 +105,7 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
       setProfile((p) => ({ ...p, avatar_url: urlData.publicUrl }));
       router.refresh();
     } catch {
-      alert('프로필 사진 업로드에 실패했습니다');
+      toast.error('프로필 사진 업로드에 실패했습니다');
     } finally {
       setAvatarUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';

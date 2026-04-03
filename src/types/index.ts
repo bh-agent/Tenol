@@ -66,7 +66,7 @@ export type Match = {
   match_participants?: MatchParticipant[];
 };
 
-export type ParticipantStatus = 'confirmed' | 'pending' | 'rejected' | 'withdrawn';
+export type ParticipantStatus = 'confirmed' | 'pending' | 'rejected' | 'withdrawn' | 'waitlisted';
 export type ParticipantType = 'member' | 'guest';
 
 export type MatchParticipant = {
@@ -254,10 +254,33 @@ export type RecruitmentPost = {
   male_slots: number | null;
   female_slots: number | null;
   any_slots: number | null;
+  game_format: MatchFormat | null;
   ntrp_min: number | null;
   ntrp_max: number | null;
   status: 'open' | 'closed';
   created_at: string;
   clubs?: { name: string; logo_url: string | null; region: string | null };
   profiles?: { display_name: string; avatar_url: string | null };
+};
+
+export type MatchTemplate = {
+  id: string;
+  club_id: string;
+  name: string;
+  title_pattern: string;
+  description: string | null;
+  location: string | null;
+  start_time: string | null;
+  end_time: string | null;
+  court_count: number;
+  max_participants: number | null;
+  allow_guests: boolean;
+  format: MatchFormat;
+  day_of_week: number;
+  frequency_weeks: number;
+  is_active: boolean;
+  last_created_date: string | null;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 };

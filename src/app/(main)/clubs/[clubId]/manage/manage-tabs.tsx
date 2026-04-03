@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/empty-state';
+import { useToast } from '@/components/ui/toast-provider';
 import { respondToJoinRequest } from '@/lib/actions/clubs';
 import { respondToGuest } from '@/lib/actions/matches';
 import type { ClubJoinRequest } from '@/types';
@@ -69,6 +70,7 @@ export function ManageTabs({
   joinRequests,
   guestApplications,
 }: ManageTabsProps) {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'join' | 'guest'>('join');
   const [processedJoinIds, setProcessedJoinIds] = useState<Set<string>>(new Set());
   const [processedGuestIds, setProcessedGuestIds] = useState<Set<string>>(new Set());
@@ -93,7 +95,7 @@ export function ManageTabs({
         await respondToJoinRequest(requestId, approved);
         setProcessedJoinIds((prev) => new Set(prev).add(requestId));
       } catch (error: any) {
-        alert(error.message || '처리에 실패했습니다');
+        toast.error(error.message || '처리에 실패했습니다');
       }
     });
   }
@@ -108,7 +110,7 @@ export function ManageTabs({
         await respondToGuest(participantId, matchId, approved);
         setProcessedGuestIds((prev) => new Set(prev).add(participantId));
       } catch (error: any) {
-        alert(error.message || '처리에 실패했습니다');
+        toast.error(error.message || '처리에 실패했습니다');
       }
     });
   }

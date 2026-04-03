@@ -59,6 +59,7 @@ export async function joinMatch(matchId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('인증이 필요합니다');
 
+  // The RPC now auto-assigns 'waitlisted' status when match is full
   const { error } = await supabase.rpc('join_match_atomically', {
     p_match_id: validMatchId,
     p_user_id: user.id,
@@ -69,7 +70,6 @@ export async function joinMatch(matchId: string) {
   if (error) {
     if (error.message?.includes('MATCH_NOT_FOUND')) throw new Error('경기를 찾을 수 없습니다');
     if (error.message?.includes('REGISTRATION_CLOSED')) throw new Error('모집이 마감되었습니다');
-    if (error.message?.includes('MATCH_FULL')) throw new Error('참가 인원이 가득 찼습니다');
     if (error.code === '23505') throw new Error('이미 참가 신청했습니다');
 
     // RPC might be outdated - fallback to direct insert with safety checks
@@ -85,20 +85,24 @@ export async function joinMatch(matchId: string) {
     }
     if (matchCheck.registration_closed) throw new Error('모집이 마감되었습니다');
 
+    // Determine status: waitlisted if full, confirmed otherwise
+    let status: 'confirmed' | 'waitlisted' = 'confirmed';
     if (matchCheck.max_participants) {
       const { count } = await supabase
         .from('match_participants')
         .select('id', { count: 'exact', head: true })
         .eq('match_id', validMatchId)
         .eq('status', 'confirmed');
-      if (count && count >= matchCheck.max_participants) throw new Error('참가 인원이 가득 찼습니다');
+      if (count && count >= matchCheck.max_participants) {
+        status = 'waitlisted';
+      }
     }
 
     const { error: insertError } = await supabase.from('match_participants').insert({
       match_id: validMatchId,
       user_id: user.id,
       participant_type: 'member',
-      status: 'confirmed',
+      status,
     });
 
     if (insertError) {
@@ -263,11 +267,84 @@ export async function withdrawFromMatch(matchId: string) {
     throw new Error('종료되었거나 취소된 경기에서는 탈퇴할 수 없습니다');
   }
 
+  // Check if the user was a confirmed participant (to know if we should promote waitlist)
+  const { data: participant } = await supabase
+    .from('match_participants')
+    .select('status')
+    .eq('match_id', validMatchId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  const wasConfirmed = participant?.status === 'confirmed';
+
   await supabase
     .from('match_participants')
     .delete()
     .eq('match_id', validMatchId)
     .eq('user_id', user.id);
+
+  // If a confirmed participant withdrew, promote the next waitlisted participant
+  if (wasConfirmed) {
+    const { data: promotedId } = await supabase.rpc('promote_waitlist', {
+      p_match_id: validMatchId,
+    });
+
+    // Send notification to promoted participant
+    if (promotedId) {
+      try {
+        const { data: promoted } = await supabase
+          .from('match_participants')
+          .select('user_id')
+          .eq('id', promotedId)
+          .maybeSingle();
+
+        if (promoted?.user_id) {
+          const { data: matchInfo } = await supabase
+            .from('matches')
+            .select('title, club_id')
+            .eq('id', validMatchId)
+            .maybeSingle();
+
+          if (matchInfo) {
+            const { createNotification } = await import('@/lib/actions/notifications');
+            await createNotification(
+              promoted.user_id,
+              'match_invite',
+              '대기자 참가 확정',
+              `"${matchInfo.title}" 경기에 대기에서 참가가 확정되었습니다.`,
+              { match_id: validMatchId, club_id: matchInfo.club_id }
+            );
+          }
+        }
+      } catch {
+        // Notification failure should not block the main flow
+      }
+    }
+  }
+}
+
+export async function leaveWaitlist(matchId: string) {
+  const validMatchId = uuidSchema.parse(matchId);
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('인증이 필요합니다');
+
+  // Only delete if the participant is waitlisted
+  const { data: participant } = await supabase
+    .from('match_participants')
+    .select('id, status')
+    .eq('match_id', validMatchId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (!participant) throw new Error('대기 정보를 찾을 수 없습니다');
+  if (participant.status !== 'waitlisted') throw new Error('대기 상태가 아닙니다');
+
+  await supabase
+    .from('match_participants')
+    .delete()
+    .eq('id', participant.id);
 }
 
 /**
@@ -348,12 +425,27 @@ export async function removeParticipant(participantId: string, matchId: string):
       }
     }
 
+    // Check if the participant being removed was confirmed
+    const { data: removedParticipant } = await supabase
+      .from('match_participants')
+      .select('status')
+      .eq('id', validParticipantId)
+      .maybeSingle();
+
+    const wasConfirmed = removedParticipant?.status === 'confirmed';
+
     const { error } = await supabase
       .from('match_participants')
       .delete()
       .eq('id', validParticipantId);
 
     if (error) return { error: '참가자 삭제에 실패했습니다: ' + error.message };
+
+    // Promote waitlisted participant if a confirmed one was removed
+    if (wasConfirmed) {
+      await supabase.rpc('promote_waitlist', { p_match_id: validMatchId });
+    }
+
     return {};
   } catch (e) {
     return { error: e instanceof Error ? e.message : '참가자 삭제에 실패했습니다' };

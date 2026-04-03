@@ -63,6 +63,24 @@ export const inviteCodeSchema = z.string().min(1).max(20).regex(/^[a-zA-Z0-9]+$/
 // Match Schemas
 // ============================================================
 
+export const dayOfWeekSchema = z.number().int().min(0).max(6);
+
+export const createMatchTemplateSchema = z.object({
+  club_id: uuidSchema,
+  name: sanitizedText.pipe(z.string().min(1, '템플릿 이름을 입력해주세요').max(50)),
+  title_pattern: sanitizedText.pipe(z.string().min(1, '경기 제목을 입력해주세요').max(100)),
+  description: sanitizedText.pipe(z.string().max(1000)).optional(),
+  location: sanitizedText.pipe(z.string().max(200)).optional(),
+  start_time: timeSchema.optional(),
+  end_time: timeSchema.optional(),
+  court_count: z.number().int().min(1).max(20),
+  max_participants: z.number().int().min(2).max(100).optional(),
+  allow_guests: z.boolean().default(true),
+  format: matchFormatSchema.default('doubles'),
+  day_of_week: dayOfWeekSchema,
+  frequency_weeks: z.number().int().min(1).max(4).default(1),
+});
+
 export const createMatchSchema = z.object({
   club_id: uuidSchema,
   title: sanitizedText.pipe(z.string().min(1, '경기 제목을 입력해주세요').max(100)),
@@ -202,6 +220,7 @@ export const createRecruitmentSchema = z.object({
   match_id: uuidSchema.optional(),
   match_date: dateSchema.optional(),
   location: sanitizedText.pipe(z.string().max(200)).optional(),
+  game_format: matchFormatSchema.optional(),
   needed_count: z.number().int().min(1).max(100).optional(),
   male_slots: z.number().int().min(0).max(100).optional(),
   female_slots: z.number().int().min(0).max(100).optional(),

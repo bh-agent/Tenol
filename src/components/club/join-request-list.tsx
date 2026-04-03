@@ -3,6 +3,7 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/components/ui/toast-provider';
 import { Check, X, UserPlus, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { useState, useTransition } from 'react';
 import { respondToJoinRequest } from '@/lib/actions/clubs';
@@ -30,6 +31,7 @@ export function JoinRequestList({ requests, clubId }: JoinRequestListProps) {
   const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  const toast = useToast();
 
   function toggleExpand(id: string) {
     setExpandedIds((prev) => {
@@ -48,7 +50,7 @@ export function JoinRequestList({ requests, clubId }: JoinRequestListProps) {
         await respondToJoinRequest(requestId, approved);
         setProcessedIds((prev) => new Set(prev).add(requestId));
       } catch (error: any) {
-        alert(error.message || '처리에 실패했습니다');
+        toast.error(error.message || '처리에 실패했습니다');
       }
     });
   }

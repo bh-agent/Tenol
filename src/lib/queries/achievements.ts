@@ -9,8 +9,7 @@ export type AchievementType =
   | 'iron_man'
   | 'social_butterfly'
   | 'rookie_star'
-  | 'ace'
-  | 'clutch';
+  | 'ace';
 
 export type Achievement = {
   type: AchievementType;
@@ -74,12 +73,6 @@ const ACHIEVEMENT_META: Record<
     emoji: '\u{1F3AF}',
     description: '단일 경기 최고 득점 기록 보유자',
     criteria: '단일 경기 최고 점수 기록 보유자 (최소 6점 이상)',
-  },
-  clutch: {
-    label: '역전왕',
-    emoji: '\u{26A1}',
-    description: '역전승이 가장 많은 선수',
-    criteria: '가장 많은 역전승을 기록한 선수 (최소 2회 이상)',
   },
 };
 
@@ -392,90 +385,6 @@ export async function getClubAchievements(
     );
   }
 
-  // ── clutch ── (most comebacks: won games where opponent scored more in set 1)
-  // Requires set_scores in games table
-  if (allGames) {
-    const { data: draws } = await supabase
-      .from('draws')
-      .select('id, match_id')
-      .in(
-        'match_id',
-        [...new Set(allStats.map((s) => s.match_id))]
-      );
-    const clubDrawIds = new Set(draws?.map((d) => d.id) || []);
-
-    const { data: gamesWithSets } = await supabase
-      .from('games')
-      .select(
-        'id, team_a_player1_id, team_a_player2_id, team_b_player1_id, team_b_player2_id, set_scores, winner, draw_id, status'
-      )
-      .eq('status', 'completed')
-      .not('set_scores', 'is', null);
-
-    if (gamesWithSets && gamesWithSets.length > 0) {
-      const { data: participants } = await supabase
-        .from('match_participants')
-        .select('id, user_id');
-
-      const partToUser = new Map<string, string>();
-      for (const p of participants || []) {
-        if (p.user_id) partToUser.set(p.id, p.user_id);
-      }
-
-      const comebacksByUser: Record<string, number> = {};
-
-      for (const g of gamesWithSets) {
-        if (!clubDrawIds.has(g.draw_id)) continue;
-        if (!g.winner || !g.set_scores) continue;
-
-        // set_scores expected as array: [{team_a: number, team_b: number}, ...]
-        const sets = g.set_scores as Array<{
-          team_a: number;
-          team_b: number;
-        }>;
-        if (!Array.isArray(sets) || sets.length < 2) continue;
-
-        const firstSet = sets[0];
-        if (!firstSet) continue;
-
-        // Check if winner was behind in first set
-        const winnerTeam = g.winner; // 'team_a' or 'team_b'
-        const winnerFirstSetScore =
-          winnerTeam === 'team_a' ? firstSet.team_a : firstSet.team_b;
-        const loserFirstSetScore =
-          winnerTeam === 'team_a' ? firstSet.team_b : firstSet.team_a;
-
-        if (winnerFirstSetScore < loserFirstSetScore) {
-          // This is a comeback! Credit the winning team players
-          const winnerPlayers =
-            winnerTeam === 'team_a'
-              ? [g.team_a_player1_id, g.team_a_player2_id]
-              : [g.team_b_player1_id, g.team_b_player2_id];
-
-          for (const pid of winnerPlayers) {
-            if (!pid) continue;
-            const uid = partToUser.get(pid);
-            if (!uid) continue;
-            comebacksByUser[uid] = (comebacksByUser[uid] || 0) + 1;
-          }
-        }
-      }
-
-      const clutchEntries = Object.entries(comebacksByUser).sort(
-        (a, b) => b[1] - a[1]
-      );
-      if (clutchEntries.length > 0 && clutchEntries[0][1] >= 2) {
-        achievements.push(
-          makeAchievement(
-            'clutch',
-            clutchEntries[0][0],
-            getName(clutchEntries[0][0]),
-            clutchEntries[0][1]
-          )
-        );
-      }
-    }
-  }
 
   return achievements;
 }

@@ -29,7 +29,6 @@ const BADGE_COLORS: Record<string, string> = {
   social_butterfly: 'from-pink-500/20 to-purple-500/20 border-pink-500/30',
   rookie_star: 'from-cyan-400/20 to-blue-400/20 border-cyan-400/30',
   ace: 'from-violet-500/20 to-purple-600/20 border-violet-500/30',
-  clutch: 'from-amber-500/20 to-yellow-500/20 border-amber-500/30',
 };
 
 export function AchievementInfoButton({

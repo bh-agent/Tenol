@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils/cn';
+import Image from 'next/image';
 
 export default function LoginPage() {
   const supabase = createClient();
@@ -57,12 +58,13 @@ export default function LoginPage() {
         {/* Tenol app icon */}
         <div className="relative mb-8">
           <div className="w-24 h-24 rounded-3xl overflow-hidden glow-primary shadow-lg shadow-primary/20">
-            <img
+            <Image
               src="/icons/icon-192.png"
               alt="테놀"
               width={96}
               height={96}
               className="w-full h-full object-cover"
+              priority
             />
           </div>
           {/* Floating particles */}
@@ -134,8 +136,8 @@ export default function LoginPage() {
       <div className="relative z-10 mt-10 mb-2 animate-fade-in" style={{ animationDelay: '0.5s' }}>
         <p className="text-xs text-subtle text-center leading-relaxed">
           로그인하면 테놀의{' '}
-          <span className="text-muted-foreground underline underline-offset-2 cursor-pointer">이용약관</span> 및{' '}
-          <span className="text-muted-foreground underline underline-offset-2 cursor-pointer">개인정보 처리방침</span>에
+          <a href="/terms" className="text-muted-foreground underline underline-offset-2">이용약관</a> 및{' '}
+          <a href="/privacy" className="text-muted-foreground underline underline-offset-2">개인정보 처리방침</a>에
           동의하게 됩니다.
         </p>
       </div>

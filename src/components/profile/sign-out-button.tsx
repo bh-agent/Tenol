@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
+import { useToast } from '@/components/ui/toast-provider';
 import { signOut } from '@/lib/actions/profile';
 import { LogOut, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -9,6 +10,7 @@ import { useState } from 'react';
 
 export function SignOutButton() {
   const router = useRouter();
+  const toast = useToast();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -27,7 +29,7 @@ export function SignOutButton() {
       }
       router.push('/login');
     } catch (e) {
-      alert(e instanceof Error ? e.message : '계정 삭제에 실패했습니다. 다시 시도해주세요.');
+      toast.error(e instanceof Error ? e.message : '계정 삭제에 실패했습니다. 다시 시도해주세요.');
       setDeleting(false);
     }
   };

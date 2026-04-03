@@ -20,7 +20,24 @@ export const NTRP_LEVELS = [
 export const MATCH_FORMATS = [
   { value: 'doubles', label: '복식' },
   { value: 'singles', label: '단식' },
-  { value: 'mixed_doubles', label: '혼합 복식' },
+  { value: 'mixed_doubles', label: '혼복' },
+] as const;
+
+export const DAYS_OF_WEEK = [
+  { value: 0, label: '일요일' },
+  { value: 1, label: '월요일' },
+  { value: 2, label: '화요일' },
+  { value: 3, label: '수요일' },
+  { value: 4, label: '목요일' },
+  { value: 5, label: '금요일' },
+  { value: 6, label: '토요일' },
+] as const;
+
+export const FREQUENCY_OPTIONS = [
+  { value: 1, label: '매주' },
+  { value: 2, label: '격주' },
+  { value: 3, label: '3주마다' },
+  { value: 4, label: '4주마다' },
 ] as const;
 
 export const DRAW_TYPES = [

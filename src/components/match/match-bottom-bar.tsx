@@ -3,7 +3,8 @@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Modal } from '@/components/ui/modal';
-import { joinMatch, withdrawFromMatch, applyAsGuest, toggleRegistration } from '@/lib/actions/matches';
+import { useToast } from '@/components/ui/toast-provider';
+import { joinMatch, withdrawFromMatch, applyAsGuest, toggleRegistration, leaveWaitlist } from '@/lib/actions/matches';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { LockKeyhole, LockKeyholeOpen } from 'lucide-react';
@@ -15,6 +16,9 @@ interface MatchBottomBarProps {
   registrationClosed: boolean;
   isMember?: boolean;
   isPendingGuest?: boolean;
+  isWaitlisted?: boolean;
+  waitlistPosition?: number;
+  isFull?: boolean;
   allowGuests?: boolean;
   canManage?: boolean;
   userProfile?: {
@@ -43,14 +47,19 @@ export function MatchBottomBar({
   registrationClosed,
   isMember = true,
   isPendingGuest = false,
+  isWaitlisted = false,
+  waitlistPosition = 0,
+  isFull = false,
   allowGuests = true,
   canManage = false,
   userProfile,
 }: MatchBottomBarProps) {
   const router = useRouter();
+  const toast = useToast();
   const [loading, setLoading] = useState(false);
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [introduction, setIntroduction] = useState('');
+  const [confirmAction, setConfirmAction] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   // Only show for upcoming matches
   if (status !== 'upcoming' && status !== 'in_progress') return null;
@@ -61,7 +70,7 @@ export function MatchBottomBar({
       await joinMatch(matchId);
       router.refresh();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '오류가 발생했습니다');
+      toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
     } finally {
       setLoading(false);
     }
@@ -76,23 +85,56 @@ export function MatchBottomBar({
       setIntroduction('');
       router.refresh();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '오류가 발생했습니다');
+      toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleWithdraw = async () => {
-    if (!confirm('참가를 취소하시겠습니까?')) return;
+  const handleJoinWaitlist = async () => {
     setLoading(true);
     try {
-      await withdrawFromMatch(matchId);
+      await joinMatch(matchId);
       router.refresh();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '오류가 발생했습니다');
+      toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLeaveWaitlist = async () => {
+    setConfirmAction({
+      message: '대기를 취소하시겠습니까?',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          await leaveWaitlist(matchId);
+          router.refresh();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleWithdraw = async () => {
+    setConfirmAction({
+      message: '참가를 취소하시겠습니까?',
+      onConfirm: async () => {
+        setLoading(true);
+        try {
+          await withdrawFromMatch(matchId);
+          router.refresh();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
+        } finally {
+          setLoading(false);
+        }
+      },
+    });
   };
 
   const handleToggleRegistration = async () => {
@@ -101,7 +143,7 @@ export function MatchBottomBar({
       await toggleRegistration(matchId);
       router.refresh();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '오류가 발생했습니다');
+      toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
     } finally {
       setLoading(false);
     }
@@ -115,13 +157,22 @@ export function MatchBottomBar({
         <div className="max-w-lg mx-auto flex gap-2">
           {/* Main action area */}
           <div className="flex-1">
-            {registrationClosed && !isParticipant && !isPendingGuest ? (
+            {registrationClosed && !isParticipant && !isPendingGuest && !isWaitlisted ? (
               <Badge
                 variant="default"
                 className="w-full justify-center py-2.5 text-sm"
               >
                 모집 마감
               </Badge>
+            ) : isWaitlisted ? (
+              <Button
+                variant="outline"
+                fullWidth
+                onClick={handleLeaveWaitlist}
+                loading={loading}
+              >
+                대기 취소 (대기 {waitlistPosition}번째)
+              </Button>
             ) : isPendingGuest ? (
               <Badge
                 variant="warning"
@@ -137,6 +188,15 @@ export function MatchBottomBar({
                 loading={loading}
               >
                 참가 취소
+              </Button>
+            ) : isMember && isFull ? (
+              <Button
+                variant="secondary"
+                fullWidth
+                onClick={handleJoinWaitlist}
+                loading={loading}
+              >
+                대기자로 참가
               </Button>
             ) : isMember ? (
               <Button
@@ -187,6 +247,31 @@ export function MatchBottomBar({
           )}
         </div>
       </div>
+
+      {/* Confirm Modal */}
+      <Modal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        title="확인"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-foreground">{confirmAction?.message}</p>
+          <div className="flex gap-2">
+            <Button variant="secondary" fullWidth onClick={() => setConfirmAction(null)}>
+              취소
+            </Button>
+            <Button
+              fullWidth
+              onClick={() => {
+                confirmAction?.onConfirm();
+                setConfirmAction(null);
+              }}
+            >
+              확인
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Guest Application Modal */}
       <Modal

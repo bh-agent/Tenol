@@ -17,6 +17,7 @@ import { useCallback, useEffect, useState, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { cn } from '@/lib/utils/cn';
+import { useToast } from '@/components/ui/toast-provider';
 
 // ── Types ──
 
@@ -65,6 +66,7 @@ export default function ResultsPage() {
   const params = useParams();
   const matchId = params.matchId as string;
   const clubId = params.clubId as string;
+  const toast = useToast();
 
   const [games, setGames] = useState<GameWithDraw[]>([]);
   const [participants, setParticipants] = useState<Record<string, string>>({});
@@ -306,7 +308,7 @@ export default function ResultsPage() {
     setSharing(true);
     try {
       const html2canvasModule = await import('html2canvas').catch(() => null);
-      if (!html2canvasModule) { alert('이미지 생성 라이브러리를 로드할 수 없습니다.'); return; }
+      if (!html2canvasModule) { toast.error('이미지 생성 라이브러리를 로드할 수 없습니다.'); return; }
       const html2canvas = html2canvasModule.default;
 
       const completed = games.filter((g) => g.score_team_a !== null && g.score_team_b !== null);
@@ -358,7 +360,7 @@ export default function ResultsPage() {
       }
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
-        alert('이미지 공유에 실패했습니다');
+        toast.error('이미지 공유에 실패했습니다');
       }
     } finally {
       setSharing(false);
@@ -378,7 +380,7 @@ export default function ResultsPage() {
       setEditingGame(null);
       await loadData();
     } catch (e) {
-      alert(e instanceof Error ? e.message : '점수 저장에 실패했습니다');
+      toast.error(e instanceof Error ? e.message : '점수 저장에 실패했습니다');
     } finally {
       setSaving(false);
     }
