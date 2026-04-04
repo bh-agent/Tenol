@@ -454,34 +454,33 @@ export default function ResultsPage() {
 
         {/* 공유 모달 — 이미지 생성 후 유저 탭으로 공유 */}
         {shareBlob && (
-          <div className="fixed inset-0 z-50 flex flex-col items-center justify-end bg-black/70 backdrop-blur-sm" onClick={() => setShareBlob(null)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-6" onClick={() => setShareBlob(null)}>
             <div
-              className="bg-card border-t border-border rounded-t-2xl w-full max-w-lg safe-bottom"
-              style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
+              className="bg-card border border-border rounded-2xl w-full max-w-sm overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-foreground">경기 결과 이미지</p>
-                  <button onClick={() => setShareBlob(null)} className="text-muted-foreground hover:text-foreground p-1">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+              <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                <p className="text-sm font-semibold text-foreground">경기 결과 이미지</p>
+                <button onClick={() => setShareBlob(null)} className="text-muted-foreground hover:text-foreground p-1 -mr-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="px-4">
                 <img
                   src={URL.createObjectURL(shareBlob)}
                   alt="경기 결과"
-                  className="w-full max-h-[50vh] object-contain rounded-xl border border-border bg-black"
+                  className="w-full max-h-[45vh] object-contain rounded-xl border border-border bg-black"
                 />
-                <div className="flex gap-2 pt-1">
-                  <Button variant="secondary" fullWidth onClick={handleDownloadBlob} className="gap-1.5">
-                    <Download className="w-4 h-4" />
-                    저장
-                  </Button>
-                  <Button variant="primary" fullWidth onClick={handleShareBlob} className="gap-1.5">
-                    <Share2 className="w-4 h-4" />
-                    공유
-                  </Button>
-                </div>
+              </div>
+              <div className="flex gap-2 p-4">
+                <Button variant="secondary" fullWidth onClick={handleDownloadBlob} className="gap-1.5">
+                  <Download className="w-4 h-4" />
+                  저장
+                </Button>
+                <Button variant="primary" fullWidth onClick={handleShareBlob} className="gap-1.5">
+                  <Share2 className="w-4 h-4" />
+                  공유
+                </Button>
               </div>
             </div>
           </div>
