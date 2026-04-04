@@ -11,7 +11,7 @@ import { hasPermission } from '@/lib/utils/permissions';
 import type { ClubRole } from '@/types';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ResultsShareImage, type ResultsShareImageProps } from '@/components/match/results-share-image';
-import { Trophy, RefreshCw, Crown, Share2, Download } from 'lucide-react';
+import { Trophy, RefreshCw, Crown, Share2, Download, X } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -454,23 +454,34 @@ export default function ResultsPage() {
 
         {/* 공유 모달 — 이미지 생성 후 유저 탭으로 공유 */}
         {shareBlob && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" onClick={() => setShareBlob(null)}>
-            <div className="bg-card border border-border rounded-2xl p-5 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
-              <p className="text-sm font-semibold text-foreground text-center">이미지가 준비되었습니다</p>
-              <img
-                src={URL.createObjectURL(shareBlob)}
-                alt="경기 결과"
-                className="w-full rounded-xl border border-border"
-              />
-              <div className="flex gap-2">
-                <Button variant="secondary" fullWidth onClick={handleDownloadBlob} className="gap-1.5">
-                  <Download className="w-4 h-4" />
-                  저장
-                </Button>
-                <Button variant="primary" fullWidth onClick={handleShareBlob} className="gap-1.5">
-                  <Share2 className="w-4 h-4" />
-                  공유
-                </Button>
+          <div className="fixed inset-0 z-50 flex flex-col items-center justify-end bg-black/70 backdrop-blur-sm" onClick={() => setShareBlob(null)}>
+            <div
+              className="bg-card border-t border-border rounded-t-2xl w-full max-w-lg safe-bottom"
+              style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 16px)' }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">경기 결과 이미지</p>
+                  <button onClick={() => setShareBlob(null)} className="text-muted-foreground hover:text-foreground p-1">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <img
+                  src={URL.createObjectURL(shareBlob)}
+                  alt="경기 결과"
+                  className="w-full max-h-[50vh] object-contain rounded-xl border border-border bg-black"
+                />
+                <div className="flex gap-2 pt-1">
+                  <Button variant="secondary" fullWidth onClick={handleDownloadBlob} className="gap-1.5">
+                    <Download className="w-4 h-4" />
+                    저장
+                  </Button>
+                  <Button variant="primary" fullWidth onClick={handleShareBlob} className="gap-1.5">
+                    <Share2 className="w-4 h-4" />
+                    공유
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
