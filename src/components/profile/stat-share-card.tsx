@@ -188,11 +188,10 @@ function StatShareImage({
         }}
       />
 
-      {/* ── Main stats grid ── */}
+      {/* ── Main stats ── */}
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr 1fr',
+          display: 'flex',
           gap: 20,
           marginBottom: 48,
         }}
@@ -200,6 +199,7 @@ function StatShareImage({
         {/* Win Rate */}
         <div
           style={{
+            flex: 1,
             background: 'linear-gradient(135deg, rgba(0,230,118,0.12) 0%, rgba(0,230,118,0.04) 100%)',
             border: '1px solid rgba(0,230,118,0.2)',
             borderRadius: 24,
@@ -226,6 +226,7 @@ function StatShareImage({
         {/* Total Games */}
         <div
           style={{
+            flex: 1,
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: 24,
@@ -251,6 +252,7 @@ function StatShareImage({
         {/* Avg Score */}
         <div
           style={{
+            flex: 1,
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: 24,
@@ -276,6 +278,7 @@ function StatShareImage({
         {/* W/L/D */}
         <div
           style={{
+            flex: 1,
             background: 'rgba(255,255,255,0.04)',
             border: '1px solid rgba(255,255,255,0.08)',
             borderRadius: 24,
@@ -416,7 +419,7 @@ export function StatShareButton({ displayName, avatarUrl, stats }: StatShareCard
 
       const tempContainer = document.createElement('div');
       tempContainer.style.cssText =
-        'position:absolute;left:0;top:0;z-index:99999;pointer-events:none;';
+        'position:fixed;left:0;top:0;width:1080px;z-index:99999;pointer-events:none;opacity:0;';
       document.body.appendChild(tempContainer);
 
       let root: ReturnType<typeof createRoot> | null = null;
@@ -469,6 +472,7 @@ export function StatShareButton({ displayName, avatarUrl, stats }: StatShareCard
       }
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
+        console.error('Share failed:', e);
         toast.error('이미지 공유에 실패했습니다');
       }
     } finally {
