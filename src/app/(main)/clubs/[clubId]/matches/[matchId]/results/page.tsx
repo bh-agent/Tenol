@@ -363,7 +363,7 @@ export default function ResultsPage() {
     const file = new File([shareBlob], fileName, { type: 'image/png' });
     try {
       if (navigator.share && navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file], title: `${matchTitle} 경기 결과` });
+        await navigator.share({ files: [file] });
       } else {
         const url = URL.createObjectURL(shareBlob);
         const a = document.createElement('a');
