@@ -81,9 +81,9 @@ export async function searchPublicClubs(query?: string, region?: string) {
   const supabase = await createClient();
 
   let q = supabase
-    .from('clubs_with_bookmark_count')
+    .from('clubs')
     .select(`
-      id, name, description, logo_url, region, main_court, is_public, created_at, bookmark_count
+      id, name, description, logo_url, region, main_court, is_public, created_at
     `)
     .eq('is_public', true);
 
@@ -100,8 +100,7 @@ export async function searchPublicClubs(query?: string, region?: string) {
     }
   }
 
-  q = q.order('bookmark_count', { ascending: false })
-    .order('created_at', { ascending: false });
+  q = q.order('created_at', { ascending: false });
 
   const { data } = await q;
 

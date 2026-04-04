@@ -34,10 +34,6 @@ export const drawTypeSchema = z.enum([
   'mixed_all', 'mixed_only', 'gendered_only',  // v2 modes
 ]);
 
-export const feedTypeSchema = z.enum(['club', 'personal']);
-
-export const fileTypeSchema = z.enum(['image', 'video']);
-
 // ============================================================
 // Club Schemas
 // ============================================================
@@ -147,29 +143,6 @@ export const updateGamePlayersSchema = z.object({
     team_b_player2_id: uuidSchema.nullable().optional(),
   }),
 });
-
-// ============================================================
-// Media Schemas
-// ============================================================
-
-export const mediaFileSchema = z.object({
-  url: z.string().url(),
-  type: fileTypeSchema,
-});
-
-export const saveMediaSchema = z.object({
-  files: z.array(mediaFileSchema).min(1).max(10),
-  caption: sanitizedText.pipe(z.string().max(500)).nullable(),
-});
-
-export const updateMediaSchema = z.object({
-  mediaId: uuidSchema,
-  caption: sanitizedText.pipe(z.string().max(500)).nullable(),
-});
-
-export const commentBodySchema = sanitizedText.pipe(
-  z.string().min(1, '댓글을 입력해주세요').max(500, '댓글은 500자 이내로 입력해주세요')
-);
 
 // ============================================================
 // Profile Schemas

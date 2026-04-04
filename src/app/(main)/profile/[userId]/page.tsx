@@ -7,19 +7,14 @@ import { StatCard } from '@/components/stats/stat-card';
 import { WinRateChart } from '@/components/stats/win-rate-chart';
 import { TopBar } from '@/components/layout/top-bar';
 import { ClubAvatar } from '@/components/club/club-avatar';
-import { ProfileFeed } from '@/components/profile/profile-feed';
 import { ProfileHeader } from '@/components/profile/profile-header';
-import { ProfileStatsBar } from '@/components/profile/profile-stats-bar';
-import { FollowButton } from '@/components/profile/follow-button';
 import { SignOutButton } from '@/components/profile/sign-out-button';
 import { StatShareButton } from '@/components/profile/stat-share-card';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs } from '@/lib/queries/clubs';
 import { getPlayerStats } from '@/lib/queries/stats';
 import { getProfileStats } from '@/lib/queries/profile-stats';
-import { getFollowStatus } from '@/lib/queries/follow';
-import { getBookmarkedClubs } from '@/lib/queries/bookmarks';
-import { BarChart3, Users, ChevronRight, Crown, Shield, Plus, Search, Bookmark, MapPin, Calendar } from 'lucide-react';
+import { BarChart3, Users, ChevronRight, Crown, Shield, Plus, Search, MapPin, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -45,10 +40,9 @@ export default async function UserProfilePage({
   if (!profile) notFound();
 
   // Fetch data in parallel
-  const [stats, profileStats, followStatus, clubsResult] = await Promise.all([
+  const [stats, profileStats, clubsResult] = await Promise.all([
     getPlayerStats(userId),
     getProfileStats(userId),
-    getFollowStatus(userId),
     isOwnProfile
       ? getMyClubs()
       : supabase
@@ -63,7 +57,6 @@ export default async function UserProfilePage({
   ]);
 
   const clubs = clubsResult;
-  const bookmarkedClubs = isOwnProfile ? await getBookmarkedClubs() : [];
 
   const getRoleIcon = (role: string) => {
     if (role === 'owner') return <Crown className="w-3 h-3" />;
@@ -75,16 +68,13 @@ export default async function UserProfilePage({
     <>
       <TopBar
         title={isOwnProfile ? '프로필' : profile.display_name}
-        backHref={isOwnProfile ? undefined : undefined}
       />
 
       <div className="px-4 py-5 space-y-5 animate-fade-in">
         {/* Profile Header */}
         {isOwnProfile ? (
-          // Own profile: editable header with camera button
           <ProfileHeader profile={JSON.parse(JSON.stringify(profile))} />
         ) : (
-          // Other user: static header with follow button
           <div className="flex flex-col items-center text-center">
             <div className="ring-2 ring-primary/30 ring-offset-2 ring-offset-background rounded-full">
               <Avatar
@@ -98,16 +88,9 @@ export default async function UserProfilePage({
             <p className="text-xs text-muted-foreground mt-3">
               {profile.real_name || '익명'}
             </p>
-            <div className="flex items-center gap-3 mt-1">
-              <h2 className="text-xl font-bold text-foreground">
-                {profile.display_name}
-              </h2>
-              <FollowButton
-                targetUserId={userId}
-                isFollowing={followStatus.isFollowing}
-                size="sm"
-              />
-            </div>
+            <h2 className="text-xl font-bold text-foreground mt-1">
+              {profile.display_name}
+            </h2>
 
             {profile.bio && (
               <p className="text-sm text-muted-foreground mt-1 max-w-xs">
@@ -128,14 +111,6 @@ export default async function UserProfilePage({
             </div>
           </div>
         )}
-
-        {/* Follow Stats Bar */}
-        <ProfileStatsBar
-          userId={userId}
-          postCount={followStatus.postCount}
-          followerCount={followStatus.followerCount}
-          followingCount={followStatus.followingCount}
-        />
 
         {/* Overall Stats */}
         <Card variant="glass" padding="lg">
@@ -255,52 +230,6 @@ export default async function UserProfilePage({
             </div>
           )}
         </Card>
-
-        {/* Bookmarked Clubs (own profile only) */}
-        {isOwnProfile && (
-          <Card variant="glass" padding="lg">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-yellow-500/15 flex items-center justify-center">
-                  <Bookmark className="w-5 h-5 text-yellow-500" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-foreground">즐겨찾기 클럽</h3>
-                  <p className="text-xs text-muted-foreground">{bookmarkedClubs.length}개</p>
-                </div>
-              </div>
-              {bookmarkedClubs.length > 0 && (
-                <Link href="/clubs/bookmarks" className="text-xs text-primary hover:text-primary/80 transition-colors">
-                  전체보기
-                </Link>
-              )}
-            </div>
-
-            {bookmarkedClubs.length === 0 ? (
-              <div className="text-center py-6">
-                <p className="text-sm text-muted-foreground">즐겨찾기한 클럽이 없어요</p>
-                <p className="text-xs text-subtle mt-1">관심 있는 클럽을 즐겨찾기해보세요</p>
-              </div>
-            ) : (
-              <div className="space-y-1.5">
-                {bookmarkedClubs.slice(0, 3).map((club: any) => (
-                  <Link key={club.id} href={`/clubs/${club.id}`}>
-                    <div className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-surface-elevated transition-all duration-200 active:scale-[0.98] group">
-                      <ClubAvatar logoUrl={club.logo_url} name={club.name} size="sm" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{club.name}</p>
-                      </div>
-                      <Bookmark className="w-4 h-4 fill-yellow-500 text-yellow-500" />
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </Card>
-        )}
-
-        {/* Media Feed */}
-        <ProfileFeed userId={userId} isOwnProfile={isOwnProfile} />
 
         {/* Sign Out (own profile only) */}
         {isOwnProfile && <SignOutButton />}

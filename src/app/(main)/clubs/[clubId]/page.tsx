@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { getClub, getClubMembers, getMyRole, getPendingJoinRequests } from '@/lib/queries/clubs';
 import { getClubMatches, getPendingGuestCount, getPendingGuestCountByMatch } from '@/lib/queries/matches';
-import { getClubFeedWithCounts } from '@/lib/queries/media';
 import { formatRole } from '@/lib/utils/format';
 import { hasPermission } from '@/lib/utils/permissions';
 import { RefreshButton } from '@/components/ui/refresh-button';
@@ -17,9 +16,7 @@ import { ClubAvatar } from '@/components/club/club-avatar';
 import { ClubTabs } from '@/components/club/club-tabs';
 import { ClubCreatedCelebration } from '@/components/club/club-created-celebration';
 import { ClubActivitySummary } from '@/components/club/club-activity-summary';
-import { BookmarkButton } from '@/components/club/bookmark-button';
 import { ShareButton } from '@/components/ui/share-button';
-import { isClubBookmarked } from '@/lib/queries/bookmarks';
 import { JoinRequestList } from '@/components/club/join-request-list';
 import { Suspense } from 'react';
 
@@ -29,13 +26,11 @@ export default async function ClubDetailPage({
   params: Promise<{ clubId: string }>;
 }) {
   const { clubId } = await params;
-  const [club, members, matches, media, myRole, bookmarked] = await Promise.all([
+  const [club, members, matches, myRole] = await Promise.all([
     getClub(clubId),
     getClubMembers(clubId),
     getClubMatches(clubId),
-    getClubFeedWithCounts(clubId),
     getMyRole(clubId),
-    isClubBookmarked(clubId),
   ]);
 
   if (!club) notFound();
@@ -65,7 +60,6 @@ export default async function ClubDetailPage({
         rightAction={
           <div className="flex items-center gap-1">
             <ShareButton url={`/clubs/${clubId}`} title={club.name} text={`${club.name} - 테놀`} />
-            <BookmarkButton clubId={clubId} initialBookmarked={bookmarked} />
             <RefreshButton />
             {canEditClub && (
               <Link
@@ -254,7 +248,6 @@ export default async function ClubDetailPage({
         clubId={clubId}
         matches={JSON.parse(JSON.stringify(matches))}
         members={JSON.parse(JSON.stringify(members))}
-        media={JSON.parse(JSON.stringify(media))}
         myRole={myRole}
         canCreateMatch={canCreateMatch}
         canManageMembers={canManageMembers}

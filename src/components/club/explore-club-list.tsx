@@ -6,9 +6,8 @@ import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/search/search-input';
 import { SearchEmpty } from '@/components/search/search-empty';
 import { REGIONS, getSigunguList } from '@/lib/constants/regions';
-import { MapPin, Users, Star, Clock, X } from 'lucide-react';
+import { MapPin, Users, Clock, X } from 'lucide-react';
 import { ClubAvatar } from '@/components/club/club-avatar';
-import { BookmarkButton } from '@/components/club/bookmark-button';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/ui/toast-provider';
 import Link from 'next/link';
@@ -26,7 +25,6 @@ interface ExploreClubListProps {
   initialClubs: any[];
   initialQuery: string;
   initialRegion: string;
-  bookmarkedClubIds?: string[];
   memberClubIds?: string[];
   joinRequests?: Record<string, ClubJoinRequest>;
 }
@@ -35,7 +33,6 @@ export function ExploreClubList({
   initialClubs,
   initialQuery,
   initialRegion,
-  bookmarkedClubIds = [],
   memberClubIds = [],
   joinRequests: initialJoinRequests = {},
 }: ExploreClubListProps) {
@@ -273,10 +270,6 @@ export function ExploreClubList({
                     <Link href={`/clubs/${club.id}`} className="hover:text-primary transition-colors">
                       <h4 className="font-semibold text-foreground truncate">{club.name}</h4>
                     </Link>
-                    <BookmarkButton
-                      clubId={club.id}
-                      initialBookmarked={bookmarkedClubIds.includes(club.id)}
-                    />
                   </div>
                   {club.description && (
                     <p className="text-sm text-muted-foreground line-clamp-2">
@@ -294,12 +287,6 @@ export function ExploreClubList({
                       <Users className="w-3.5 h-3.5" />
                       {club.member_count}명
                     </span>
-                    {club.bookmark_count > 0 && (
-                      <span className="flex items-center gap-1">
-                        <Star className="w-3.5 h-3.5" />
-                        {club.bookmark_count}
-                      </span>
-                    )}
                   </div>
                   <div className="pt-1">
                     {renderJoinButton(club)}

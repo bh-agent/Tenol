@@ -159,13 +159,9 @@ export type NotificationType =
   | 'draw_published'
   | 'score_updated'
   | 'role_changed'
-  | 'new_follower'
-  | 'mention'
   | 'join_request'
   | 'join_approved'
-  | 'join_rejected'
-  | 'new_like'
-  | 'new_comment';
+  | 'join_rejected';
 
 export type Notification = {
   id: string;
@@ -175,67 +171,6 @@ export type Notification = {
   body: string;
   data: Record<string, string>;
   is_read: boolean;
-  created_at: string;
-};
-
-export type Media = {
-  id: string;
-  club_id: string;
-  match_id: string | null;
-  uploaded_by: string;
-  file_url: string;
-  file_type: 'image' | 'video';
-  file_urls: { url: string; type: 'image' | 'video' }[];
-  caption: string | null;
-  feed_type: 'club' | 'personal';
-  created_at: string;
-  like_count?: number;
-  comment_count?: number;
-  profiles?: { display_name: string; avatar_url: string | null };
-  is_liked?: boolean;
-};
-
-export type Follow = {
-  id: string;
-  follower_id: string;
-  following_id: string;
-  created_at: string;
-};
-
-export type UserProfile = Profile & {
-  follower_count?: number;
-  following_count?: number;
-  is_following?: boolean;
-  post_count?: number;
-};
-
-export type ClubBookmark = {
-  id: string;
-  user_id: string;
-  club_id: string;
-  created_at: string;
-};
-
-export type MediaComment = {
-  id: string;
-  media_id: string;
-  user_id: string;
-  body: string;
-  created_at: string;
-  profiles?: { display_name: string; avatar_url: string | null };
-};
-
-export type MediaTag = {
-  id: string;
-  media_id: string;
-  tag: string;
-  created_at: string;
-};
-
-export type MediaMention = {
-  id: string;
-  media_id: string;
-  mentioned_user_id: string;
   created_at: string;
 };
 

@@ -7,16 +7,12 @@ import type { Notification } from '@/types';
 import {
   UserCheck,
   UserX,
-  UserPlus,
   Shuffle,
   Trophy,
   Shield,
   Bell,
   Calendar,
-  AtSign,
   Users,
-  Heart,
-  MessageCircle,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
@@ -29,13 +25,9 @@ const typeConfig: Record<string, { icon: typeof Bell; color: string }> = {
   draw_published: { icon: Shuffle, color: 'text-primary bg-primary-dim' },
   score_updated: { icon: Trophy, color: 'text-warning bg-warning/10' },
   role_changed: { icon: Shield, color: 'text-primary bg-primary-dim' },
-  new_follower: { icon: UserPlus, color: 'text-primary bg-primary-dim' },
-  mention: { icon: AtSign, color: 'text-primary bg-primary-dim' },
   join_request: { icon: Users, color: 'text-warning bg-warning/10' },
   join_approved: { icon: UserCheck, color: 'text-success bg-success/10' },
   join_rejected: { icon: UserX, color: 'text-destructive bg-destructive/10' },
-  new_like: { icon: Heart, color: 'text-destructive bg-destructive/10' },
-  new_comment: { icon: MessageCircle, color: 'text-primary bg-primary-dim' },
 };
 
 function getNotificationHref(notification: Notification): string | null {
@@ -45,18 +37,6 @@ function getNotificationHref(notification: Notification): string | null {
   }
   if (data.club_id) {
     return `/clubs/${data.club_id}`;
-  }
-  if (data.follower_id) {
-    return `/profile/${data.follower_id}`;
-  }
-  if (data.liker_id) {
-    return `/profile/${data.liker_id}`;
-  }
-  if (data.commenter_id) {
-    return `/profile/${data.commenter_id}`;
-  }
-  if (data.media_id) {
-    return `/feed`;
   }
   return null;
 }
