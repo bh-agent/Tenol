@@ -1,11 +1,23 @@
 import { createClient } from '@/lib/supabase/server';
 import type { RecruitmentType, RecruitmentPost } from '@/types';
 
+/** 경기 날짜가 지난 모집글을 자동 마감 처리 */
+async function closeExpiredPosts(supabase: any) {
+  const today = new Date().toISOString().split('T')[0];
+  await supabase
+    .from('recruitment_posts')
+    .update({ status: 'closed' })
+    .eq('status', 'open')
+    .not('match_date', 'is', null)
+    .lt('match_date', today);
+}
+
 export async function getRecruitmentPosts(
   type?: RecruitmentType,
   limit = 20
 ): Promise<RecruitmentPost[]> {
   const supabase = await createClient();
+  await closeExpiredPosts(supabase);
 
   let query = supabase
     .from('recruitment_posts')
@@ -34,6 +46,7 @@ export async function searchRecruitmentPosts(
   limit = 20
 ): Promise<RecruitmentPost[]> {
   const supabase = await createClient();
+  await closeExpiredPosts(supabase);
 
   let query = supabase
     .from('recruitment_posts')
