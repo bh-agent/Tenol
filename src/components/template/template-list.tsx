@@ -9,7 +9,7 @@ import { createMatchFromTemplate, deleteTemplate } from '@/lib/actions/templates
 import { DAYS_OF_WEEK, FREQUENCY_OPTIONS, MATCH_FORMATS } from '@/lib/constants';
 import { formatDate } from '@/lib/utils/format';
 import type { MatchTemplate } from '@/types';
-import { Calendar, Clock, MapPin, Plus, Repeat, Trash2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, PenLine, Plus, Repeat, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
 
@@ -92,15 +92,22 @@ function TemplateCard({ template }: { template: TemplateWithDate }) {
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">{template.name}</h3>
-                <p className="text-xs text-muted-foreground">{template.title_pattern}</p>
               </div>
             </div>
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="p-2 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 cursor-pointer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <Link
+                href={`/clubs/${template.club_id}/templates/${template.id}/edit`}
+                className="p-2 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-200"
+              >
+                <PenLine className="w-4 h-4" />
+              </Link>
+              <button
+                onClick={() => setShowDeleteModal(true)}
+                className="p-2 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 cursor-pointer"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Badges */}

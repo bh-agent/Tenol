@@ -61,10 +61,12 @@ export const inviteCodeSchema = z.string().min(1).max(20).regex(/^[a-zA-Z0-9]+$/
 
 export const dayOfWeekSchema = z.number().int().min(0).max(6);
 
+export const titleFormatSchema = z.enum(['name_only', 'with_date', 'with_round']).default('with_date');
+
 export const createMatchTemplateSchema = z.object({
   club_id: uuidSchema,
   name: sanitizedText.pipe(z.string().min(1, '템플릿 이름을 입력해주세요').max(50)),
-  title_pattern: sanitizedText.pipe(z.string().min(1, '경기 제목을 입력해주세요').max(100)),
+  title_format: titleFormatSchema,
   description: sanitizedText.pipe(z.string().max(1000)).optional(),
   location: sanitizedText.pipe(z.string().max(200)).optional(),
   start_time: timeSchema.optional(),
@@ -75,6 +77,10 @@ export const createMatchTemplateSchema = z.object({
   format: matchFormatSchema.default('doubles'),
   day_of_week: dayOfWeekSchema,
   frequency_weeks: z.number().int().min(1).max(4).default(1),
+});
+
+export const updateMatchTemplateSchema = createMatchTemplateSchema.omit({ club_id: true }).extend({
+  id: uuidSchema,
 });
 
 export const preAddParticipantSchema = z.object({

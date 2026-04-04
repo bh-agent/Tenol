@@ -5,11 +5,11 @@ import { requirePermission } from '@/lib/utils/check-permission';
 import { logError, logInfo } from '@/lib/logger';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createMatchTemplateSchema, uuidSchema } from '@/lib/validations';
+import { createMatchTemplateSchema, updateMatchTemplateSchema, uuidSchema } from '@/lib/validations';
 import { getNextMatchDate, resolveTitle } from '@/lib/utils/next-match-date';
+import type { TitleFormat } from '@/lib/utils/next-match-date';
 
 export async function createTemplate(formData: FormData) {
-  // Auth check
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('인증이 필요합니다');
@@ -17,11 +17,10 @@ export async function createTemplate(formData: FormData) {
   const clubId = formData.get('club_id') as string;
   await requirePermission(clubId, 'match.create');
 
-  // Parse form data - numbers need conversion
   const validated = createMatchTemplateSchema.parse({
     club_id: clubId,
     name: formData.get('name'),
-    title_pattern: formData.get('title_pattern'),
+    title_format: formData.get('title_format') || 'with_date',
     description: formData.get('description') || undefined,
     location: formData.get('location') || undefined,
     start_time: formData.get('start_time') || undefined,
@@ -37,7 +36,8 @@ export async function createTemplate(formData: FormData) {
   const { error } = await supabase.from('match_templates').insert({
     club_id: validated.club_id,
     name: validated.name,
-    title_pattern: validated.title_pattern,
+    title_pattern: validated.name, // backward compat
+    title_format: validated.title_format,
     description: validated.description || null,
     location: validated.location || null,
     start_time: validated.start_time || null,
@@ -60,6 +60,70 @@ export async function createTemplate(formData: FormData) {
 
   revalidatePath(`/clubs/${clubId}/templates`);
   redirect(`/clubs/${clubId}/templates`);
+}
+
+export async function updateTemplate(formData: FormData) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('인증이 필요합니다');
+
+  const templateId = formData.get('id') as string;
+
+  // Fetch template to get club_id
+  const { data: existing } = await supabase
+    .from('match_templates')
+    .select('club_id')
+    .eq('id', templateId)
+    .maybeSingle();
+  if (!existing) throw new Error('템플릿을 찾을 수 없습니다');
+
+  await requirePermission(existing.club_id, 'match.create');
+
+  const validated = updateMatchTemplateSchema.parse({
+    id: templateId,
+    name: formData.get('name'),
+    title_format: formData.get('title_format') || 'with_date',
+    description: formData.get('description') || undefined,
+    location: formData.get('location') || undefined,
+    start_time: formData.get('start_time') || undefined,
+    end_time: formData.get('end_time') || undefined,
+    court_count: Number(formData.get('court_count') || 1),
+    max_participants: formData.get('max_participants') ? Number(formData.get('max_participants')) : undefined,
+    allow_guests: formData.get('allow_guests') === 'true',
+    format: formData.get('format') || 'doubles',
+    day_of_week: Number(formData.get('day_of_week')),
+    frequency_weeks: Number(formData.get('frequency_weeks') || 1),
+  });
+
+  const { error } = await supabase
+    .from('match_templates')
+    .update({
+      name: validated.name,
+      title_pattern: validated.name,
+      title_format: validated.title_format,
+      description: validated.description || null,
+      location: validated.location || null,
+      start_time: validated.start_time || null,
+      end_time: validated.end_time || null,
+      court_count: validated.court_count,
+      max_participants: validated.max_participants ?? null,
+      allow_guests: validated.allow_guests,
+      format: validated.format,
+      day_of_week: validated.day_of_week,
+      frequency_weeks: validated.frequency_weeks,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', validated.id);
+
+  if (error) {
+    logError('template', 'Failed to update template', { userId: user.id, clubId: existing.club_id, error });
+    throw new Error('템플릿 수정에 실패했습니다');
+  }
+
+  logInfo('template', 'Template updated', { userId: user.id, clubId: existing.club_id, metadata: { name: validated.name } });
+
+  revalidatePath(`/clubs/${existing.club_id}/templates`);
+  redirect(`/clubs/${existing.club_id}/templates`);
 }
 
 export async function deleteTemplate(templateId: string) {
@@ -97,7 +161,6 @@ export async function createMatchFromTemplate(templateId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('인증이 필요합니다');
 
-  // Fetch template
   const { data: template } = await supabase
     .from('match_templates')
     .select('*')
@@ -108,17 +171,31 @@ export async function createMatchFromTemplate(templateId: string) {
 
   await requirePermission(template.club_id, 'match.create');
 
-  // Calculate next date
   const matchDate = getNextMatchDate(
     template.day_of_week,
     template.frequency_weeks,
     template.last_created_date
   );
 
-  // Resolve title
-  const title = resolveTitle(template.title_pattern, matchDate);
+  // Calculate round number for with_round format
+  const titleFormat = (template.title_format || 'with_date') as TitleFormat;
+  let roundNumber = 1;
+  if (titleFormat === 'with_round') {
+    const dateObj = new Date(matchDate + 'T00:00:00');
+    const monthStart = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-01`;
+    const monthEnd = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 2).padStart(2, '0')}-01`;
+    const { count } = await supabase
+      .from('matches')
+      .select('id', { count: 'exact', head: true })
+      .eq('club_id', template.club_id)
+      .gte('match_date', monthStart)
+      .lt('match_date', monthEnd)
+      .ilike('title', `${template.name}%`);
+    roundNumber = (count || 0) + 1;
+  }
 
-  // Create the match (same logic as createMatch in matches.ts)
+  const title = resolveTitle(template.name, matchDate, titleFormat, roundNumber);
+
   const { data: match, error: matchError } = await supabase
     .from('matches')
     .insert({
@@ -139,13 +216,10 @@ export async function createMatchFromTemplate(templateId: string) {
     .single();
 
   if (matchError || !match) {
-    logError('template', 'Failed to create match from template', { userId: user.id, clubId: template.club_id, error: matchError, metadata: { templateId: validId } });
+    logError('template', 'Failed to create match from template', { userId: user.id, clubId: template.club_id, error: matchError });
     throw new Error('경기 생성에 실패했습니다');
   }
 
-  logInfo('template', 'Match created from template', { userId: user.id, matchId: match.id, clubId: template.club_id, metadata: { templateId: validId } });
-
-  // Auto-add creator as participant
   await supabase.from('match_participants').insert({
     match_id: match.id,
     user_id: user.id,
@@ -153,11 +227,12 @@ export async function createMatchFromTemplate(templateId: string) {
     status: 'confirmed',
   });
 
-  // Update last_created_date on template
   await supabase
     .from('match_templates')
     .update({ last_created_date: matchDate, updated_at: new Date().toISOString() })
     .eq('id', validId);
+
+  logInfo('template', 'Match created from template', { userId: user.id, matchId: match.id, clubId: template.club_id });
 
   revalidatePath(`/clubs/${template.club_id}`);
   revalidatePath(`/clubs/${template.club_id}/templates`);

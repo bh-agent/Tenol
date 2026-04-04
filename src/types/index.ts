@@ -201,11 +201,14 @@ export type RecruitmentPost = {
   profiles?: { display_name: string; avatar_url: string | null };
 };
 
+export type TitleFormat = 'name_only' | 'with_date' | 'with_round';
+
 export type MatchTemplate = {
   id: string;
   club_id: string;
   name: string;
   title_pattern: string;
+  title_format: TitleFormat;
   description: string | null;
   location: string | null;
   start_time: string | null;

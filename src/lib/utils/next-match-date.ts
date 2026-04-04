@@ -38,18 +38,65 @@ export function getNextMatchDate(
   return formatDate(next);
 }
 
-/**
- * Resolve title pattern with date variables.
- * Supported: {month}, {day}, {weekday}
- */
-export function resolveTitle(pattern: string, dateStr: string): string {
-  const date = new Date(dateStr + 'T00:00:00');
-  const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+export type TitleFormat = 'name_only' | 'with_date' | 'with_round';
 
-  return pattern
-    .replace(/\{month\}/g, String(date.getMonth() + 1))
-    .replace(/\{day\}/g, String(date.getDate()))
-    .replace(/\{weekday\}/g, weekdays[date.getDay()]);
+/**
+ * Auto-generate match title based on format.
+ *
+ * - name_only:  "토요 정기전"
+ * - with_date:  "토요 정기전 (4/5)"
+ * - with_round: "토요 정기전 4월 1회차"
+ */
+export function resolveTitle(
+  name: string,
+  dateStr: string,
+  titleFormat: TitleFormat = 'with_date',
+  roundNumber?: number,
+): string {
+  const date = new Date(dateStr + 'T00:00:00');
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+
+  switch (titleFormat) {
+    case 'name_only':
+      return name;
+    case 'with_date':
+      return `${name} (${month}/${day})`;
+    case 'with_round':
+      return `${name} ${month}월 ${roundNumber ?? 1}회차`;
+    default:
+      return `${name} (${month}/${day})`;
+  }
+}
+
+/**
+ * Calculate the next upcoming dates for preview.
+ */
+export function getUpcomingDates(
+  dayOfWeek: number,
+  frequencyWeeks: number,
+  count = 4,
+): string[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const currentDay = today.getDay();
+  let daysUntil = dayOfWeek - currentDay;
+  if (daysUntil <= 0) daysUntil += 7;
+
+  const first = new Date(today);
+  first.setDate(first.getDate() + daysUntil);
+
+  const dates: string[] = [];
+  const intervalDays = frequencyWeeks * 7;
+  const cursor = new Date(first);
+
+  for (let i = 0; i < count; i++) {
+    dates.push(formatDate(cursor));
+    cursor.setDate(cursor.getDate() + intervalDays);
+  }
+
+  return dates;
 }
 
 function formatDate(d: Date): string {
