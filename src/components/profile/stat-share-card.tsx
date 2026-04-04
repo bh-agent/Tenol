@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import { createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
-import { Share2, RefreshCw, Download } from 'lucide-react';
+import { Share2, RefreshCw, Download, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast-provider';
 import type { ProfileStats } from '@/lib/queries/profile-stats';
@@ -399,8 +399,9 @@ function StatShareImage({
 export function StatShareButton({ displayName, avatarUrl, stats }: StatShareCardProps) {
   const toast = useToast();
   const [sharing, setSharing] = useState(false);
+  const [shareBlob, setShareBlob] = useState<Blob | null>(null);
 
-  const handleShare = useCallback(async () => {
+  const handleGenerateImage = useCallback(async () => {
     if (stats.totalGames === 0) {
       toast.warning('공유할 경기 기록이 없어요');
       return;
@@ -419,7 +420,7 @@ export function StatShareButton({ displayName, avatarUrl, stats }: StatShareCard
 
       const tempContainer = document.createElement('div');
       tempContainer.style.cssText =
-        'position:fixed;left:-9999px;top:0;width:1080px;z-index:-1;pointer-events:none;';
+        'position:absolute;left:0;top:0;z-index:99999;pointer-events:none;';
       document.body.appendChild(tempContainer);
 
       let root: ReturnType<typeof createRoot> | null = null;
@@ -428,16 +429,18 @@ export function StatShareButton({ displayName, avatarUrl, stats }: StatShareCard
         flushSync(() => {
           root!.render(createElement(StatShareImage, props));
         });
-        await new Promise((r) => setTimeout(r, 300));
+        await new Promise<void>((r) => { requestAnimationFrame(() => requestAnimationFrame(() => r())); });
+        await new Promise((r) => setTimeout(r, 100));
 
         const target = tempContainer.firstElementChild as HTMLElement;
         if (!target) { toast.error('이미지를 생성할 수 없습니다'); return; }
 
         const canvas = await html2canvas(target, {
           backgroundColor: '#0A0A0A',
-          scale: 1,
+          scale: 2,
           useCORS: true,
           logging: false,
+          windowWidth: 1200,
         });
 
         const blob = await new Promise<Blob | null>((resolve) =>
@@ -445,14 +448,7 @@ export function StatShareButton({ displayName, avatarUrl, stats }: StatShareCard
         );
         if (!blob) { toast.error('이미지 변환에 실패했습니다'); return; }
 
-        const fileName = `테놀_전적_${displayName}.png`;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success('이미지가 저장되었습니다');
+        setShareBlob(blob);
       } finally {
         root?.unmount();
         document.body.removeChild(tempContainer);
@@ -460,27 +456,99 @@ export function StatShareButton({ displayName, avatarUrl, stats }: StatShareCard
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
         console.error('Share failed:', e);
-        toast.error('이미지 공유에 실패했습니다');
+        toast.error('이미지 생성에 실패했습니다');
       }
     } finally {
       setSharing(false);
     }
   }, [displayName, avatarUrl, stats, toast]);
 
+  const handleShareBlob = async () => {
+    if (!shareBlob) return;
+    const fileName = `테놀_전적_${displayName}.png`;
+    const file = new File([shareBlob], fileName, { type: 'image/png' });
+    try {
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file] });
+      } else {
+        const url = URL.createObjectURL(shareBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        const url = URL.createObjectURL(shareBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    }
+    setShareBlob(null);
+  };
+
+  const handleDownloadBlob = () => {
+    if (!shareBlob) return;
+    const fileName = `테놀_전적_${displayName}.png`;
+    const url = URL.createObjectURL(shareBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShareBlob(null);
+  };
+
   return (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={handleShare}
-      disabled={sharing}
-      className="gap-1.5"
-    >
-      {sharing ? (
-        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-      ) : (
-        <Share2 className="w-3.5 h-3.5" />
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleGenerateImage}
+        disabled={sharing}
+        className="gap-1.5"
+      >
+        {sharing ? (
+          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+        ) : (
+          <Share2 className="w-3.5 h-3.5" />
+        )}
+        {sharing ? '생성 중...' : '내 전적 공유'}
+      </Button>
+
+      {shareBlob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-6" onClick={() => setShareBlob(null)}>
+          <div className="bg-card border border-border rounded-2xl w-full max-w-sm overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <p className="text-sm font-semibold text-foreground">내 전적 이미지</p>
+              <button onClick={() => setShareBlob(null)} className="text-muted-foreground hover:text-foreground p-1 -mr-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="px-4">
+              <img
+                src={URL.createObjectURL(shareBlob)}
+                alt="전적 이미지"
+                className="w-full max-h-[45vh] object-contain rounded-xl border border-border bg-black"
+              />
+            </div>
+            <div className="flex gap-2 p-4">
+              <Button variant="secondary" fullWidth onClick={handleDownloadBlob} className="gap-1.5">
+                <Download className="w-4 h-4" />
+                저장
+              </Button>
+              <Button variant="primary" fullWidth onClick={handleShareBlob} className="gap-1.5">
+                <Share2 className="w-4 h-4" />
+                공유
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
-      {sharing ? '생성 중...' : '내 전적 공유'}
-    </Button>
+    </>
   );
 }
