@@ -9,6 +9,7 @@ export async function NotificationBell() {
     <Link
       href="/notifications"
       className="relative p-2 rounded-full hover:bg-surface-elevated transition-colors"
+      aria-label="알림"
     >
       <Bell className="w-5 h-5 text-foreground" />
       {unreadCount > 0 && (

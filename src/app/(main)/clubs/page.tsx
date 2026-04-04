@@ -27,6 +27,7 @@ export default async function ClubsPage() {
             <Link
               href="/clubs/explore"
               className="p-2 rounded-full hover:bg-surface-elevated transition-colors"
+              aria-label="클럽 탐색"
             >
               <Search className="w-5 h-5 text-muted-foreground" />
             </Link>

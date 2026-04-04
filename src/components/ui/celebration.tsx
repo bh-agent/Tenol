@@ -25,7 +25,7 @@ export function Celebration({ show, title, description, onComplete }: Celebratio
         <div className="animate-scale-in">
           <CheckCircle className="w-20 h-20 text-primary" strokeWidth={1.5} />
         </div>
-        <h2 className="text-xl font-bold text-white">{title}</h2>
+        <h2 className="text-xl font-bold text-foreground">{title}</h2>
         {description && (
           <p className="text-sm text-muted-foreground">{description}</p>
         )}
