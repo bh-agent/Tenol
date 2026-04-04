@@ -325,7 +325,7 @@ export default function ResultsPage() {
       const props: ResultsShareImageProps = { matchTitle, matchDate, mvpTop3, highlights, funStats, gameResults };
 
       const tempContainer = document.createElement('div');
-      tempContainer.style.cssText = 'position:absolute;left:0;top:0;z-index:99999;pointer-events:none;';
+      tempContainer.style.cssText = 'position:fixed;left:0;top:0;width:1080px;z-index:99999;pointer-events:none;opacity:0;';
       document.body.appendChild(tempContainer);
 
       let root: ReturnType<typeof createRoot> | null = null;
@@ -360,6 +360,7 @@ export default function ResultsPage() {
       }
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
+        console.error('Results share failed:', e);
         toast.error('이미지 공유에 실패했습니다');
       }
     } finally {
