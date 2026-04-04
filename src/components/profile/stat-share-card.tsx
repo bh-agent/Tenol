@@ -446,23 +446,13 @@ export function StatShareButton({ displayName, avatarUrl, stats }: StatShareCard
         if (!blob) { toast.error('이미지 변환에 실패했습니다'); return; }
 
         const fileName = `테놀_전적_${displayName}.png`;
-        const file = new File([blob], fileName, { type: 'image/png' });
-
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if (isMobile && navigator.share && navigator.canShare?.({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: `${displayName}의 테니스 전적`,
-          });
-        } else {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = fileName;
-          a.click();
-          URL.revokeObjectURL(url);
-          toast.success('이미지가 다운로드되었습니다');
-        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('이미지가 저장되었습니다');
       } finally {
         root?.unmount();
         document.body.removeChild(tempContainer);

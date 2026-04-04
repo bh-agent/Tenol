@@ -342,21 +342,13 @@ export default function ResultsPage() {
         if (!blob) { toast.error('이미지 변환에 실패했습니다'); return; }
 
         const fileName = `경기결과_${matchTitle}.png`;
-        const file = new File([blob], fileName, { type: 'image/png' });
-
-        // 모바일에서만 Web Share API 시도
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-        if (isMobile && navigator.share && navigator.canShare?.({ files: [file] })) {
-          await navigator.share({ files: [file], title: `${matchTitle} 경기 결과` });
-        } else {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = fileName;
-          a.click();
-          URL.revokeObjectURL(url);
-          toast.success('이미지가 다운로드되었습니다');
-        }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('이미지가 저장되었습니다');
       } finally {
         root?.unmount();
         document.body.removeChild(tempContainer);
