@@ -85,6 +85,7 @@ export default function ResultsPage() {
   const [matchTitle, setMatchTitle] = useState('');
   const [matchDate, setMatchDate] = useState('');
   const [sharing, setSharing] = useState(false);
+  const [shareBlob, setShareBlob] = useState<Blob | null>(null);
 
   const canInputResult = hasPermission(myRole, 'result.input');
 
@@ -303,8 +304,8 @@ export default function ResultsPage() {
 
   const getName = (id: string | null) => id ? participants[id] || '???' : '-';
 
-  // ── Image share ──
-  const handleShare = async () => {
+  // ── Image share (2-step: generate → share from fresh user gesture) ──
+  const handleGenerateImage = async () => {
     setSharing(true);
     try {
       const html2canvasModule = await import('html2canvas').catch(() => null);
@@ -325,43 +326,75 @@ export default function ResultsPage() {
       const props: ResultsShareImageProps = { matchTitle, matchDate, mvpTop3, highlights, funStats, gameResults };
 
       const tempContainer = document.createElement('div');
-      tempContainer.style.cssText = 'position:fixed;left:-9999px;top:0;width:1080px;z-index:-1;pointer-events:none;';
+      tempContainer.style.cssText = 'position:absolute;left:0;top:0;z-index:99999;pointer-events:none;';
       document.body.appendChild(tempContainer);
 
       let root: ReturnType<typeof createRoot> | null = null;
       try {
         root = createRoot(tempContainer);
         flushSync(() => { root!.render(createElement(ResultsShareImage, props)); });
-        await new Promise((r) => setTimeout(r, 300));
+        await new Promise<void>((r) => { requestAnimationFrame(() => requestAnimationFrame(() => r())); });
+        await new Promise((r) => setTimeout(r, 100));
 
         const target = tempContainer.firstElementChild as HTMLElement;
         if (!target) { toast.error('이미지를 생성할 수 없습니다'); return; }
 
-        const canvas = await html2canvas(target, { backgroundColor: '#0F0F0F', scale: 1, useCORS: true, logging: false });
+        const canvas = await html2canvas(target, { backgroundColor: '#0F0F0F', scale: 2, useCORS: true, logging: false, windowWidth: 1200 });
         const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
         if (!blob) { toast.error('이미지 변환에 실패했습니다'); return; }
 
-        const fileName = `경기결과_${matchTitle}.png`;
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = fileName;
-        a.click();
-        URL.revokeObjectURL(url);
-        toast.success('이미지가 저장되었습니다');
+        setShareBlob(blob);
       } finally {
         root?.unmount();
         document.body.removeChild(tempContainer);
       }
     } catch (e) {
-      if ((e as Error)?.name !== 'AbortError') {
-        const msg = e instanceof Error ? e.message : String(e);
-        console.error('Results share failed:', e);
-        toast.error(`공유 실패: ${msg.slice(0, 100)}`);
-      }
+      console.error('Image generation failed:', e);
+      toast.error('이미지 생성에 실패했습니다');
     } finally {
       setSharing(false);
     }
+  };
+
+  // Called directly from user tap — navigator.share works
+  const handleShareBlob = async () => {
+    if (!shareBlob) return;
+    const fileName = `경기결과_${matchTitle}.png`;
+    const file = new File([shareBlob], fileName, { type: 'image/png' });
+    try {
+      if (navigator.share && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: `${matchTitle} 경기 결과` });
+      } else {
+        const url = URL.createObjectURL(shareBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (e: any) {
+      if (e?.name !== 'AbortError') {
+        const url = URL.createObjectURL(shareBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    }
+    setShareBlob(null);
+  };
+
+  const handleDownloadBlob = () => {
+    if (!shareBlob) return;
+    const fileName = `경기결과_${matchTitle}.png`;
+    const url = URL.createObjectURL(shareBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    a.click();
+    URL.revokeObjectURL(url);
+    setShareBlob(null);
   };
 
   const handleEdit = (game: GameWithDraw) => {
@@ -409,13 +442,37 @@ export default function ResultsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={handleShare}
+              onClick={handleGenerateImage}
               disabled={sharing}
               className="gap-1.5"
             >
               {sharing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Share2 className="w-3.5 h-3.5" />}
               {sharing ? '생성 중...' : '결과 공유'}
             </Button>
+          </div>
+        )}
+
+        {/* 공유 모달 — 이미지 생성 후 유저 탭으로 공유 */}
+        {shareBlob && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4" onClick={() => setShareBlob(null)}>
+            <div className="bg-card border border-border rounded-2xl p-5 w-full max-w-sm space-y-4" onClick={(e) => e.stopPropagation()}>
+              <p className="text-sm font-semibold text-foreground text-center">이미지가 준비되었습니다</p>
+              <img
+                src={URL.createObjectURL(shareBlob)}
+                alt="경기 결과"
+                className="w-full rounded-xl border border-border"
+              />
+              <div className="flex gap-2">
+                <Button variant="secondary" fullWidth onClick={handleDownloadBlob} className="gap-1.5">
+                  <Download className="w-4 h-4" />
+                  저장
+                </Button>
+                <Button variant="primary" fullWidth onClick={handleShareBlob} className="gap-1.5">
+                  <Share2 className="w-4 h-4" />
+                  공유
+                </Button>
+              </div>
+            </div>
           </div>
         )}
 
