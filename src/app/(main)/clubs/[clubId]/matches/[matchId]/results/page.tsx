@@ -325,34 +325,37 @@ export default function ResultsPage() {
       const props: ResultsShareImageProps = { matchTitle, matchDate, mvpTop3, highlights, funStats, gameResults };
 
       const tempContainer = document.createElement('div');
-      tempContainer.style.cssText = 'position:fixed;left:0;top:0;width:1080px;z-index:99999;pointer-events:none;opacity:0;';
+      tempContainer.style.cssText = 'position:fixed;left:-9999px;top:0;width:1080px;z-index:-1;pointer-events:none;';
       document.body.appendChild(tempContainer);
 
       let root: ReturnType<typeof createRoot> | null = null;
       try {
         root = createRoot(tempContainer);
         flushSync(() => { root!.render(createElement(ResultsShareImage, props)); });
-        await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 300));
 
         const target = tempContainer.firstElementChild as HTMLElement;
-        if (!target) return;
+        if (!target) { toast.error('이미지를 생성할 수 없습니다'); return; }
 
-        const canvas = await html2canvas(target, { backgroundColor: '#0F0F0F', scale: 2, useCORS: true, logging: false });
+        const canvas = await html2canvas(target, { backgroundColor: '#0F0F0F', scale: 1, useCORS: true, logging: false });
         const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-        if (!blob) return;
+        if (!blob) { toast.error('이미지 변환에 실패했습니다'); return; }
 
-        if (navigator.share && navigator.canShare?.({ files: [new File([blob], 'results.png', { type: 'image/png' })] })) {
-          await navigator.share({
-            files: [new File([blob], `경기결과_${matchTitle}.png`, { type: 'image/png' })],
-            title: `${matchTitle} 경기 결과`,
-          });
+        const fileName = `경기결과_${matchTitle}.png`;
+        const file = new File([blob], fileName, { type: 'image/png' });
+
+        // 모바일에서만 Web Share API 시도
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile && navigator.share && navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: `${matchTitle} 경기 결과` });
         } else {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `경기결과_${matchTitle}.png`;
+          a.download = fileName;
           a.click();
           URL.revokeObjectURL(url);
+          toast.success('이미지가 다운로드되었습니다');
         }
       } finally {
         root?.unmount();

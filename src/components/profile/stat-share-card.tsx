@@ -419,7 +419,7 @@ export function StatShareButton({ displayName, avatarUrl, stats }: StatShareCard
 
       const tempContainer = document.createElement('div');
       tempContainer.style.cssText =
-        'position:fixed;left:0;top:0;width:1080px;z-index:99999;pointer-events:none;opacity:0;';
+        'position:fixed;left:-9999px;top:0;width:1080px;z-index:-1;pointer-events:none;';
       document.body.appendChild(tempContainer);
 
       let root: ReturnType<typeof createRoot> | null = null;
@@ -428,14 +428,14 @@ export function StatShareButton({ displayName, avatarUrl, stats }: StatShareCard
         flushSync(() => {
           root!.render(createElement(StatShareImage, props));
         });
-        await new Promise((r) => setTimeout(r, 100));
+        await new Promise((r) => setTimeout(r, 300));
 
         const target = tempContainer.firstElementChild as HTMLElement;
-        if (!target) return;
+        if (!target) { toast.error('이미지를 생성할 수 없습니다'); return; }
 
         const canvas = await html2canvas(target, {
           backgroundColor: '#0A0A0A',
-          scale: 2,
+          scale: 1,
           useCORS: true,
           logging: false,
         });
@@ -443,18 +443,15 @@ export function StatShareButton({ displayName, avatarUrl, stats }: StatShareCard
         const blob = await new Promise<Blob | null>((resolve) =>
           canvas.toBlob(resolve, 'image/png')
         );
-        if (!blob) return;
+        if (!blob) { toast.error('이미지 변환에 실패했습니다'); return; }
 
         const fileName = `테놀_전적_${displayName}.png`;
+        const file = new File([blob], fileName, { type: 'image/png' });
 
-        if (
-          navigator.share &&
-          navigator.canShare?.({
-            files: [new File([blob], 'stats.png', { type: 'image/png' })],
-          })
-        ) {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+        if (isMobile && navigator.share && navigator.canShare?.({ files: [file] })) {
           await navigator.share({
-            files: [new File([blob], fileName, { type: 'image/png' })],
+            files: [file],
             title: `${displayName}의 테니스 전적`,
           });
         } else {
