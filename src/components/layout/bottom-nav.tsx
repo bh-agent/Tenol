@@ -1,14 +1,14 @@
 'use client';
 
 import { cn } from '@/lib/utils/cn';
-import { Users, Trophy, Bell, User } from 'lucide-react';
+import { Users, Trophy, Megaphone, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const navItems = [
   { href: '/clubs', label: '클럽', icon: Users },
   { href: '/my-matches', label: '내 경기', icon: Trophy },
-  { href: '/notifications', label: '알림', icon: Bell },
+  { href: '/recruit', label: '모집', icon: Megaphone },
   { href: '/profile', label: '프로필', icon: User },
 ];
 
