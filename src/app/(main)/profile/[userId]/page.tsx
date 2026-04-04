@@ -14,7 +14,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getMyClubs } from '@/lib/queries/clubs';
 import { getPlayerStats } from '@/lib/queries/stats';
 import { getProfileStats } from '@/lib/queries/profile-stats';
-import { BarChart3, Users, ChevronRight, Crown, Shield, Plus, Search, MapPin, Calendar } from 'lucide-react';
+import { BarChart3, Users, ChevronRight, Crown, Shield, ShieldAlert, Plus, Search, MapPin, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 
@@ -230,6 +230,23 @@ export default async function UserProfilePage({
             </div>
           )}
         </Card>
+
+        {/* Admin Mode (admin only) */}
+        {isOwnProfile && profile.is_admin && (
+          <Link
+            href="/admin"
+            className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 hover:border-red-500/40 transition-all"
+          >
+            <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center">
+              <ShieldAlert className="w-5 h-5 text-red-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-foreground">관리자 모드</p>
+              <p className="text-xs text-muted-foreground">플랫폼 관리 대시보드</p>
+            </div>
+            <ChevronRight className="w-5 h-5 text-red-400" />
+          </Link>
+        )}
 
         {/* Sign Out (own profile only) */}
         {isOwnProfile && <SignOutButton />}

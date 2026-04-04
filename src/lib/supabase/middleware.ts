@@ -53,13 +53,22 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 인증된 유저 → 온보딩 체크
+  // 인증된 유저 → 정지/온보딩 체크
   if (user && !isAuthRoute) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_onboarded')
+      .select('is_onboarded, is_banned')
       .eq('id', user.id)
       .maybeSingle();
+
+    // 정지된 유저 → 로그아웃 처리
+    if (profile?.is_banned && pathname !== '/login') {
+      await supabase.auth.signOut();
+      const url = request.nextUrl.clone();
+      url.pathname = '/login';
+      url.searchParams.set('banned', '1');
+      return NextResponse.redirect(url);
+    }
 
     if (pathname === '/onboarding') {
       // 온보딩 완료 유저가 /onboarding 접근 시 → 홈으로

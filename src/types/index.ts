@@ -13,6 +13,9 @@ export type Profile = {
   region: string | null;
   tennis_start_date: string | null;
   is_onboarded: boolean;
+  is_admin: boolean;
+  is_banned: boolean;
+  banned_reason: string | null;
   created_at: string;
   updated_at: string;
 };
