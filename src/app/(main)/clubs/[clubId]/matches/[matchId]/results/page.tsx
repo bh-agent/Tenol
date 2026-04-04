@@ -363,8 +363,9 @@ export default function ResultsPage() {
       }
     } catch (e) {
       if ((e as Error)?.name !== 'AbortError') {
+        const msg = e instanceof Error ? e.message : String(e);
         console.error('Results share failed:', e);
-        toast.error('이미지 공유에 실패했습니다');
+        toast.error(`공유 실패: ${msg.slice(0, 100)}`);
       }
     } finally {
       setSharing(false);
