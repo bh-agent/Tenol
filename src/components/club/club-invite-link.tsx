@@ -5,13 +5,12 @@ import { Copy, Check, Share2, Link as LinkIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useToast } from '@/components/ui/toast-provider';
 
-const INVITE_BASE_URL = 'https://tenol-one.vercel.app/clubs/join';
-
 export function ClubInviteLink({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   const { success } = useToast();
 
-  const inviteLink = `${INVITE_BASE_URL}/${code}`;
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://tenol-one.vercel.app';
+  const inviteLink = `${baseUrl}/clubs/join/${code}`;
 
   const handleCopyLink = async () => {
     try {

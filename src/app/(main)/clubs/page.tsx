@@ -56,13 +56,31 @@ export default async function ClubsPage() {
         </div>
 
         {clubs.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="아직 가입한 클럽이 없어요"
-            description="새 클럽을 만들거나, 초대 코드로 기존 클럽에 가입해보세요"
-            actionLabel="클럽 만들기"
-            actionHref="/clubs/new"
-          />
+          <div className="space-y-4">
+            <EmptyState
+              icon={Users}
+              title="아직 가입한 클럽이 없어요"
+              description="클럽을 만들어 경기를 관리하거나, 기존 클럽에 가입해보세요"
+              actionLabel="새 클럽 만들기"
+              actionHref="/clubs/new"
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <Link href="/clubs/explore">
+                <Card variant="default" className="text-center py-6 hover:border-primary/30 transition-all active:scale-[0.97]">
+                  <Search className="w-6 h-6 text-primary mx-auto mb-2" />
+                  <p className="text-sm font-medium text-foreground">클럽 탐색하기</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">공개 클럽 찾기</p>
+                </Card>
+              </Link>
+              <Link href="/clubs/new">
+                <Card variant="default" className="text-center py-6 hover:border-primary/30 transition-all active:scale-[0.97]">
+                  <Plus className="w-6 h-6 text-primary mx-auto mb-2" />
+                  <p className="text-sm font-medium text-foreground">초대코드로 가입</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">링크/코드 입력</p>
+                </Card>
+              </Link>
+            </div>
+          </div>
         ) : (
           <div className="space-y-3 stagger">
             {clubs.map((club: any) => (

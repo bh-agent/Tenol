@@ -57,6 +57,7 @@ export function Avatar({
           src={src}
           alt={alt}
           fill
+          sizes="80px"
           className={cn(
             'object-cover transition-opacity duration-300',
             loaded ? 'opacity-100' : 'opacity-0'

@@ -29,6 +29,7 @@ export function ClubAvatar({ logoUrl, name, size = 'md', className }: ClubAvatar
           src={logoUrl}
           alt={name}
           fill
+          sizes="64px"
           className="object-cover"
           onError={() => setImgError(true)}
         />

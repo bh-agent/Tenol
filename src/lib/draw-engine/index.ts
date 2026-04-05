@@ -1039,7 +1039,8 @@ function validateDraw(
     // Only throw for truly critical issues (duplicate players).
     const critical = errors.filter(e => e.includes('중복 배정') || e.includes('두 코트에 배정'));
     if (critical.length > 0) {
-      throw new Error(`대진표 생성 오류: ${critical.join('; ')}`);
+      console.error('Draw engine critical errors:', critical);
+      throw new Error('대진표를 생성할 수 없습니다. 참가자 구성을 확인해주세요.');
     }
   }
 }
