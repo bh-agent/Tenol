@@ -24,7 +24,7 @@ export function RefreshButton({ className }: RefreshButtonProps) {
       onClick={handleRefresh}
       disabled={isPending}
       className={cn(
-        'p-2 rounded-full hover:bg-surface-elevated transition-colors',
+        'p-2.5 rounded-full hover:bg-surface-elevated transition-colors',
         className
       )}
       aria-label="새로고침"

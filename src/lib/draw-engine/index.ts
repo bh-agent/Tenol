@@ -433,6 +433,15 @@ export function generateDrawV2(input: DrawInputV2): DrawResultV2 {
   const unknownCount = confirmed.filter(p => getGender(p) === null).length;
   if (mode !== 'free' && unknownCount > confirmed.length * 0.3) effectiveMode = 'free';
 
+  // mixed_only 모드에서 남녀 모두 있는지 검증
+  if (effectiveMode === 'mixed_only') {
+    const males = confirmed.filter(p => getGender(p) === 'M').length;
+    const females = confirmed.filter(p => getGender(p) === 'F').length;
+    if (males === 0 || females === 0) {
+      throw new Error('혼복 모드에는 남성과 여성 참가자가 모두 필요합니다. 다른 모드를 선택해주세요.');
+    }
+  }
+
   const totalGames = courts.length * gamesPerCourt;
   const totalPlayerSlots = totalGames * 4;
   const totalTimeSlots = gamesPerCourt; // number of time slots = games per court

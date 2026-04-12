@@ -77,7 +77,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
             )}
             <button
               onClick={onClose}
-              className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-all duration-200 cursor-pointer"
+              className="p-2.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-all duration-200 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>

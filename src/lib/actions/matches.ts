@@ -471,7 +471,7 @@ export async function addMemberParticipant(matchId: string, userId: string) {
 
   const { data: match } = await supabase
     .from('matches')
-    .select('status')
+    .select('status, max_participants')
     .eq('id', validMatchId)
     .maybeSingle();
 
@@ -489,6 +489,18 @@ export async function addMemberParticipant(matchId: string, userId: string) {
 
   if (existing) {
     throw new Error('이미 참가 중인 멤버입니다');
+  }
+
+  // 인원 제한 확인
+  if (match?.max_participants) {
+    const { count } = await supabase
+      .from('match_participants')
+      .select('id', { count: 'exact', head: true })
+      .eq('match_id', validMatchId)
+      .eq('status', 'confirmed');
+    if (count && count >= match.max_participants) {
+      throw new Error(`최대 인원(${match.max_participants}명)을 초과할 수 없습니다`);
+    }
   }
 
   const { error } = await supabase.from('match_participants').insert({
