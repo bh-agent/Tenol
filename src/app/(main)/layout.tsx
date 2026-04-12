@@ -1,5 +1,6 @@
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { ScrollTopButton } from '@/components/ui/scroll-top-button';
+import { NativeInit } from '@/components/native/native-init';
 
 export default function MainLayout({
   children,
@@ -8,6 +9,7 @@ export default function MainLayout({
 }) {
   return (
     <div className="flex flex-col min-h-screen max-w-lg mx-auto w-full">
+      <NativeInit />
       <main className="flex-1 pb-28">
         {children}
       </main>
