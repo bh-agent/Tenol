@@ -868,9 +868,13 @@ export default function DrawPage() {
       if (typeof navigator.share === 'function' && typeof navigator.canShare === 'function' && navigator.canShare(shareData)) {
         await navigator.share(shareData);
       } else {
-        // Fallback: open image in new tab (works on all browsers including iOS Safari)
         const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `대진표_${matchTitle || 'draw'}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('이미지가 저장되었습니다');
       }
     } catch (e: any) {
       if (e?.name !== 'AbortError') {
@@ -890,12 +894,7 @@ export default function DrawPage() {
       const blob = await generateDrawImage(draw);
       if (!blob) return;
 
-      // iOS Safari doesn't support a.download — open in new tab instead
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-      if (isIOS) {
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-      } else {
+      {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -905,6 +904,7 @@ export default function DrawPage() {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
       }
+      toast.success('이미지가 저장되었습니다');
     } catch (e) {
       console.error('Download failed:', e);
       toast.error('이미지 저장에 실패했습니다');
