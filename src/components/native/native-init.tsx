@@ -20,12 +20,6 @@ export function NativeInit() {
         }
       } catch {}
 
-      // Splash Screen
-      try {
-        const { SplashScreen } = await import('@capacitor/splash-screen');
-        await SplashScreen.hide();
-      } catch {}
-
       // Keyboard (iOS form handling)
       try {
         const { Keyboard, KeyboardResize } = await import('@capacitor/keyboard');
