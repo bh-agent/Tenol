@@ -2,31 +2,53 @@
 
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils/cn';
+import { Capacitor } from '@capacitor/core';
 import Image from 'next/image';
 
 export default function LoginPage() {
   const supabase = createClient();
 
-  const handleKakaoLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'kakao',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        scopes: 'profile_nickname profile_image',
-        queryParams: {
-          scope: 'profile_nickname profile_image',
-        },
-      },
-    });
-  };
+  const handleOAuthLogin = async (provider: 'kakao' | 'google') => {
+    const redirectTo = `${window.location.origin}/auth/callback`;
 
-  const handleGoogleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
+    if (Capacitor.isNativePlatform()) {
+      // 네이티브: 인앱 브라우저로 OAuth 진행
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo,
+          skipBrowserRedirect: true,
+          ...(provider === 'kakao' ? {
+            scopes: 'profile_nickname profile_image',
+            queryParams: { scope: 'profile_nickname profile_image' },
+          } : {}),
+        },
+      });
+
+      if (data?.url) {
+        const { Browser } = await import('@capacitor/browser');
+
+        // OAuth 완료 후 앱으로 복귀 감지
+        const listener = await Browser.addListener('browserFinished', () => {
+          listener.remove();
+          window.location.href = '/clubs';
+        });
+
+        await Browser.open({ url: data.url, presentationStyle: 'popover' });
+      }
+    } else {
+      // 웹: 기존 방식 (전체 페이지 리다이렉트)
+      await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo,
+          ...(provider === 'kakao' ? {
+            scopes: 'profile_nickname profile_image',
+            queryParams: { scope: 'profile_nickname profile_image' },
+          } : {}),
+        },
+      });
+    }
   };
 
   return (
@@ -93,7 +115,7 @@ export default function LoginPage() {
       <div className="relative z-10 w-full max-w-sm space-y-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
         {/* Kakao Login */}
         <button
-          onClick={handleKakaoLogin}
+          onClick={() => handleOAuthLogin('kakao')}
           className={cn(
             'group w-full h-14 rounded-2xl font-semibold text-[#191919] bg-[#FEE500]',
             'flex items-center justify-center gap-3',
@@ -113,7 +135,7 @@ export default function LoginPage() {
 
         {/* Google Login */}
         <button
-          onClick={handleGoogleLogin}
+          onClick={() => handleOAuthLogin('google')}
           className={cn(
             'group w-full h-14 rounded-2xl font-semibold text-[#1F1F1F] bg-white',
             'flex items-center justify-center gap-3',
