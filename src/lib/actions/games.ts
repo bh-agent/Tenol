@@ -92,13 +92,19 @@ export async function submitScore(
 
   const supabase = await createClient();
 
-  // Check that the match is in a scorable state (in_progress or completed for corrections)
+  // Check match status — auto-transition upcoming → in_progress on first score
   const matchStatusForGame = await getMatchStatusFromGame(supabase, validated.gameId);
-  if (matchStatusForGame === 'upcoming') {
-    throw new Error('아직 시작되지 않은 경기에는 점수를 입력할 수 없습니다');
-  }
   if (matchStatusForGame === 'cancelled') {
     throw new Error('취소된 경기에는 점수를 입력할 수 없습니다');
+  }
+  if (matchStatusForGame === 'upcoming') {
+    const { data: game } = await supabase.from('games').select('draw_id').eq('id', validated.gameId).maybeSingle();
+    if (game) {
+      const { data: draw } = await supabase.from('draws').select('match_id').eq('id', game.draw_id).maybeSingle();
+      if (draw) {
+        await supabase.from('matches').update({ status: 'in_progress', updated_at: new Date().toISOString() }).eq('id', draw.match_id);
+      }
+    }
   }
 
   const winner = validated.scoreA > validated.scoreB ? 'team_a' : validated.scoreB > validated.scoreA ? 'team_b' : null;
