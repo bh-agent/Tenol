@@ -45,6 +45,12 @@ export function InlineScoreInput({
     }
   };
 
+  const handleScoreChange = (setter: (v: number) => void, value: string) => {
+    const num = parseInt(value, 10);
+    if (!isNaN(num) && num >= 0 && num <= 99) setter(num);
+    else if (value === '') setter(0);
+  };
+
   return (
     <div className="border-t border-border/50 px-3 py-3 animate-fade-in">
       <div className="flex items-center gap-3">
@@ -60,14 +66,16 @@ export function InlineScoreInput({
             >
               <Minus className="w-4 h-4 text-muted-foreground" />
             </button>
-            <span
+            <input
+              type="number"
+              inputMode="numeric"
+              value={scoreA}
+              onChange={(e) => handleScoreChange(setScoreA, e.target.value)}
               className={cn(
-                'w-10 text-center text-xl font-bold tabular-nums',
+                'w-12 h-11 text-center text-xl font-bold tabular-nums rounded-lg bg-muted border border-border focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30',
                 scoreA > scoreB ? 'text-primary' : 'text-foreground'
               )}
-            >
-              {scoreA}
-            </span>
+            />
             <button
               onClick={() => setScoreA(scoreA + 1)}
               className="w-11 h-11 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
@@ -91,14 +99,16 @@ export function InlineScoreInput({
             >
               <Minus className="w-4 h-4 text-muted-foreground" />
             </button>
-            <span
+            <input
+              type="number"
+              inputMode="numeric"
+              value={scoreB}
+              onChange={(e) => handleScoreChange(setScoreB, e.target.value)}
               className={cn(
-                'w-10 text-center text-xl font-bold tabular-nums',
+                'w-12 h-11 text-center text-xl font-bold tabular-nums rounded-lg bg-muted border border-border focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30',
                 scoreB > scoreA ? 'text-primary' : 'text-foreground'
               )}
-            >
-              {scoreB}
-            </span>
+            />
             <button
               onClick={() => setScoreB(scoreB + 1)}
               className="w-11 h-11 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"

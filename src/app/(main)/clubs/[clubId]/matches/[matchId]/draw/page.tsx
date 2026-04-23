@@ -507,6 +507,7 @@ export default function DrawPage() {
         throw new Error((result.error || '대진표 생성에 실패했습니다') + detail);
       }
       await loadData();
+      toast.success('대진표가 생성되었습니다');
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '대진표 생성에 실패했습니다');
     } finally {

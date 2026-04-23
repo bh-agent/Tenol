@@ -163,10 +163,10 @@ export function GameRoundCard({
               <div
                 className={cn(
                   'px-3 py-2.5',
-                  canInputScore && !isCompleted && 'cursor-pointer active:opacity-90'
+                  canInputScore && 'cursor-pointer active:opacity-90'
                 )}
                 onClick={() => {
-                  if (canInputScore && !isCompleted) {
+                  if (canInputScore) {
                     setExpandedGameId(isExpanded ? null : game.id);
                   }
                 }}
