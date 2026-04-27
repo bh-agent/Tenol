@@ -8,12 +8,11 @@ import Image from 'next/image';
 export default function LoginPage() {
   const supabase = createClient();
 
-  const handleOAuthLogin = async (provider: 'kakao' | 'google') => {
+  const handleOAuthLogin = async (provider: 'kakao' | 'google' | 'apple') => {
     const redirectTo = `${window.location.origin}/auth/callback`;
 
     if (Capacitor.isNativePlatform()) {
-      // 네이티브: 인앱 브라우저로 OAuth 진행
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { data } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
           redirectTo,
@@ -28,16 +27,30 @@ export default function LoginPage() {
       if (data?.url) {
         const { Browser } = await import('@capacitor/browser');
 
-        // OAuth 완료 후 앱으로 복귀 감지
-        const listener = await Browser.addListener('browserFinished', () => {
+        // OAuth 완료 후 세션을 폴링으로 감지 (browserFinished는 iOS에서 불안정)
+        let polling: ReturnType<typeof setInterval> | null = null;
+
+        const checkSession = async () => {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            if (polling) clearInterval(polling);
+            try { await Browser.close(); } catch {}
+            window.location.href = '/clubs';
+          }
+        };
+
+        const listener = await Browser.addListener('browserFinished', async () => {
           listener.remove();
-          window.location.href = '/clubs';
+          if (polling) clearInterval(polling);
+          // 브라우저 닫힌 후 최종 세션 확인
+          await checkSession();
         });
+
+        polling = setInterval(checkSession, 1500);
 
         await Browser.open({ url: data.url, presentationStyle: 'popover' });
       }
     } else {
-      // 웹: 기존 방식 (전체 페이지 리다이렉트)
       await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -77,7 +90,6 @@ export default function LoginPage() {
 
       {/* Branding Section */}
       <div className="relative z-10 flex flex-col items-center stagger">
-        {/* Tenol app icon */}
         <div className="relative mb-8">
           <div className="w-24 h-24 rounded-3xl overflow-hidden glow-primary shadow-lg shadow-primary/20">
             <Image
@@ -89,17 +101,14 @@ export default function LoginPage() {
               priority
             />
           </div>
-          {/* Floating particles */}
           <div className="absolute -top-2 -right-2 w-2 h-2 rounded-full bg-primary/40 animate-pulse" />
           <div className="absolute -bottom-1 -left-3 w-1.5 h-1.5 rounded-full bg-primary/30 animate-pulse" style={{ animationDelay: '1s' }} />
         </div>
 
-        {/* App name with gradient */}
         <h1 className="text-5xl font-bold text-gradient mb-3 tracking-tight">
           테놀
         </h1>
 
-        {/* Tagline */}
         <p className="text-muted-foreground text-lg mb-2">
           테니스 치며 놀자
         </p>
@@ -113,6 +122,23 @@ export default function LoginPage() {
 
       {/* Login Buttons */}
       <div className="relative z-10 w-full max-w-sm space-y-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+        {/* Apple Login */}
+        <button
+          onClick={() => handleOAuthLogin('apple')}
+          className={cn(
+            'group w-full h-14 rounded-2xl font-semibold text-white bg-black border border-white/10',
+            'flex items-center justify-center gap-3',
+            'transition-all duration-200 ease-out',
+            'hover:bg-black/80 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)]',
+            'active:scale-[0.97]'
+          )}
+        >
+          <svg width="20" height="20" viewBox="0 0 17 20" className="transition-transform group-hover:scale-110">
+            <path fill="white" d="M13.545 10.239c-.022-2.234 1.823-3.306 1.906-3.359-.038-.057-1.504-2.234-2.113-2.234-.607 0-1.258.34-1.612.34-.354 0-.95-.331-1.562-.322-.804.01-1.545.468-1.959 1.189-.836 1.45-.214 3.6.6 4.778.398.576.874 1.222 1.498 1.199.601-.024.828-.389 1.554-.389.726 0 .935.389 1.573.377.648-.01 1.06-.588 1.454-1.165.459-.668.648-1.315.66-1.349-.014-.006-1.266-.486-1.279-1.929-.012-1.206.985-1.784 1.03-1.815-.562-.826-1.437-.917-1.748-.94zm-1.018-3.429c.331-.401.554-.959.493-1.515-.477.019-.1.055.318-.996.36 0 .701.32 1.046.319.914-.002 1.115-.608 1.446-1.009z"/>
+          </svg>
+          Apple로 시작하기
+        </button>
+
         {/* Kakao Login */}
         <button
           onClick={() => handleOAuthLogin('kakao')}
