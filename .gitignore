@@ -47,3 +47,5 @@ next-env.d.ts
 .vercel
 .gstack/
 대진표_*.png
+*.p8
+AuthKey_*
