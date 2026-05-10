@@ -182,7 +182,7 @@ export default function LoginPage() {
           onClick={() => handleOAuthLogin('kakao')}
           disabled={loading !== null}
           className={cn(
-            'group w-full h-14 rounded-2xl font-semibold text-[#191919] bg-[#FEE500]',
+            'group w-full h-14 rounded-2xl font-semibold text-[#191919] bg-[#FEE500] border-2 border-[#E5CE00]',
             'flex items-center justify-center gap-3',
             'transition-all duration-200 ease-out',
             'hover:bg-[#FDD835] active:scale-[0.97]',
@@ -200,7 +200,7 @@ export default function LoginPage() {
           onClick={() => handleOAuthLogin('google')}
           disabled={loading !== null}
           className={cn(
-            'group w-full h-14 rounded-2xl font-semibold text-[#1F1F1F] bg-white',
+            'group w-full h-14 rounded-2xl font-semibold text-[#1F1F1F] bg-white border-2 border-gray-300',
             'flex items-center justify-center gap-3',
             'transition-all duration-200 ease-out',
             'hover:bg-white/90 active:scale-[0.97]',
