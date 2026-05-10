@@ -74,12 +74,29 @@ export default function LoginPage() {
       const response = await window.AppleID.auth.signIn();
 
       if (response.authorization?.id_token) {
-        const { error } = await supabase.auth.signInWithIdToken({
+        const { error, data } = await supabase.auth.signInWithIdToken({
           provider: 'apple',
           token: response.authorization.id_token,
         });
 
-        if (!error) {
+        if (!error && data.user) {
+          // Apple이 제공한 이름을 프로필에 자동 저장
+          const appleUser = response.user;
+          if (appleUser?.name) {
+            const fullName = [appleUser.name.firstName, appleUser.name.lastName].filter(Boolean).join(' ');
+            if (fullName) {
+              await supabase.from('profiles').update({
+                display_name: fullName,
+                real_name: fullName,
+              }).eq('id', data.user.id).is('display_name', null);
+            }
+          }
+          if (appleUser?.email) {
+            await supabase.from('profiles').update({
+              display_name: appleUser.email.split('@')[0],
+            }).eq('id', data.user.id).is('display_name', null);
+          }
+
           window.location.href = '/clubs';
           return;
         }
@@ -147,7 +164,7 @@ export default function LoginPage() {
           onClick={handleAppleLogin}
           disabled={loading !== null}
           className={cn(
-            'group w-full h-14 rounded-2xl font-semibold text-white bg-black border border-white/10',
+            'group w-full h-14 rounded-2xl font-semibold text-white bg-black border-2 border-white',
             'flex items-center justify-center gap-3',
             'transition-all duration-200 ease-out',
             'hover:bg-black/80 active:scale-[0.97]',

@@ -9,7 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils/cn';
 import { Camera, ChevronLeft, ChevronRight, MapPin, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const NTRP_OPTIONS = [
   { value: '1.0', label: '1.0 - 입문' },
@@ -38,6 +38,20 @@ export default function OnboardingPage() {
   const [displayName, setDisplayName] = useState('');
   const [realName, setRealName] = useState('');
   const [gender, setGender] = useState<string>('');
+
+  // Apple 로그인 시 이름 자동 채우기
+  useEffect(() => {
+    const prefill = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const meta = user.user_metadata;
+      if (meta?.full_name && !displayName) setDisplayName(meta.full_name);
+      else if (meta?.name && !displayName) setDisplayName(meta.name);
+      if (meta?.avatar_url && !avatarUrl) setAvatarUrl(meta.avatar_url);
+    };
+    prefill();
+  }, []);
 
   // Step 2: Tennis info
   const [region, setRegion] = useState('');
