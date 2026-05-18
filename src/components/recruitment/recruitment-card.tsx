@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { closeRecruitmentPost, deleteRecruitmentPost } from '@/lib/actions/recruitment';
+import { ReportBlockMenu } from '@/components/moderation/report-block-menu';
 
 interface RecruitmentCardProps {
   post: RecruitmentPost;
@@ -127,7 +128,8 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
           </p>
         </div>
 
-        {isOwner && (
+        {/* 더보기 메뉴: 본인이면 마감/삭제, 타인이면 신고/차단 */}
+        {currentUserId && (
           <div className="relative">
             <button
               onClick={() => setShowMenu(!showMenu)}
@@ -149,24 +151,35 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
                 >
                   <div className="w-10 h-1 rounded-full bg-muted mx-auto mt-3 mb-1" />
                   <div className="py-1">
-                    <button
-                      onClick={handleClose}
-                      disabled={closing}
-                      className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
-                      role="menuitem"
-                    >
-                      <X className="w-5 h-5" />
-                      {closing ? '마감 중...' : '모집 마감'}
-                    </button>
-                    <button
-                      onClick={handleDelete}
-                      disabled={deleting}
-                      className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-destructive hover:bg-surface-hover transition-colors"
-                      role="menuitem"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                      {deleting ? '삭제 중...' : '삭제'}
-                    </button>
+                    {isOwner ? (
+                      <>
+                        <button
+                          onClick={handleClose}
+                          disabled={closing}
+                          className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
+                          role="menuitem"
+                        >
+                          <X className="w-5 h-5" />
+                          {closing ? '마감 중...' : '모집 마감'}
+                        </button>
+                        <button
+                          onClick={handleDelete}
+                          disabled={deleting}
+                          className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-destructive hover:bg-surface-hover transition-colors"
+                          role="menuitem"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                          {deleting ? '삭제 중...' : '삭제'}
+                        </button>
+                      </>
+                    ) : (
+                      <ReportBlockMenu
+                        targetType="recruitment_post"
+                        targetId={post.id}
+                        targetUserId={post.created_by}
+                        onDone={() => setShowMenu(false)}
+                      />
+                    )}
                   </div>
                 </div>
               </>,

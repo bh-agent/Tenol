@@ -12,12 +12,24 @@ async function closeExpiredPosts(supabase: any) {
     .lt('match_date', today);
 }
 
+/** 현재 사용자가 차단한 사용자 ID 목록 (Apple Guideline 1.2) */
+async function getBlockedIds(supabase: any): Promise<string[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data } = await supabase
+    .from('user_blocks')
+    .select('blocked_id')
+    .eq('blocker_id', user.id);
+  return (data ?? []).map((row: { blocked_id: string }) => row.blocked_id);
+}
+
 export async function getRecruitmentPosts(
   type?: RecruitmentType,
   limit = 20
 ): Promise<RecruitmentPost[]> {
   const supabase = await createClient();
   await closeExpiredPosts(supabase);
+  const blockedIds = await getBlockedIds(supabase);
 
   let query = supabase
     .from('recruitment_posts')
@@ -36,6 +48,10 @@ export async function getRecruitmentPosts(
     query = query.eq('type', type);
   }
 
+  if (blockedIds.length > 0) {
+    query = query.not('created_by', 'in', `(${blockedIds.join(',')})`);
+  }
+
   const { data } = await query;
   return (data as unknown as RecruitmentPost[]) || [];
 }
@@ -47,6 +63,7 @@ export async function searchRecruitmentPosts(
 ): Promise<RecruitmentPost[]> {
   const supabase = await createClient();
   await closeExpiredPosts(supabase);
+  const blockedIds = await getBlockedIds(supabase);
 
   let query = supabase
     .from('recruitment_posts')
@@ -67,6 +84,10 @@ export async function searchRecruitmentPosts(
 
   if (searchQuery && searchQuery.trim()) {
     query = query.ilike('title', `%${searchQuery.trim()}%`);
+  }
+
+  if (blockedIds.length > 0) {
+    query = query.not('created_by', 'in', `(${blockedIds.join(',')})`);
   }
 
   const { data } = await query;

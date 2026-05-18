@@ -68,10 +68,24 @@ Xcode에서:
 
 ### 3-3. 배포 타겟 확인
 1. **General** 탭
-2. **Minimum Deployments**: iOS 16.0 이상 권장
+2. **Minimum Deployments**: iOS 15.0 이상
 3. **Display Name**: 테놀
-4. **Version**: 1.0
-5. **Build**: 1 (또는 이전 제출보다 높은 숫자)
+4. **Version**: 1.2 (project.pbxproj에 이미 설정됨)
+5. **Build**: 4 (project.pbxproj에 이미 설정됨, 이전 제출 Build 3보다 높음)
+
+### 3-4. ⚠️ Apple 심사 4번 거절 수정 사항 (1.2 / Build 4)
+이 빌드는 두 가지 거절 사유를 모두 해결합니다:
+- **Sign in with Apple 이름 자동 채우기**: Apple이 제공한 이름을 자동 저장하므로 사용자가 이름 입력 화면을 보지 않음 (트리거 + 로그인 페이지 + 온보딩 페이지 모두 수정)
+- **카메라 크래시 해결**: `Info.plist`에 `NSCameraUsageDescription`, `NSPhotoLibraryUsageDescription`, `NSPhotoLibraryAddUsageDescription` 추가됨
+- **UGC 신고/차단 기능**: 모집글 더보기 메뉴에 신고/차단 추가 (Guideline 1.2 사전 대응)
+
+### 3-5. DB 마이그레이션 (Supabase)
+Mac에서 빌드하기 전에 반드시 Supabase 마이그레이션을 실행:
+```bash
+# Supabase 대시보드 → SQL Editor → 두 파일 실행
+# supabase/migrations/00037_oauth_metadata_in_profile.sql
+# supabase/migrations/00038_user_reports_and_blocks.sql
+```
 
 ---
 

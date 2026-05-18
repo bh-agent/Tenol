@@ -81,20 +81,26 @@ export default function LoginPage() {
 
         if (!error && data.user) {
           // Apple이 제공한 이름을 프로필에 자동 저장
+          // Apple JS SDK는 최초 가입 시에만 response.user에 이름/이메일을 제공함
+          // 트리거가 display_name을 '사용자'로 기본 설정하므로, 기본값일 때만 덮어쓰기
           const appleUser = response.user;
-          if (appleUser?.name) {
-            const fullName = [appleUser.name.firstName, appleUser.name.lastName].filter(Boolean).join(' ');
-            if (fullName) {
-              await supabase.from('profiles').update({
-                display_name: fullName,
-                real_name: fullName,
-              }).eq('id', data.user.id).is('display_name', null);
-            }
-          }
-          if (appleUser?.email) {
-            await supabase.from('profiles').update({
-              display_name: appleUser.email.split('@')[0],
-            }).eq('id', data.user.id).is('display_name', null);
+          const fullName = appleUser?.name
+            ? [appleUser.name.firstName, appleUser.name.lastName].filter(Boolean).join(' ').trim()
+            : '';
+          const emailLocal = appleUser?.email ? appleUser.email.split('@')[0] : '';
+          const candidate = fullName || emailLocal;
+
+          if (candidate) {
+            // 트리거가 채운 기본값('사용자')일 때만 진짜 이름으로 교체
+            // 사용자가 이미 닉네임을 직접 정한 경우 덮어쓰지 않음
+            await supabase
+              .from('profiles')
+              .update({
+                display_name: candidate,
+                real_name: fullName || null,
+              })
+              .eq('id', data.user.id)
+              .eq('display_name', '사용자');
           }
 
           window.location.href = '/clubs';

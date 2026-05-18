@@ -165,7 +165,9 @@ export const updateProfileSchema = z.object({
 
 export const completeOnboardingSchema = z.object({
   display_name: sanitizedText.pipe(z.string().min(1, '닉네임을 입력해주세요').max(30)),
-  real_name: sanitizedText.pipe(z.string().min(1, '실명을 입력해주세요').max(30)),
+  // real_name: OAuth provider (Apple, Google, Kakao 등)가 이미 이름을 제공한 경우 빈 값 허용
+  // 빈 값이면 서버에서 display_name으로 fallback
+  real_name: sanitizedText.pipe(z.string().max(30)).nullable().optional(),
   gender: genderSchema,
   region: sanitizedText.pipe(z.string().max(100)).nullable(),
   bio: sanitizedText.pipe(z.string().max(200)).nullable(),

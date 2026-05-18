@@ -38,17 +38,50 @@ export default function OnboardingPage() {
   const [displayName, setDisplayName] = useState('');
   const [realName, setRealName] = useState('');
   const [gender, setGender] = useState<string>('');
+  // OAuth가 이미 이름을 제공한 경우 true → 이름 입력 UI 숨김 (Apple 심사 4번 가이드라인 대응)
+  const [hasProviderName, setHasProviderName] = useState(false);
 
-  // Apple 로그인 시 이름 자동 채우기
+  // OAuth 메타데이터 + 기존 profile row에서 이름/아바타 자동 채움
   useEffect(() => {
     const prefill = async () => {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const meta = user.user_metadata;
-      if (meta?.full_name && !displayName) setDisplayName(meta.full_name);
-      else if (meta?.name && !displayName) setDisplayName(meta.name);
-      if (meta?.avatar_url && !avatarUrl) setAvatarUrl(meta.avatar_url);
+
+      // 1) 이미 저장된 profile row가 있으면 그 값을 우선 사용
+      //    (Apple JS SDK 첫 로그인 시 login page가 profiles에 이름을 저장함)
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('display_name, real_name, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle();
+
+      const meta = user.user_metadata ?? {};
+      const metaName: string =
+        (meta.full_name as string) ||
+        (meta.name as string) ||
+        (meta.preferred_username as string) ||
+        '';
+      const metaAvatar: string =
+        (meta.avatar_url as string) || (meta.picture as string) || '';
+
+      // display_name: trigger 기본값('사용자')이 아니면 그대로 사용
+      const profileName = profile?.display_name && profile.display_name !== '사용자'
+        ? profile.display_name
+        : '';
+      const resolvedName = profileName || metaName;
+
+      if (resolvedName) {
+        setDisplayName(resolvedName);
+        setRealName(profile?.real_name || resolvedName);
+        // Apple 가이드라인: provider가 이름을 제공한 경우 이름 입력을 다시 요구하면 안 됨
+        setHasProviderName(true);
+      }
+
+      const resolvedAvatar = profile?.avatar_url || metaAvatar;
+      if (resolvedAvatar) {
+        setAvatarUrl(resolvedAvatar);
+      }
     };
     prefill();
   }, []);
@@ -101,13 +134,16 @@ export default function OnboardingPage() {
   const handleNext = () => {
     setError('');
     if (step === 1) {
-      if (!displayName.trim()) {
-        setError('닉네임을 입력해주세요');
-        return;
-      }
-      if (!realName.trim()) {
-        setError('실명을 입력해주세요');
-        return;
+      // OAuth가 이름을 제공한 경우 이름 검증을 건너뜀 (Apple 가이드라인 4 준수)
+      if (!hasProviderName) {
+        if (!displayName.trim()) {
+          setError('닉네임을 입력해주세요');
+          return;
+        }
+        if (!realName.trim()) {
+          setError('실명을 입력해주세요');
+          return;
+        }
       }
       if (!gender) {
         setError('성별을 선택해주세요');
@@ -186,40 +222,54 @@ export default function OnboardingPage() {
           {step === 1 && (
             <div className="animate-fade-in">
               <h1 className="text-2xl font-bold text-foreground mb-1 text-center">
-                반가워요! <span className="text-gradient">테놀</span>에 오신 걸 환영해요
+                {hasProviderName ? (
+                  <>
+                    안녕하세요, <span className="text-gradient">{displayName}</span>님!
+                  </>
+                ) : (
+                  <>
+                    반가워요! <span className="text-gradient">테놀</span>에 오신 걸 환영해요
+                  </>
+                )}
               </h1>
               <p className="text-muted-foreground text-sm mb-8 text-center">
-                기본 정보를 알려주세요
+                {hasProviderName ? '성별을 알려주세요' : '기본 정보를 알려주세요'}
               </p>
 
               <div className="space-y-5 stagger">
-                <Input
-                  id="display_name"
-                  name="display_name"
-                  label="닉네임"
-                  placeholder="테놀에서 사용할 이름"
-                  required
-                  autoFocus
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
-                  className="bg-surface border-border focus:border-primary"
-                />
+                {/* OAuth가 이름을 제공하지 않은 경우에만 이름 입력 표시
+                    Apple Guideline 4: Sign in with Apple이 제공한 이름은 다시 요구하지 않음 */}
+                {!hasProviderName && (
+                  <>
+                    <Input
+                      id="display_name"
+                      name="display_name"
+                      label="닉네임"
+                      placeholder="테놀에서 사용할 이름"
+                      required
+                      autoFocus
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      className="bg-surface border-border focus:border-primary"
+                    />
 
-                <div>
-                  <Input
-                    id="real_name"
-                    name="real_name"
-                    label="실명"
-                    placeholder="대진표에 표시될 이름"
-                    required
-                    value={realName}
-                    onChange={(e) => setRealName(e.target.value)}
-                    className="bg-surface border-border focus:border-primary"
-                  />
-                  <p className="text-[11px] text-muted-foreground mt-1.5">
-                    대진표에서 실명(닉네임) 형태로 표시됩니다
-                  </p>
-                </div>
+                    <div>
+                      <Input
+                        id="real_name"
+                        name="real_name"
+                        label="실명"
+                        placeholder="대진표에 표시될 이름"
+                        required
+                        value={realName}
+                        onChange={(e) => setRealName(e.target.value)}
+                        className="bg-surface border-border focus:border-primary"
+                      />
+                      <p className="text-[11px] text-muted-foreground mt-1.5">
+                        대진표에서 실명(닉네임) 형태로 표시됩니다
+                      </p>
+                    </div>
+                  </>
+                )}
 
                 {/* Gender */}
                 <div>

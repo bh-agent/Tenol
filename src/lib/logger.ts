@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
-export type LogCategory = 'auth' | 'match' | 'club' | 'draw' | 'media' | 'api' | 'client' | 'template' | 'recruitment' | 'profile' | 'system';
+export type LogCategory = 'auth' | 'match' | 'club' | 'draw' | 'media' | 'api' | 'client' | 'template' | 'recruitment' | 'profile' | 'system' | 'moderation';
 
 interface LogEntry {
   level: LogLevel;

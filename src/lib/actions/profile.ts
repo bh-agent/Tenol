@@ -102,10 +102,11 @@ export async function completeOnboarding(formData: FormData) {
   if (!user) throw new Error('인증이 필요합니다');
 
   const ntrpRaw = formData.get('ntrp_level') as string | null;
+  const realNameRaw = (formData.get('real_name') as string | null) || null;
 
   const validated = completeOnboardingSchema.parse({
     display_name: formData.get('display_name'),
-    real_name: formData.get('real_name'),
+    real_name: realNameRaw,
     gender: formData.get('gender'),
     region: (formData.get('region') as string) || null,
     bio: (formData.get('bio') as string) || null,
@@ -114,7 +115,10 @@ export async function completeOnboarding(formData: FormData) {
 
   const updateData: Record<string, unknown> = {
     display_name: validated.display_name,
-    real_name: validated.real_name,
+    // real_name이 비어있으면 display_name으로 채움 (OAuth 사용자가 별도 실명을 입력하지 않은 케이스)
+    real_name: validated.real_name && validated.real_name.trim()
+      ? validated.real_name
+      : validated.display_name,
     gender: validated.gender,
     region: validated.region,
     bio: validated.bio,
