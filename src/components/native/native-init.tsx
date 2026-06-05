@@ -38,6 +38,36 @@ export function NativeInit() {
           }
         });
       } catch {}
+
+      // Push notifications — 권한 요청 + 토큰 등록
+      try {
+        const { PushNotifications } = await import('@capacitor/push-notifications');
+        const platform = Capacitor.getPlatform() === 'ios' ? 'ios' : 'android';
+
+        const perm = await PushNotifications.requestPermissions();
+        if (perm.receive === 'granted') {
+          await PushNotifications.register();
+        }
+
+        await PushNotifications.addListener('registration', async (token) => {
+          try {
+            const { saveDeviceToken } = await import('@/lib/actions/push');
+            await saveDeviceToken(token.value, platform);
+          } catch {}
+        });
+
+        // 알림 탭 시 관련 화면으로 이동
+        await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+          const data = (action.notification?.data ?? {}) as Record<string, string>;
+          if (data.club_id && data.match_id) {
+            router.push(`/clubs/${data.club_id}/matches/${data.match_id}`);
+          } else if (data.club_id) {
+            router.push(`/clubs/${data.club_id}`);
+          } else {
+            router.push('/notifications');
+          }
+        });
+      } catch {}
     };
 
     initNative();

@@ -6,6 +6,7 @@ import InstallPrompt from '@/components/pwa/install-prompt';
 import './globals.css';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://tenol-one.vercel.app'),
   title: '테놀 - 테니스 치며 놀자',
   description: '테니스 클럽 운영을 더 쉽고 즐겁게. 게스트 구인, 대진표, 경기 기록, MVP까지 한 번에.',
   manifest: '/manifest.json',

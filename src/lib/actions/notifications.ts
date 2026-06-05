@@ -63,6 +63,14 @@ export async function createNotification(
     });
 
   if (error) throw new Error('알림 생성에 실패했습니다');
+
+  // 인앱 알림 저장 후 푸시도 시도 (FCM 미설정 시 자동 no-op, 실패해도 무시)
+  try {
+    const { sendPushToUser } = await import('@/lib/actions/push');
+    await sendPushToUser(validUserId, { title: sanitizedTitle, body: sanitizedBody, data });
+  } catch {
+    // 푸시 실패는 인앱 알림에 영향 없음
+  }
 }
 
 export async function deleteOldNotifications() {
