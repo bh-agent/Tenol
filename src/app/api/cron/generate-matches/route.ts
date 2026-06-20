@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
-import { getNextMatchDate, resolveTitle, type TitleFormat } from '@/lib/utils/next-match-date';
+import { getNextMatchDate, resolveTitle, kstToday, type TitleFormat } from '@/lib/utils/next-match-date';
 import { logError, logInfo } from '@/lib/logger';
 
 // 반복 경기 자동 생성 — Vercel Cron이 매일 호출 (vercel.json 참고)
@@ -13,8 +13,7 @@ export const runtime = 'nodejs';
 const LEAD_DAYS = 7; // 경기일 7일 전부터 미리 생성 (회원 신청 여유)
 
 function todayPlusDays(days: number): string {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
+  const d = kstToday(); // KST 기준 (cron은 UTC에서 돌기 때문)
   d.setDate(d.getDate() + days);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { X, Download } from 'lucide-react';
+import { isNative } from '@/lib/native';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -16,6 +17,10 @@ export default function InstallPrompt() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
+    // 네이티브 앱(Capacitor) 안에서는 "홈 화면에 추가" 설치 배너를 띄우지 않는다.
+    // 이미 설치된 앱이며, 앱 심사 시 혼란을 줄 수 있다. (PWA 설치는 웹에서만)
+    if (isNative) return;
+
     // Only show on mobile
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     if (!isMobile) return;

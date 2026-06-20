@@ -1,10 +1,24 @@
 'use client';
 
 import { useEffect } from 'react';
+import { isNative } from '@/lib/native';
 
 export default function ServiceWorkerRegister() {
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
+
+    // 네이티브 앱(Capacitor)은 원격 URL을 로드하므로 서비스워커가 캐시로 인해
+    // 오래된 화면을 보여줄 수 있다. 네이티브에서는 SW를 등록하지 않고,
+    // 이전 빌드에서 등록된 SW/캐시가 있으면 정리한다. (PWA는 웹에서만 동작)
+    if (isNative) {
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        regs.forEach((reg) => reg.unregister());
+      }).catch(() => {});
+      if ('caches' in window) {
+        caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
+      }
+      return;
+    }
 
     navigator.serviceWorker.register('/sw.js').then((registration) => {
       // Check for updates

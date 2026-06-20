@@ -633,15 +633,15 @@ export default function ResultsPage() {
                             <div>
                               <div className="flex items-center justify-center gap-3 mb-3">
                                 <div className="flex flex-col items-center gap-0.5">
-                                  <button onClick={() => setScoreA((s) => s + 1)} className="w-9 h-7 text-xs bg-surface-elevated rounded-lg border border-border text-foreground cursor-pointer">+</button>
-                                  <span className="text-xl font-bold w-9 text-center">{scoreA}</span>
-                                  <button onClick={() => setScoreA((s) => Math.max(0, s - 1))} className="w-9 h-7 text-xs bg-surface-elevated rounded-lg border border-border text-foreground cursor-pointer">-</button>
+                                  <button onClick={() => setScoreA((s) => s + 1)} className="w-11 h-11 text-lg flex items-center justify-center bg-surface-elevated rounded-lg border border-border text-foreground cursor-pointer active:scale-95 transition-transform">+</button>
+                                  <span className="text-xl font-bold w-12 text-center">{scoreA}</span>
+                                  <button onClick={() => setScoreA((s) => Math.max(0, s - 1))} className="w-11 h-11 text-lg flex items-center justify-center bg-surface-elevated rounded-lg border border-border text-foreground cursor-pointer active:scale-95 transition-transform">-</button>
                                 </div>
                                 <span className="text-muted-foreground font-bold">:</span>
                                 <div className="flex flex-col items-center gap-0.5">
-                                  <button onClick={() => setScoreB((s) => s + 1)} className="w-9 h-7 text-xs bg-surface-elevated rounded-lg border border-border text-foreground cursor-pointer">+</button>
-                                  <span className="text-xl font-bold w-9 text-center">{scoreB}</span>
-                                  <button onClick={() => setScoreB((s) => Math.max(0, s - 1))} className="w-9 h-7 text-xs bg-surface-elevated rounded-lg border border-border text-foreground cursor-pointer">-</button>
+                                  <button onClick={() => setScoreB((s) => s + 1)} className="w-11 h-11 text-lg flex items-center justify-center bg-surface-elevated rounded-lg border border-border text-foreground cursor-pointer active:scale-95 transition-transform">+</button>
+                                  <span className="text-xl font-bold w-12 text-center">{scoreB}</span>
+                                  <button onClick={() => setScoreB((s) => Math.max(0, s - 1))} className="w-11 h-11 text-lg flex items-center justify-center bg-surface-elevated rounded-lg border border-border text-foreground cursor-pointer active:scale-95 transition-transform">-</button>
                                 </div>
                               </div>
                               <div className="flex gap-2 justify-end">

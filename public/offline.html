@@ -82,6 +82,18 @@
   </svg>
   <h1>인터넷 연결이 없습니다</h1>
   <p>네트워크 연결을 확인한 후<br />다시 시도해 주세요.</p>
-  <button onclick="window.location.reload()">다시 시도</button>
+  <button id="retry">다시 시도</button>
+  <script>
+    // 네이티브 앱: 이 페이지는 로컬 errorPath이므로 reload()는 같은 오프라인 화면만 다시 뜬다.
+    // 실제 앱(원격 URL)으로 다시 진입해야 복구된다. 웹에서는 현재 페이지를 새로고침.
+    document.getElementById('retry').addEventListener('click', function () {
+      var isLocal = location.protocol === 'capacitor:' || location.protocol === 'file:' || location.hostname === 'localhost';
+      if (isLocal) {
+        location.href = 'https://tenol-one.vercel.app/clubs';
+      } else {
+        location.reload();
+      }
+    });
+  </script>
 </body>
 </html>

@@ -38,8 +38,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  // 핀치 줌 허용 — 접근성(WCAG 1.4.4) 및 40~60대 사용자 가독성. 입력창은 16px라 iOS 자동 확대 없음.
+  maximumScale: 5,
+  userScalable: true,
   viewportFit: 'cover',
   themeColor: '#0A0A0A',
 };

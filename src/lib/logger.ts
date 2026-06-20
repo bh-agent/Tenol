@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { createServiceRoleClient } from '@/lib/supabase/service';
 
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug';
 export type LogCategory = 'auth' | 'match' | 'club' | 'draw' | 'media' | 'api' | 'client' | 'template' | 'recruitment' | 'profile' | 'system' | 'moderation';
@@ -25,7 +26,9 @@ interface LogEntry {
  */
 async function writeLog(entry: LogEntry): Promise<void> {
   try {
-    const supabase = await createClient();
+    // 서버 측 감사 로그는 actor와 다른 user_id를 기록할 때도 있으므로(예: 정지된 유저 id)
+    // RLS를 우회하는 service_role로 기록한다. 키가 없으면 사용자 클라이언트로 폴백.
+    const supabase = createServiceRoleClient() ?? (await createClient());
 
     const errorObj = entry.error instanceof Error ? entry.error : null;
 

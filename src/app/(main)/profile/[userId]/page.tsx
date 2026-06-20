@@ -10,6 +10,7 @@ import { ClubAvatar } from '@/components/club/club-avatar';
 import { ProfileHeader } from '@/components/profile/profile-header';
 import { SignOutButton } from '@/components/profile/sign-out-button';
 import { StatShareButton } from '@/components/profile/stat-share-card';
+import { ReportMenuButton } from '@/components/moderation/report-menu-button';
 import { createClient } from '@/lib/supabase/server';
 import { getMyClubs } from '@/lib/queries/clubs';
 import { getPlayerStats } from '@/lib/queries/stats';
@@ -38,6 +39,37 @@ export default async function UserProfilePage({
     .maybeSingle();
 
   if (!profile) notFound();
+
+  // 내가 이 사용자를 차단했는지 확인 (차단 시 프로필 내용 숨김)
+  let isBlocked = false;
+  if (user && !isOwnProfile) {
+    const { data: block } = await supabase
+      .from('user_blocks')
+      .select('blocked_id')
+      .eq('blocker_id', user.id)
+      .eq('blocked_id', userId)
+      .maybeSingle();
+    isBlocked = !!block;
+  }
+
+  // 차단한 사용자의 프로필은 내용을 숨긴다 (Apple 1.2: 차단 후 콘텐츠 비노출)
+  if (isBlocked) {
+    return (
+      <>
+        <TopBar title={profile.display_name} backHref="/clubs" />
+        <div className="px-4 py-16 flex flex-col items-center text-center animate-fade-in">
+          <div className="w-16 h-16 rounded-2xl bg-surface-elevated border border-border flex items-center justify-center mb-4">
+            <ShieldAlert className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h2 className="text-base font-semibold text-foreground">차단한 사용자입니다</h2>
+          <p className="text-sm text-muted-foreground mt-1.5 max-w-xs leading-relaxed">
+            이 사용자를 차단하여 프로필과 활동이 표시되지 않습니다.
+            차단 해제는 설정에서 할 수 있어요.
+          </p>
+        </div>
+      </>
+    );
+  }
 
   // Fetch data in parallel
   const [stats, profileStats, clubsResult] = await Promise.all([
@@ -68,6 +100,16 @@ export default async function UserProfilePage({
     <>
       <TopBar
         title={isOwnProfile ? '프로필' : profile.display_name}
+        rightAction={
+          user && !isOwnProfile ? (
+            <ReportMenuButton
+              targetType="user"
+              targetId={userId}
+              targetUserId={userId}
+              label="사용자 신고/차단"
+            />
+          ) : undefined
+        }
       />
 
       <div className="px-4 py-5 space-y-5 animate-fade-in">

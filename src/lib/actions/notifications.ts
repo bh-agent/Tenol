@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { createServiceRoleClient } from '@/lib/supabase/service';
 import { revalidatePath } from 'next/cache';
 import { uuidSchema } from '@/lib/validations';
 import type { NotificationType } from '@/types';
@@ -50,7 +51,11 @@ export async function createNotification(
   const sanitizedTitle = title.replace(/<[^>]*>/g, '').slice(0, 200);
   const sanitizedBody = body.replace(/<[^>]*>/g, '').slice(0, 1000);
 
-  const supabase = await createClient();
+  // notifications INSERT는 RLS로 직접 삽입이 막혀 있으므로(타 사용자 위조 알림 방지)
+  // service_role로 삽입한다. createNotification은 항상 서버 액션 내부에서
+  // 호출자가 권한 검사를 끝낸 뒤에만 불리므로 안전하다.
+  // service_role 키가 없으면 사용자 클라이언트로 폴백(개발 환경 등).
+  const supabase = createServiceRoleClient() ?? (await createClient());
 
   const { error } = await supabase
     .from('notifications')

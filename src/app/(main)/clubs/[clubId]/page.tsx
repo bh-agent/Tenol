@@ -18,6 +18,7 @@ import { ClubCreatedCelebration } from '@/components/club/club-created-celebrati
 import { ClubActivitySummary } from '@/components/club/club-activity-summary';
 import { ShareButton } from '@/components/ui/share-button';
 import { JoinRequestList } from '@/components/club/join-request-list';
+import { ReportMenuButton } from '@/components/moderation/report-menu-button';
 import { Suspense } from 'react';
 
 export default async function ClubDetailPage({
@@ -68,6 +69,10 @@ export default async function ClubDetailPage({
               >
                 <Settings className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
               </Link>
+            )}
+            {/* 비운영진(클럽 콘텐츠 신고) — Apple 1.2 UGC */}
+            {!canEditClub && (
+              <ReportMenuButton targetType="club" targetId={clubId} label="클럽 신고" />
             )}
           </div>
         }

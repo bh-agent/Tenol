@@ -37,11 +37,14 @@ export function OfflineBanner() {
       className={[
         'fixed top-0 left-0 right-0 z-[100]',
         'glass border-b border-white/[0.06]',
-        'text-center py-2.5 px-4 text-sm font-medium',
+        // 노치/다이내믹 아일랜드(상단 세이프영역)만큼 위 여백 확보
+        'text-center pt-[max(env(safe-area-inset-top),0.625rem)] pb-2.5 px-4 text-sm font-medium',
         'flex items-center justify-center gap-2',
         'transition-all duration-300',
         visible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0',
       ].join(' ')}
+      role="status"
+      aria-live="polite"
     >
       <WifiOff className="w-4 h-4 text-warning flex-shrink-0" />
       <span className="text-foreground">

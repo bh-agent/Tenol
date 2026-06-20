@@ -68,6 +68,10 @@ export function SignOutButton() {
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
               모든 데이터가 삭제되며 복구할 수 없습니다.
             </p>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              내가 운영 중인 클럽이 있으면 다른 멤버에게 운영자가 자동 위임되며,
+              남은 멤버가 없으면 클럽도 함께 삭제됩니다.
+            </p>
           </div>
 
           <div className="flex gap-3">

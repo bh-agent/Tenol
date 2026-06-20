@@ -9,11 +9,14 @@ import { useState } from 'react';
 export default function LoginPage() {
   const supabase = createClient();
   const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleOAuthLogin = async (provider: 'kakao' | 'google') => {
     setLoading(provider);
+    setError(null);
     const redirectTo = `${window.location.origin}/auth/callback`;
 
+    try {
     if (Capacitor.isNativePlatform()) {
       const { data } = await supabase.auth.signInWithOAuth({
         provider,
@@ -61,56 +64,95 @@ export default function LoginPage() {
         },
       });
     }
-    setLoading(null);
+    } catch (e) {
+      console.error('OAuth login error:', e);
+      setError('로그인 중 문제가 발생했습니다. 다시 시도해주세요.');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  // id_token 확보 후 공통 처리: Supabase 로그인 + 이름 자동 채우기 + 이동
+  const finishAppleSignIn = async (idToken: string, fullName: string, email: string) => {
+    const { error: signInError, data } = await supabase.auth.signInWithIdToken({
+      provider: 'apple',
+      token: idToken,
+    });
+
+    if (signInError || !data.user) {
+      console.error('Supabase Apple signIn error:', signInError);
+      setError('Apple 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.');
+      return;
+    }
+
+    // Apple은 최초 가입 시에만 이름/이메일을 제공.
+    // 트리거가 display_name을 '사용자'로 채우므로 기본값일 때만 진짜 이름으로 교체.
+    const emailLocal = email ? email.split('@')[0] : '';
+    const candidate = (fullName || emailLocal).trim();
+    if (candidate) {
+      await supabase
+        .from('profiles')
+        .update({ display_name: candidate, real_name: fullName || null })
+        .eq('id', data.user.id)
+        .eq('display_name', '사용자');
+    }
+
+    window.location.href = '/clubs';
   };
 
   const handleAppleLogin = async () => {
     setLoading('apple');
+    setError(null);
     try {
-      // Load Apple JS SDK
-      await loadAppleScript();
-
-      // @ts-ignore - AppleID is loaded from script
-      const response = await window.AppleID.auth.signIn();
-
-      if (response.authorization?.id_token) {
-        const { error, data } = await supabase.auth.signInWithIdToken({
-          provider: 'apple',
-          token: response.authorization.id_token,
+      // 네이티브(iOS): 웹 팝업(JS SDK)은 WKWebView에서 동작이 불안정하므로
+      // 네이티브 Sign in with Apple(ASAuthorization)을 사용한다.
+      if (Capacitor.isNativePlatform()) {
+        const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
+        const result = await SignInWithApple.authorize({
+          clientId: 'app.tenol.club', // 네이티브는 번들 ID가 audience
+          redirectURI: `${window.location.origin}/auth/callback`,
+          scopes: 'name email',
         });
 
-        if (!error && data.user) {
-          // Apple이 제공한 이름을 프로필에 자동 저장
-          // Apple JS SDK는 최초 가입 시에만 response.user에 이름/이메일을 제공함
-          // 트리거가 display_name을 '사용자'로 기본 설정하므로, 기본값일 때만 덮어쓰기
-          const appleUser = response.user;
-          const fullName = appleUser?.name
-            ? [appleUser.name.firstName, appleUser.name.lastName].filter(Boolean).join(' ').trim()
-            : '';
-          const emailLocal = appleUser?.email ? appleUser.email.split('@')[0] : '';
-          const candidate = fullName || emailLocal;
-
-          if (candidate) {
-            // 트리거가 채운 기본값('사용자')일 때만 진짜 이름으로 교체
-            // 사용자가 이미 닉네임을 직접 정한 경우 덮어쓰지 않음
-            await supabase
-              .from('profiles')
-              .update({
-                display_name: candidate,
-                real_name: fullName || null,
-              })
-              .eq('id', data.user.id)
-              .eq('display_name', '사용자');
-          }
-
-          window.location.href = '/clubs';
+        const idToken = result.response?.identityToken;
+        if (!idToken) {
+          setError('Apple 로그인에 실패했습니다. 다시 시도해주세요.');
           return;
         }
-        console.error('Supabase Apple signIn error:', error);
+        const fullName = [result.response?.givenName, result.response?.familyName]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
+        await finishAppleSignIn(idToken, fullName, result.response?.email ?? '');
+        return;
+      }
+
+      // 웹/PWA: Apple JS SDK 팝업
+      await loadAppleScript();
+      // @ts-ignore - AppleID is loaded from script
+      const response = await window.AppleID.auth.signIn();
+      if (response.authorization?.id_token) {
+        const appleUser = response.user;
+        const fullName = appleUser?.name
+          ? [appleUser.name.firstName, appleUser.name.lastName].filter(Boolean).join(' ').trim()
+          : '';
+        await finishAppleSignIn(response.authorization.id_token, fullName, appleUser?.email ?? '');
+      } else {
+        setError('Apple 로그인에 실패했습니다. 다시 시도해주세요.');
       }
     } catch (e: any) {
-      if (e?.error !== 'popup_closed_by_user') {
+      // 사용자가 직접 취소한 경우는 에러로 표시하지 않음.
+      // 네이티브 플러그인은 code 없이 메시지만 reject하므로(예: "...error 1001.")
+      // 메시지로도 취소를 판별한다. (웹은 e.error === 'popup_closed_by_user')
+      const code = e?.error ?? e?.code;
+      const msg = String(e?.message ?? e ?? '');
+      const canceled =
+        code === 'popup_closed_by_user' ||
+        /\b1001\b/.test(msg) || // ASAuthorizationError.canceled
+        /cancell?ed|취소/i.test(msg);
+      if (!canceled) {
         console.error('Apple login error:', e);
+        setError('Apple 로그인 중 문제가 발생했습니다. 다시 시도해주세요.');
       }
     } finally {
       setLoading(null);
@@ -165,6 +207,14 @@ export default function LoginPage() {
 
       {/* Login Buttons */}
       <div className="relative z-10 w-full max-w-sm space-y-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+        {error && (
+          <div
+            role="alert"
+            className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive text-center"
+          >
+            {error}
+          </div>
+        )}
         {/* Apple Login */}
         <button
           onClick={handleAppleLogin}

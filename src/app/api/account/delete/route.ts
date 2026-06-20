@@ -45,7 +45,56 @@ export async function POST() {
     { auth: { autoRefreshToken: false, persistSession: false } }
   );
 
-  // 3. profiles 삭제 (CASCADE로 관련 데이터 정리)
+  // 2.5 내가 클럽장(owner)인 클럽 처리 — 멤버가 남아있으면 운영권을 위임,
+  //     아무도 없으면 클럽을 삭제(연관 데이터는 CASCADE 정리).
+  //     이 단계가 없으면 클럽장이 떠난 클럽이 운영자 없이 방치된다(고아 클럽).
+  try {
+    // throwOnError()로 쿼리 오류도 아래 catch에서 잡아 500 처리(silent 무시 방지).
+    const { data: ownedClubs } = await adminClient
+      .from('club_members')
+      .select('club_id')
+      .eq('user_id', user.id)
+      .eq('role', 'owner')
+      .throwOnError();
+
+    for (const { club_id } of ownedClubs ?? []) {
+      // 후임자 우선순위: 다른 owner → admin → member, 동일 역할이면 먼저 가입한 사람
+      const { data: candidates } = await adminClient
+        .from('club_members')
+        .select('user_id, role, joined_at')
+        .eq('club_id', club_id)
+        .neq('user_id', user.id)
+        .order('role', { ascending: true })
+        .order('joined_at', { ascending: true })
+        .limit(1)
+        .throwOnError();
+
+      const successor = candidates?.[0];
+      if (successor) {
+        await adminClient
+          .from('club_members')
+          .update({ role: 'owner' })
+          .eq('club_id', club_id)
+          .eq('user_id', successor.user_id)
+          .throwOnError();
+        await adminClient
+          .from('clubs')
+          .update({ created_by: successor.user_id })
+          .eq('id', club_id)
+          .throwOnError();
+      } else {
+        // 남은 멤버가 없으면 클럽 삭제 (members/matches/draws 등 CASCADE)
+        await adminClient.from('clubs').delete().eq('id', club_id).throwOnError();
+      }
+    }
+  } catch (e) {
+    logError('club', 'Ownership handover during account deletion failed', { error: e, path: '/api/account/delete', userId: user.id });
+    return NextResponse.json({ error: '클럽 운영권 정리 중 오류가 발생했습니다' }, { status: 500 });
+  }
+
+  // 3. profiles 삭제 (CASCADE + ON DELETE SET NULL로 관련 데이터 정리)
+  //    ⚠️ 생성자 참조(created_by 등)가 ON DELETE SET NULL이어야 삭제가 성공한다.
+  //    마이그레이션 00040_account_deletion_fk_fix.sql 적용 필요.
   const { error: profileError } = await adminClient
     .from('profiles')
     .delete()

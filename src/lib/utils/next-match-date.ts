@@ -6,13 +6,27 @@
  * @param lastCreatedDate ISO date string (YYYY-MM-DD) of last created match, or null
  * @returns ISO date string (YYYY-MM-DD)
  */
+/**
+ * "오늘"을 한국 시간(KST, UTC+9) 기준 자정으로 반환.
+ * Vercel 크론은 UTC에서 도는데(00:00 KST = 15:00 UTC), 그냥 new Date()를 쓰면
+ * 요일/날짜 계산이 하루 어긋날 수 있다. KST 벽시계 기준으로 정규화한다.
+ * - UTC 서버: getTimezoneOffset()=0 → +9h 시프트로 KST 날짜를 읽음.
+ * - KST 브라우저: getTimezoneOffset()=-540 → 결과적으로 로컬 자정(=KST)과 동일(동작 변화 없음).
+ */
+export function kstToday(): Date {
+  const now = new Date();
+  const kstMs = now.getTime() + now.getTimezoneOffset() * 60000 + 9 * 3600000;
+  const d = new Date(kstMs);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
 export function getNextMatchDate(
   dayOfWeek: number,
   frequencyWeeks: number,
   lastCreatedDate: string | null
 ): string {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = kstToday();
 
   if (!lastCreatedDate) {
     // Find next upcoming occurrence of dayOfWeek
@@ -77,8 +91,7 @@ export function getUpcomingDates(
   frequencyWeeks: number,
   count = 4,
 ): string[] {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = kstToday();
 
   const currentDay = today.getDay();
   let daysUntil = dayOfWeek - currentDay;
