@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "postinstall": "patch-package",
     "cap:seed-offline": "node -e \"const fs=require('fs');fs.mkdirSync('out',{recursive:true});fs.copyFileSync('public/offline.html','out/offline.html')\"",
     "cap:copy": "npm run cap:seed-offline && npx cap copy",
     "cap:sync": "npm run cap:seed-offline && npx cap sync"
@@ -46,6 +47,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
+    "patch-package": "^8.0.1",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^3.2.6"

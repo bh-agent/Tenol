@@ -49,3 +49,6 @@ next-env.d.ts
 대진표_*.png
 *.p8
 AuthKey_*
+
+# Xcode SPM resolution cache
+ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
