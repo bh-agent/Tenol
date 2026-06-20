@@ -9,6 +9,19 @@
 
 ---
 
+## ✅ 자동으로 끝낸 것 (추가 작업 불필요)
+
+- [x] 모든 코드 수정 + 빌드 green + 33 테스트 통과 + 적대적 리뷰(회귀 0)
+- [x] master에 커밋·푸시 (`42d82da`)
+- [x] **Vercel 프로덕션 배포 완료** → `tenol-one.vercel.app` 라이브 (네이티브 앱이 로드하는 사이트가 최신 코드로 갱신됨)
+- [x] iOS 버전 1.2.1 (build 7)로 상향, entitlements/AppDelegate/Info.plist 배선
+
+## ⏳ 남은 것 (직접 해야 함): ① Supabase SQL ② Supabase Apple 설정 ③ Mac에서 iOS 빌드
+
+아래 1·2·3을 순서대로 진행하면 제출 준비 끝.
+
+---
+
 ## 0. 코드로 이미 수정된 것 (배포만 하면 반영)
 
 | 영역 | 수정 내용 |
@@ -71,28 +84,37 @@ app.tenol.club.service   ← 웹/PWA (기존)
 
 ---
 
-## 3. iOS 빌드 (Mac + Xcode) — Apple 로그인/푸시 활성화
+## 3. iOS 빌드 (친구 Mac + Xcode) — Apple 로그인/푸시 활성화 후 제출
 
+### 3-1. 소스 받고 동기화 (터미널)
 ```bash
-# 프로젝트 루트에서
-npm install            # @capacitor-community/apple-sign-in 설치
-npm run cap:sync       # ⚠️ 'npx cap sync'가 아니라 이 스크립트! (offline.html을 번들에 시드)
-npx cap open ios
+git clone https://github.com/bh-agent/Tenol.git   # 또는 최신 pull
+cd Tenol
+npm install            # @capacitor-community/apple-sign-in 등 설치
+npm run cap:sync       # ⚠️ 'npx cap sync'가 아니라 이 스크립트! (offline.html을 번들에 시드 + pod install)
+npx cap open ios       # Xcode 열림
 ```
+> CocoaPods가 없으면: `sudo gem install cocoapods` 후 `cd ios/App && pod install` 재시도.
+> `cap:sync`를 쓰는 이유: webDir(`out`)에 offline.html을 먼저 복사한 뒤 sync해야 네이티브 번들에
+> offline.html이 들어갑니다. 그냥 `npx cap sync`면 offline.html이 빠져 오프라인 시 빈 화면이 됩니다.
 
-Xcode에서:
-1. **Signing & Capabilities** 탭에서 다음 capability 추가(또는 확인):
-   - **Sign in with Apple**
-   - **Push Notifications**
-   - (권장) Background Modes → **Remote notifications**
-   - → 이때 `App/App.entitlements`가 자동 연결됩니다(이미 파일을 생성해 뒀고 pbxproj에 `CODE_SIGN_ENTITLEMENTS`도 연결해 둠).
-2. **Apple Developer 포털**의 App ID(`app.tenol.club`)에서 **Sign in with Apple**과 **Push Notifications**를 활성화합니다(자동 서명이면 Xcode가 처리하기도 함).
-3. 버전 올리기: `CURRENT_PROJECT_VERSION`(빌드 번호)과 `MARKETING_VERSION`을 이전 제출보다 높게.
-4. 실기기에서 테스트(4번 항목).
+### 3-2. Xcode 설정
+1. 좌측에서 **App** 타깃 → **Signing & Capabilities**:
+   - **Team**: 본인(또는 등록된) Apple Developer 팀 선택, "Automatically manage signing" 체크.
+   - **+ Capability**로 다음을 추가(이미 entitlements 파일은 만들어 둠, capability만 켜면 됨):
+     - **Sign in with Apple**
+     - **Push Notifications**
+     - **Background Modes** → **Remote notifications** 체크(권장)
+2. 버전 확인: 이미 **1.2.1 / build 7**로 올려뒀습니다. 만약 App Store Connect에 같은 빌드 번호가 이미 있으면 build를 8, 9…로 올리세요(General → Identity, 또는 pbxproj `CURRENT_PROJECT_VERSION`).
+3. **Apple Developer 포털**(자동 서명이면 대개 Xcode가 처리): App ID `app.tenol.club`에 **Sign in with Apple** + **Push Notifications**가 활성인지 확인.
 
-> `npm run cap:sync`를 쓰는 이유: webDir(`out`)에 offline.html을 먼저 복사한 뒤 sync해야
-> 네이티브 번들(`ios/App/App/public`, `android/.../assets/public`)에 offline.html이 들어갑니다.
-> 그냥 `npx cap sync`를 쓰면 offline.html이 빠져 오프라인 시 빈 화면이 됩니다.
+### 3-3. 실기기 테스트 → 아카이브 → 업로드
+1. 실제 아이폰 연결 → **4번 테스트 항목** 통과 확인(특히 Apple 로그인!).
+2. 상단 타깃을 **Any iOS Device (arm64)**로 변경 → 메뉴 **Product → Archive**.
+3. Organizer 창에서 **Distribute App → App Store Connect → Upload**.
+4. App Store Connect에서 해당 빌드를 1.2.1 버전에 첨부 → 심사 제출.
+
+> ⚠️ Apple 로그인을 켜기 전에 **2번(Supabase Apple provider)**을 반드시 먼저 끝내세요. 안 하면 실기기에서 로그인 토큰 audience 불일치로 실패합니다.
 
 ---
 
@@ -123,15 +145,17 @@ Android는 `google-services.json`만 넣으면 기존 FCM 경로로 동작합니
 
 ---
 
-## 6. 배포 (웹 수정사항 반영)
+## 6. 배포 (웹 수정사항 반영) — ✅ 완료됨
 
+이미 `vercel --prod`로 배포했고 `tenol-one.vercel.app`에 라이브 반영됨. 추가 작업 불필요.
+다시 배포해야 할 일이 생기면:
 ```bash
 vercel --prod --yes
 vercel ls --prod   # 최신 배포 시각 확인
 ```
-> Tenol은 Git 푸시로 자동배포되지 않습니다. 반드시 위 CLI로 배포하세요.
-> 1·2번(Supabase)과 6번(Vercel)을 마치면 **웹/원격 부분의 모든 수정이 라이브에 반영**되고,
-> 3번(iOS 재빌드)까지 마치면 네이티브 부분(로그인/오프라인/푸시)이 반영됩니다.
+> Tenol은 Git 푸시로 자동배포되지 않으므로, 이후 코드 변경 시 위 CLI로 수동 배포해야 합니다.
+> **1·2번(Supabase)**까지 끝내면 웹/원격 부분이 완전히 활성화되고, **3번(iOS 빌드)**까지 마치면
+> 네이티브 부분(로그인/오프라인/푸시)이 반영되어 제출 준비가 끝납니다.
 
 ---
 
