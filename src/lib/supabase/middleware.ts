@@ -29,63 +29,34 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  // getSession() = 로컬 JWT 파싱, 네트워크 없음.
+  // 보안: 서버 컴포넌트/API Route는 getUser()를 사용해야 하지만
+  // 미들웨어는 쿠키 갱신 전달이 주목적이므로 getSession()으로 충분하다.
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
+  const user = session?.user ?? null;
   const pathname = request.nextUrl.pathname;
 
-  // 인증 불필요 경로
   const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/auth');
 
-  // 미인증 유저 → 로그인으로
+  // 미인증 → 로그인
   if (!user && !isAuthRoute) {
-    console.warn(JSON.stringify({ level: 'warn', category: 'auth', message: 'Unauthenticated access', path: pathname }));
     const url = request.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  // 인증된 유저 → 로그인 페이지 접근 차단
+  // 인증된 유저가 로그인 페이지 접근 시 → 홈으로
   if (user && pathname.startsWith('/login')) {
     const url = request.nextUrl.clone();
     url.pathname = '/clubs';
     return NextResponse.redirect(url);
   }
 
-  // 인증된 유저 → 정지/온보딩 체크
-  if (user && !isAuthRoute) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_onboarded, is_banned')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    // 정지된 유저 → 로그아웃 처리
-    if (profile?.is_banned && pathname !== '/login') {
-      await supabase.auth.signOut();
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      url.searchParams.set('banned', '1');
-      return NextResponse.redirect(url);
-    }
-
-    if (pathname === '/onboarding') {
-      // 온보딩 완료 유저가 /onboarding 접근 시 → 홈으로
-      if (profile?.is_onboarded) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/clubs';
-        return NextResponse.redirect(url);
-      }
-    } else {
-      // 온보딩 미완료 유저 → 온보딩으로
-      if (profile && !profile.is_onboarded) {
-        const url = request.nextUrl.clone();
-        url.pathname = '/onboarding';
-        return NextResponse.redirect(url);
-      }
-    }
-  }
+  // 온보딩·정지 체크는 (main)/layout.tsx 서버 컴포넌트에서 처리
+  // (미들웨어는 모든 RSC 요청에서 실행되므로 DB 쿼리를 여기서 하면 매 클릭마다 지연 발생)
 
   return supabaseResponse;
 }

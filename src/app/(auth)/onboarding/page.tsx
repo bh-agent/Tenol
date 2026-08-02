@@ -178,7 +178,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="relative flex flex-col min-h-screen bg-background overflow-hidden">
+    <div className="relative flex flex-col min-h-dvh bg-background overflow-hidden">
       {/* Background gradient */}
       <div
         className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full opacity-15"

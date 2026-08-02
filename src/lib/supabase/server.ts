@@ -1,7 +1,10 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 
-export async function createClient() {
+// cache()로 같은 서버 렌더 트리 내에서 createClient()를 한 번만 실행
+// getUser() 중복 호출(layout + query functions)을 deduplicate해 네트워크 왕복 절감
+export const createClient = cache(async () => {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -18,11 +21,10 @@ export async function createClient() {
               cookieStore.set(name, value, options)
             );
           } catch {
-            // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have middleware refreshing user sessions.
+            // Called from a Server Component — safe to ignore.
           }
         },
       },
     }
   );
-}
+});

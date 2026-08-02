@@ -4,72 +4,99 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils/cn';
 import { Capacitor } from '@capacitor/core';
 import Image from 'next/image';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+// 네이티브 앱에서 OAuth 딥링크를 받을 커스텀 스킴
+const NATIVE_REDIRECT = 'app.tenol.club://auth/callback';
 
 export default function LoginPage() {
   const supabase = createClient();
+  const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // appUrlOpen: OAuth 완료 후 iOS가 보내는 딥링크 처리
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+
+    let listenerHandle: { remove: () => void } | null = null;
+
+    const setup = async () => {
+      const { App } = await import('@capacitor/app');
+      const { Browser } = await import('@capacitor/browser');
+
+      listenerHandle = await App.addListener('appUrlOpen', async ({ url }) => {
+        try {
+          const parsed = new URL(url);
+          // app.tenol.club://auth/callback?code=...
+          const code = parsed.searchParams.get('code');
+          if (code) {
+            setLoading('oauth-callback');
+            const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+            if (exchangeError) {
+              setError('로그인에 실패했습니다. 다시 시도해주세요.');
+            } else {
+              try { await Browser.close(); } catch {}
+              router.replace('/clubs');
+            }
+          }
+        } catch {
+          setError('로그인 처리 중 오류가 발생했습니다.');
+        } finally {
+          setLoading(null);
+        }
+      });
+    };
+
+    setup();
+    return () => { listenerHandle?.remove(); };
+  }, [supabase, router]);
 
   const handleOAuthLogin = async (provider: 'kakao' | 'google') => {
     setLoading(provider);
     setError(null);
-    const redirectTo = `${window.location.origin}/auth/callback`;
 
     try {
-    if (Capacitor.isNativePlatform()) {
-      const { data } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo,
-          skipBrowserRedirect: true,
-          ...(provider === 'kakao' ? {
-            scopes: 'profile_nickname profile_image',
-            queryParams: { scope: 'profile_nickname profile_image' },
-          } : {}),
-        },
-      });
-
-      if (data?.url) {
-        const { Browser } = await import('@capacitor/browser');
-        let polling: ReturnType<typeof setInterval> | null = null;
-
-        const checkSession = async () => {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session) {
-            if (polling) clearInterval(polling);
-            try { await Browser.close(); } catch {}
-            window.location.href = '/clubs';
-          }
-        };
-
-        const listener = await Browser.addListener('browserFinished', async () => {
-          listener.remove();
-          if (polling) clearInterval(polling);
-          await checkSession();
+      if (Capacitor.isNativePlatform()) {
+        // 네이티브: 커스텀 스킴으로 리디렉션 → iOS가 딥링크로 앱에 전달
+        // SFSafariViewController는 non-http scheme 탐색 시 자동으로 닫힘
+        const { data } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: NATIVE_REDIRECT,
+            skipBrowserRedirect: true,
+            ...(provider === 'kakao' ? {
+              scopes: 'profile_nickname profile_image',
+              queryParams: { scope: 'profile_nickname profile_image' },
+            } : {}),
+          },
         });
 
-        polling = setInterval(checkSession, 1500);
-        await Browser.open({ url: data.url, presentationStyle: 'popover' });
+        if (data?.url) {
+          const { Browser } = await import('@capacitor/browser');
+          await Browser.open({ url: data.url, presentationStyle: 'fullscreen' });
+        }
+        // 이후 처리는 appUrlOpen 리스너에서 담당
+      } else {
+        // 웹/PWA: 기존 방식 유지
+        await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback`,
+            ...(provider === 'kakao' ? {
+              scopes: 'profile_nickname profile_image',
+              queryParams: { scope: 'profile_nickname profile_image' },
+            } : {}),
+          },
+        });
       }
-    } else {
-      await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-          redirectTo,
-          ...(provider === 'kakao' ? {
-            scopes: 'profile_nickname profile_image',
-            queryParams: { scope: 'profile_nickname profile_image' },
-          } : {}),
-        },
-      });
-    }
     } catch (e) {
       console.error('OAuth login error:', e);
       setError('로그인 중 문제가 발생했습니다. 다시 시도해주세요.');
-    } finally {
       setLoading(null);
     }
+    // 네이티브 성공 시 loading은 appUrlOpen 핸들러에서 해제
   };
 
   // id_token 확보 후 공통 처리: Supabase 로그인 + 이름 자동 채우기 + 이동
@@ -160,7 +187,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative flex flex-col items-center justify-between min-h-screen px-6 py-12 bg-background overflow-hidden">
+    <div className="relative flex flex-col min-h-dvh bg-background overflow-hidden">
       {/* Background gradient orb */}
       <div
         className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/3 w-[600px] h-[600px] rounded-full opacity-20"
@@ -179,34 +206,33 @@ export default function LoginPage() {
         }}
       />
 
-      <div className="flex-1" />
-
-      {/* Branding */}
-      <div className="relative z-10 flex flex-col items-center stagger">
-        <div className="relative mb-8">
-          <div className="w-24 h-24 rounded-3xl overflow-hidden glow-primary shadow-lg shadow-primary/20">
-            <Image
-              src="/icons/icon-192.png"
-              alt="테놀"
-              width={96}
-              height={96}
-              className="w-full h-full object-cover"
-              priority
-            />
+      {/* 상단 여백 (safe area + 로고 공간) */}
+      <div className="flex-1 flex flex-col items-center justify-center px-6 pt-[max(env(safe-area-inset-top),48px)] pb-6">
+        {/* Branding */}
+        <div className="relative z-10 flex flex-col items-center stagger">
+          <div className="relative mb-8">
+            <div className="w-24 h-24 rounded-3xl overflow-hidden glow-primary shadow-lg shadow-primary/20">
+              <Image
+                src="/icons/icon-192.png"
+                alt="테놀"
+                width={96}
+                height={96}
+                className="w-full h-full object-cover"
+                priority
+              />
+            </div>
+            <div className="absolute -top-2 -right-2 w-2 h-2 rounded-full bg-primary/40 animate-pulse" />
+            <div className="absolute -bottom-1 -left-3 w-1.5 h-1.5 rounded-full bg-primary/30 animate-pulse" style={{ animationDelay: '1s' }} />
           </div>
-          <div className="absolute -top-2 -right-2 w-2 h-2 rounded-full bg-primary/40 animate-pulse" />
-          <div className="absolute -bottom-1 -left-3 w-1.5 h-1.5 rounded-full bg-primary/30 animate-pulse" style={{ animationDelay: '1s' }} />
-        </div>
 
-        <h1 className="text-5xl font-bold text-gradient mb-3 tracking-tight">테놀</h1>
-        <p className="text-muted-foreground text-lg mb-2">테니스 치며 놀자</p>
-        <p className="text-subtle text-sm">클럽 운영을 더 쉽고 즐겁게</p>
+          <h1 className="text-5xl font-bold text-gradient mb-3 tracking-tight">테놀</h1>
+          <p className="text-muted-foreground text-lg mb-2">테니스 치며 놀자</p>
+          <p className="text-subtle text-sm">클럽 운영을 더 쉽고 즐겁게</p>
+        </div>
       </div>
 
-      <div className="flex-1 min-h-12" />
-
-      {/* Login Buttons */}
-      <div className="relative z-10 w-full max-w-sm space-y-3 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+      {/* Login Buttons — sticky at bottom, always visible */}
+      <div className="relative z-10 px-6 w-full max-w-sm mx-auto space-y-3 animate-fade-in pb-[max(env(safe-area-inset-bottom),24px)]" style={{ animationDelay: '0.3s' }}>
         {error && (
           <div
             role="alert"
@@ -274,16 +300,12 @@ export default function LoginPage() {
       </div>
 
       {/* Footer */}
-      <div className="relative z-10 mt-10 mb-2 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-        <p className="text-xs text-subtle text-center leading-relaxed">
-          로그인하면 테놀의{' '}
-          <a href="/terms" className="text-muted-foreground underline underline-offset-2">이용약관</a> 및{' '}
-          <a href="/privacy" className="text-muted-foreground underline underline-offset-2">개인정보 처리방침</a>에
-          동의하게 됩니다.
-        </p>
-      </div>
-
-      <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-32 h-0.5 rounded-full bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+      <p className="relative z-10 mt-4 text-xs text-subtle text-center leading-relaxed animate-fade-in px-6 pb-2" style={{ animationDelay: '0.5s' }}>
+        로그인하면 테놀의{' '}
+        <a href="/terms" className="text-muted-foreground underline underline-offset-2">이용약관</a> 및{' '}
+        <a href="/privacy" className="text-muted-foreground underline underline-offset-2">개인정보 처리방침</a>에
+        동의하게 됩니다.
+      </p>
     </div>
   );
 }

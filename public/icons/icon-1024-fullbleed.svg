@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.4" y2="1">
+      <stop offset="0%" stop-color="#111111"/>
+      <stop offset="40%" stop-color="#0C0C0C"/>
+      <stop offset="100%" stop-color="#080B09"/>
+    </linearGradient>
+
+    <radialGradient id="glow" cx="0.5" cy="0.45" r="0.45">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.08"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0"/>
+    </radialGradient>
+
+    <linearGradient id="lineV" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.45"/>
+      <stop offset="25%" stop-color="#00E676" stop-opacity="0.9"/>
+      <stop offset="50%" stop-color="#69F0AE" stop-opacity="1"/>
+      <stop offset="75%" stop-color="#00E676" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.45"/>
+    </linearGradient>
+
+    <linearGradient id="lineH" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.4"/>
+      <stop offset="20%" stop-color="#00E676" stop-opacity="0.85"/>
+      <stop offset="50%" stop-color="#69F0AE" stop-opacity="1"/>
+      <stop offset="80%" stop-color="#00E676" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.4"/>
+    </linearGradient>
+
+    <linearGradient id="dimV" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.25"/>
+      <stop offset="50%" stop-color="#00E676" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.25"/>
+    </linearGradient>
+
+    <linearGradient id="dimH" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0.2"/>
+      <stop offset="50%" stop-color="#00E676" stop-opacity="0.5"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0.2"/>
+    </linearGradient>
+
+    <linearGradient id="tBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#00E676" stop-opacity="0"/>
+      <stop offset="18%" stop-color="#00E676" stop-opacity="0.75"/>
+      <stop offset="50%" stop-color="#B9F6CA" stop-opacity="1"/>
+      <stop offset="82%" stop-color="#00E676" stop-opacity="0.75"/>
+      <stop offset="100%" stop-color="#00E676" stop-opacity="0"/>
+    </linearGradient>
+
+    <filter id="lineGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="4" result="soft"/>
+      <feMerge>
+        <feMergeNode in="soft"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Full-bleed solid background (NO transparency, NO clipPath) -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+
+  <!-- Tennis court lines (scaled 5.33x from 192 base) -->
+  <g filter="url(#lineGlow)">
+    <!-- Outer court boundary -->
+    <rect x="176" y="192" width="10.6" height="640" fill="url(#lineV)" rx="5"/>
+    <rect x="837" y="192" width="10.6" height="640" fill="url(#lineV)" rx="5"/>
+    <rect x="176" y="192" width="672" height="10.6" fill="url(#lineH)" rx="5"/>
+    <rect x="176" y="821" width="672" height="10.6" fill="url(#lineH)" rx="5"/>
+
+    <!-- Singles sidelines -->
+    <rect x="261" y="192" width="8" height="640" fill="url(#dimV)" rx="4"/>
+    <rect x="755" y="192" width="8" height="640" fill="url(#dimV)" rx="4"/>
+
+    <!-- Net line (horizontal T-bar) -->
+    <rect x="176" y="499" width="672" height="26" fill="url(#tBar)" rx="13"/>
+
+    <!-- Center service line (vertical stem) -->
+    <rect x="504" y="299" width="16" height="427" fill="url(#lineV)" rx="8"/>
+
+    <!-- Service lines -->
+    <rect x="261" y="299" width="502" height="8" fill="url(#dimH)" rx="4"/>
+    <rect x="261" y="718" width="502" height="8" fill="url(#dimH)" rx="4"/>
+  </g>
+
+  <!-- Corner accents -->
+  <rect x="176" y="192" width="42" height="10.6" fill="#B9F6CA" opacity="0.6" rx="5"/>
+  <rect x="176" y="192" width="10.6" height="42" fill="#B9F6CA" opacity="0.6" rx="5"/>
+  <rect x="806" y="192" width="42" height="10.6" fill="#B9F6CA" opacity="0.6" rx="5"/>
+  <rect x="837" y="192" width="10.6" height="42" fill="#B9F6CA" opacity="0.6" rx="5"/>
+  <rect x="176" y="821" width="42" height="10.6" fill="#B9F6CA" opacity="0.6" rx="5"/>
+  <rect x="176" y="790" width="10.6" height="42" fill="#B9F6CA" opacity="0.6" rx="5"/>
+  <rect x="806" y="821" width="42" height="10.6" fill="#B9F6CA" opacity="0.6" rx="5"/>
+  <rect x="837" y="790" width="10.6" height="42" fill="#B9F6CA" opacity="0.6" rx="5"/>
+</svg>
