@@ -28,8 +28,11 @@ export async function getRecruitmentPosts(
   limit = 20
 ): Promise<RecruitmentPost[]> {
   const supabase = await createClient();
-  await closeExpiredPosts(supabase);
-  const blockedIds = await getBlockedIds(supabase);
+  // 서로 독립적이므로 병렬 실행 (모집 페이지 로드 시 1 왕복 절감)
+  const [, blockedIds] = await Promise.all([
+    closeExpiredPosts(supabase),
+    getBlockedIds(supabase),
+  ]);
 
   let query = supabase
     .from('recruitment_posts')
@@ -62,8 +65,11 @@ export async function searchRecruitmentPosts(
   limit = 20
 ): Promise<RecruitmentPost[]> {
   const supabase = await createClient();
-  await closeExpiredPosts(supabase);
-  const blockedIds = await getBlockedIds(supabase);
+  // 서로 독립적이므로 병렬 실행 (모집 페이지 로드 시 1 왕복 절감)
+  const [, blockedIds] = await Promise.all([
+    closeExpiredPosts(supabase),
+    getBlockedIds(supabase),
+  ]);
 
   let query = supabase
     .from('recruitment_posts')

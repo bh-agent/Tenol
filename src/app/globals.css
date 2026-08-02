@@ -17,8 +17,8 @@
 
   /* ── Text ── */
   --color-muted: #1A1A1A;
-  --color-muted-foreground: #999999;
-  --color-subtle: #5A5A5A;
+  --color-muted-foreground: #A3A3A3;
+  --color-subtle: #7A7A7A;
 
   /* ── Borders ── */
   --color-border: #2A2A2A;
@@ -86,10 +86,16 @@ body {
 }
 
 /* ── Glass Effect ── */
+/* Fallback: 일부 안드로이드 WebView는 backdrop-filter 미지원 → 불투명 배경으로 대체 */
 .glass {
-  background: rgba(20, 20, 20, 0.8);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  background: rgba(18, 18, 18, 0.96);
+}
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: rgba(20, 20, 20, 0.8);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
 }
 
 /* ── Glow Effects ── */
@@ -102,11 +108,21 @@ body {
 }
 
 /* ── Gradient Text ── */
+/* 폴백: background-clip:text 미지원 시 단색 그린으로. iOS 텍스트 선택 시
+   투명 글자가 안 보이는 문제 방지를 위해 user-select 비활성화. */
 .text-gradient {
-  background: linear-gradient(135deg, #00E676 0%, #69F0AE 50%, #00E676 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: #69F0AE;
+  -webkit-user-select: none;
+  user-select: none;
+}
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .text-gradient {
+    background: linear-gradient(135deg, #00E676 0%, #69F0AE 50%, #00E676 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
 }
 
 /* ── Animations ── */
@@ -161,9 +177,10 @@ body {
 }
 
 /* ── Staggered animations ── */
+/* `both` fill: 애니메이션 미실행 시에도 최종 opacity:1 유지 (8개 초과 자식이
+   투명하게 남는 문제 방지). 9번째 이후는 stagger 없이 즉시 페이드인. */
 .stagger > * {
-  opacity: 0;
-  animation: fadeIn 0.4s ease-out forwards;
+  animation: fadeIn 0.4s ease-out both;
 }
 .stagger > *:nth-child(1) { animation-delay: 0.05s; }
 .stagger > *:nth-child(2) { animation-delay: 0.1s; }
@@ -181,4 +198,23 @@ body {
 
 .safe-top {
   padding-top: max(env(safe-area-inset-top), 0px);
+}
+
+/* ── Reduced Motion (접근성: iOS '동작 줄이기' 대응) ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .stagger > *,
+  .animate-fade-in,
+  .animate-scale-in,
+  .animate-slide-up {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

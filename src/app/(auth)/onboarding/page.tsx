@@ -188,13 +188,8 @@ export default function OnboardingPage() {
         }}
       />
 
-      {/* Welcome message */}
-      <div className="relative z-10 px-6 pt-10 pb-1 text-center">
-        <h2 className="text-lg font-bold text-gradient">테놀에 오신 것을 환영합니다!</h2>
-      </div>
-
       {/* Progress */}
-      <div className="relative z-10 px-6 pt-4 pb-4">
+      <div className="relative z-10 px-6 pb-4" style={{ paddingTop: 'max(env(safe-area-inset-top), 2.5rem)' }}>
         <div className="flex items-center justify-center gap-2 mb-8">
           {Array.from({ length: TOTAL_STEPS }, (_, i) => (
             <div
@@ -302,6 +297,9 @@ export default function OnboardingPage() {
                       여성
                     </button>
                   </div>
+                  <p className="text-[11px] text-muted-foreground mt-2">
+                    대진표 남녀 구분·혼복 매칭에만 사용돼요
+                  </p>
                 </div>
               </div>
             </div>
@@ -489,7 +487,7 @@ export default function OnboardingPage() {
             type="button"
             onClick={step === TOTAL_STEPS ? handleSubmit : handleNext}
             disabled={submitting}
-            className="mt-3 w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+            className="mt-2 w-full min-h-[44px] flex items-center justify-center text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
           >
             건너뛰기
           </button>

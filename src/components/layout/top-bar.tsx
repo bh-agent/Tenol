@@ -30,7 +30,7 @@ export function TopBar({ title, backHref, rightAction, className }: TopBarProps)
             </Link>
           )}
         </div>
-        <h1 className="text-base font-semibold text-foreground truncate">
+        <h1 className="text-[17px] font-semibold text-foreground truncate tracking-[-0.01em]">
           {title}
         </h1>
         <div className="min-w-[40px] flex justify-end">

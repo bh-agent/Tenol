@@ -77,8 +77,8 @@ export function Avatar({
   return (
     <div
       className={cn(
-        'rounded-full flex-shrink-0 flex items-center justify-center font-semibold',
-        'bg-gradient-to-br from-primary/15 to-primary-dark/25 text-primary',
+        'rounded-full flex-shrink-0 flex items-center justify-center font-bold',
+        'bg-gradient-to-br from-primary/30 to-primary-dark/40 text-primary-light',
         sizeClasses[size],
         activeRing,
         className

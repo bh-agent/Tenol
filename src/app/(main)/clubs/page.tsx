@@ -7,7 +7,7 @@ import { TopBar } from '@/components/layout/top-bar';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { getMyClubs } from '@/lib/queries/clubs';
 import { formatRole } from '@/lib/utils/format';
-import { Users, Plus, MapPin, Search } from 'lucide-react';
+import { Users, Plus, MapPin, Search, Link2 as LinkIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { ClubAvatar } from '@/components/club/club-avatar';
@@ -72,9 +72,9 @@ export default async function ClubsPage() {
                   <p className="text-xs text-muted-foreground mt-0.5">공개 클럽 찾기</p>
                 </Card>
               </Link>
-              <Link href="/clubs/new">
+              <Link href="/clubs/new?mode=join">
                 <Card variant="default" className="text-center py-6 hover:border-primary/30 transition-all active:scale-[0.97]">
-                  <Plus className="w-6 h-6 text-primary mx-auto mb-2" />
+                  <LinkIcon className="w-6 h-6 text-primary mx-auto mb-2" />
                   <p className="text-sm font-medium text-foreground">초대코드로 가입</p>
                   <p className="text-xs text-muted-foreground mt-0.5">링크/코드 입력</p>
                 </Card>
@@ -119,10 +119,11 @@ export default async function ClubsPage() {
       {/* FAB for creating club */}
       <Link
         href="/clubs/new"
-        className="fixed bottom-36 right-5 z-30 w-14 h-14 rounded-full bg-primary text-black flex items-center justify-center shadow-lg hover:shadow-[0_0_30px_rgba(0,230,118,0.35)] transition-all duration-300 active:scale-90"
-        style={{ animation: 'pulse-glow 2s ease-in-out infinite' }}
+        aria-label="새 클럽 만들기"
+        className="fixed right-5 z-30 w-14 h-14 rounded-full bg-primary text-black flex items-center justify-center shadow-lg shadow-primary/30 hover:shadow-[0_0_30px_rgba(0,230,118,0.35)] transition-all duration-300 active:scale-90"
+        style={{ bottom: 'calc(88px + env(safe-area-inset-bottom))' }}
       >
-        <Plus className="w-6 h-6" />
+        <Plus className="w-6 h-6" strokeWidth={2.4} />
       </Link>
     </>
   );

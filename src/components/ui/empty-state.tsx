@@ -1,4 +1,5 @@
 import { type LucideIcon } from 'lucide-react';
+import Link from 'next/link';
 import { Button } from './button';
 
 interface EmptyStateProps {
@@ -20,22 +21,20 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-in">
-      <div className="w-16 h-16 rounded-2xl bg-primary-dim flex items-center justify-center mb-5">
-        <Icon className="w-7 h-7 text-primary" />
+      <div className="w-20 h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center mb-6">
+        <Icon className="w-8 h-8 text-primary/70" strokeWidth={1.75} />
       </div>
-      <h3 className="text-lg font-semibold text-foreground mb-1.5">{title}</h3>
-      <p className="text-sm text-muted-foreground mb-6 max-w-xs leading-relaxed">
+      <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
+      <p className="text-sm text-muted-foreground mb-7 max-w-xs leading-relaxed">
         {description}
       </p>
       {actionLabel &&
         (actionHref ? (
-          <a href={actionHref}>
-            <Button size="sm">{actionLabel}</Button>
-          </a>
+          <Link href={actionHref}>
+            <Button>{actionLabel}</Button>
+          </Link>
         ) : (
-          <Button size="sm" onClick={onAction}>
-            {actionLabel}
-          </Button>
+          <Button onClick={onAction}>{actionLabel}</Button>
         ))}
     </div>
   );

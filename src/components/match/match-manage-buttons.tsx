@@ -3,7 +3,8 @@
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { deleteMatch } from '@/lib/actions/matches';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 
 interface MatchManageButtonsProps {
@@ -12,14 +13,15 @@ interface MatchManageButtonsProps {
   status: string;
 }
 
-export function MatchManageButtons({ matchId, status }: MatchManageButtonsProps) {
+export function MatchManageButtons({ matchId, clubId, status }: MatchManageButtonsProps) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const canEdit = status === 'upcoming';
   const canDelete = status === 'upcoming' || status === 'cancelled';
 
-  if (!canDelete) return null;
+  if (!canEdit && !canDelete) return null;
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -35,15 +37,25 @@ export function MatchManageButtons({ matchId, status }: MatchManageButtonsProps)
   return (
     <>
       <div className="flex gap-2">
-        <Button
-          variant="destructive"
-          size="sm"
-          fullWidth
-          onClick={() => setShowDeleteModal(true)}
-        >
-          <Trash2 className="w-4 h-4" />
-          경기 삭제
-        </Button>
+        {canEdit && (
+          <Link href={`/clubs/${clubId}/matches/${matchId}/edit`} className="flex-1">
+            <Button variant="outline" size="sm" fullWidth>
+              <Pencil className="w-4 h-4" />
+              수정
+            </Button>
+          </Link>
+        )}
+        {canDelete && (
+          <Button
+            variant="destructive"
+            size="sm"
+            className="flex-1"
+            onClick={() => setShowDeleteModal(true)}
+          >
+            <Trash2 className="w-4 h-4" />
+            삭제
+          </Button>
+        )}
       </div>
 
       <Modal

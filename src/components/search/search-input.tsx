@@ -67,7 +67,8 @@ export function SearchInput({
         <button
           type="button"
           onClick={handleClear}
-          className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-surface-elevated transition-colors"
+          aria-label="검색어 지우기"
+          className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full hover:bg-surface-elevated transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
         >
           <X className="w-4 h-4 text-muted-foreground" />
         </button>

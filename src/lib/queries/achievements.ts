@@ -136,8 +136,12 @@ export async function getClubAchievements(
   const getName = (uid: string) =>
     profileMap.get(uid)?.display_name || '알 수 없음';
 
-  // ── current_mvp (동점자 모두 부여) ──
-  const monthMvps = await getClubMvp(clubId, 'month');
+  // ── MVP (동점자 모두 부여) — month/all 독립 조회 병렬화 ──
+  const [monthMvps, allTimeMvps] = await Promise.all([
+    getClubMvp(clubId, 'month'),
+    getClubMvp(clubId, 'all'),
+  ]);
+
   const monthMvpIds = new Set<string>();
   for (const mvp of monthMvps) {
     if (mvp.games_played >= 3) {
@@ -146,8 +150,6 @@ export async function getClubAchievements(
     }
   }
 
-  // ── all_time_mvp (동점자 모두 부여) ──
-  const allTimeMvps = await getClubMvp(clubId, 'all');
   for (const mvp of allTimeMvps) {
     if (mvp.games_played >= 3) {
       achievements.push(makeAchievement('all_time_mvp', mvp.user_id, mvp.display_name, mvp.total_score));

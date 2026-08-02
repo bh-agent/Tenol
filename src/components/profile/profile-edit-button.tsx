@@ -134,7 +134,8 @@ export function ProfileEditButton({ profile }: ProfileEditButtonProps) {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="p-2 rounded-full hover:bg-surface-elevated transition-colors"
+        aria-label="프로필 설정"
+        className="p-2 rounded-full hover:bg-surface-elevated transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
       >
         <Settings className="w-5 h-5 text-foreground" />
       </button>
@@ -157,7 +158,8 @@ export function ProfileEditButton({ profile }: ProfileEditButtonProps) {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-md hover:bg-primary-dark transition-colors"
+                aria-label="프로필 사진 변경"
+                className="absolute -bottom-1 -right-1 w-8 h-8 bg-primary rounded-full flex items-center justify-center shadow-md hover:bg-primary-dark transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
               >
                 <Camera className="w-4 h-4 text-black" />
               </button>
@@ -243,7 +245,8 @@ export function ProfileEditButton({ profile }: ProfileEditButtonProps) {
                 <button
                   type="button"
                   onClick={() => setShowNtrpGuide(true)}
-                  className="p-0.5 rounded-full hover:bg-surface-elevated transition-colors"
+                  aria-label="NTRP 레벨 안내"
+                  className="p-0.5 rounded-full hover:bg-surface-elevated transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                 >
                   <HelpCircle className="w-4 h-4 text-muted-foreground" />
                 </button>

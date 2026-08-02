@@ -68,7 +68,8 @@ export function AchievementInfoButton({
                 </h2>
                 <button
                   onClick={() => setOpen(false)}
-                  className="w-8 h-8 rounded-lg bg-surface-elevated flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  aria-label="닫기"
+                  className="w-8 h-8 rounded-lg bg-surface-elevated flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
                 >
                   <X className="w-4 h-4" />
                 </button>

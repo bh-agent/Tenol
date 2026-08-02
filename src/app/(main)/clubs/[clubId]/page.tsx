@@ -258,6 +258,19 @@ export default async function ClubDetailPage({
         canManageMembers={canManageMembers}
         pendingGuestByMatch={canManageMembers ? pendingGuestByMatch : undefined}
       />
+
+      {/* FAB: 경기 만들기 — 운영진이 스크롤 없이 바로 접근 */}
+      {canCreateMatch && (
+        <Link
+          href={`/clubs/${clubId}/matches/new`}
+          aria-label="새 경기 만들기"
+          className="fixed right-4 z-30 flex items-center gap-2 h-14 pl-4 pr-5 rounded-full bg-primary text-black font-semibold shadow-lg shadow-primary/30 hover:shadow-[0_0_28px_rgba(0,230,118,0.4)] transition-all duration-300 active:scale-95"
+          style={{ bottom: 'calc(88px + env(safe-area-inset-bottom))' }}
+        >
+          <Swords className="w-5 h-5" strokeWidth={2.2} />
+          경기 만들기
+        </Link>
+      )}
     </>
   );
 }

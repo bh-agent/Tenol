@@ -41,7 +41,12 @@ export function MatchActions({ matchId, canManage, status }: MatchActionsProps) 
         {status === 'upcoming' && (
           <Button
             variant="secondary"
-            onClick={() => handleStatusChange('in_progress')}
+            onClick={() => {
+              setConfirmAction({
+                message: '경기를 시작하시겠습니까?',
+                onConfirm: () => handleStatusChange('in_progress'),
+              });
+            }}
             disabled={loading}
             fullWidth
           >
@@ -52,7 +57,12 @@ export function MatchActions({ matchId, canManage, status }: MatchActionsProps) 
         {status === 'in_progress' && (
           <Button
             variant="secondary"
-            onClick={() => handleStatusChange('completed')}
+            onClick={() => {
+              setConfirmAction({
+                message: '경기를 종료하시겠습니까?',
+                onConfirm: () => handleStatusChange('completed'),
+              });
+            }}
             disabled={loading}
             fullWidth
           >

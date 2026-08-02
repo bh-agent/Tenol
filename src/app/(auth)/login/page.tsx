@@ -228,7 +228,18 @@ export default function LoginPage() {
 
           <h1 className="text-5xl font-bold text-gradient mb-3 tracking-tight">테놀</h1>
           <p className="text-muted-foreground text-lg mb-2">테니스 치며 놀자</p>
-          <p className="text-subtle text-sm">클럽 운영을 더 쉽고 즐겁게</p>
+          <p className="text-subtle text-sm mb-6">클럽 운영을 더 쉽고 즐겁게</p>
+
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {['대진표 자동 생성', '경기 기록 · MVP', '게스트 모집'].map((f) => (
+              <span
+                key={f}
+                className="px-3 py-1.5 rounded-full bg-surface-elevated/70 border border-border text-xs text-muted-foreground"
+              >
+                {f}
+              </span>
+            ))}
+          </div>
         </div>
       </div>
 

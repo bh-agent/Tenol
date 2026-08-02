@@ -8,11 +8,14 @@ import { TopBar } from '@/components/layout/top-bar';
 import { createClub, joinClubByCode } from '@/lib/actions/clubs';
 import { cn } from '@/lib/utils/cn';
 import { Plus, Link as LinkIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useState } from 'react';
 
-export default function NewClubPage() {
-  const [mode, setMode] = useState<'create' | 'join'>('create');
+function NewClubContent() {
+  const searchParams = useSearchParams();
+  const [mode, setMode] = useState<'create' | 'join'>(
+    searchParams.get('mode') === 'join' ? 'join' : 'create'
+  );
   const [inviteInput, setInviteInput] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -164,5 +167,13 @@ export default function NewClubPage() {
         )}
       </div>
     </>
+  );
+}
+
+export default function NewClubPage() {
+  return (
+    <Suspense fallback={null}>
+      <NewClubContent />
+    </Suspense>
   );
 }

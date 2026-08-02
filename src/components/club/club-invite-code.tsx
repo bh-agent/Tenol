@@ -21,8 +21,9 @@ export function ClubInviteCode({ code }: { code: string }) {
       </span>
       <button
         onClick={handleCopy}
+        aria-label="초대 코드 복사"
         className={cn(
-          'p-1.5 rounded-lg transition-all duration-200',
+          'p-1.5 rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50',
           copied
             ? 'bg-primary/10 scale-110'
             : 'hover:bg-surface-hover'

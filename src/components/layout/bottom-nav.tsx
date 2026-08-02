@@ -29,24 +29,27 @@ export function BottomNav() {
               <Link
                 key={item.label}
                 href={item.href}
+                aria-current={isActive ? 'page' : undefined}
+                aria-label={item.label}
                 className={cn(
-                  'flex flex-col items-center justify-center gap-1 w-16 h-full relative transition-all duration-200',
-                  isActive
-                    ? 'text-primary'
-                    : 'text-muted-foreground'
+                  'flex flex-col items-center justify-center gap-1 w-16 h-full transition-colors duration-200',
+                  isActive ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
-                <item.icon
+                <span
                   className={cn(
-                    'w-5 h-5 transition-transform duration-200',
-                    isActive && 'scale-110'
+                    'flex items-center justify-center rounded-full px-4 py-1 transition-all duration-200',
+                    isActive && 'bg-primary/12'
                   )}
-                  strokeWidth={2}
-                />
-                <span className="text-[10px] font-medium">{item.label}</span>
-                {isActive && (
-                  <span className="absolute bottom-2 w-1 h-1 rounded-full bg-primary" />
-                )}
+                >
+                  <item.icon
+                    className="w-[22px] h-[22px]"
+                    strokeWidth={isActive ? 2.4 : 1.9}
+                  />
+                </span>
+                <span className={cn('text-[11px] leading-none', isActive ? 'font-semibold' : 'font-medium')}>
+                  {item.label}
+                </span>
               </Link>
             );
           })}

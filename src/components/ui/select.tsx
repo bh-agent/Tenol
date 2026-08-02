@@ -25,6 +25,8 @@ const Select = forwardRef<HTMLSelectElement, SelectProps>(
           <select
             ref={ref}
             id={id}
+            // color-scheme: dark → 안드로이드 WebView에서 드롭다운 목록도 다크로 렌더
+            style={{ colorScheme: 'dark' }}
             className={cn(
               'w-full h-11 px-4 pr-10 rounded-xl appearance-none',
               'bg-muted border border-border text-foreground',
