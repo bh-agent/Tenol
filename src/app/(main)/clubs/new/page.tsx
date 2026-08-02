@@ -5,11 +5,11 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { RegionPicker } from '@/components/ui/region-picker';
 import { TopBar } from '@/components/layout/top-bar';
-import { createClub, joinClubByCode } from '@/lib/actions/clubs';
+import { createClubAction, joinClubByCode } from '@/lib/actions/clubs';
 import { cn } from '@/lib/utils/cn';
 import { Plus, Link as LinkIcon } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Suspense, useState } from 'react';
+import { Suspense, useActionState, useState } from 'react';
 
 function NewClubContent() {
   const searchParams = useSearchParams();
@@ -21,6 +21,11 @@ function NewClubContent() {
   const [loading, setLoading] = useState(false);
   const [region, setRegion] = useState('');
   const router = useRouter();
+  // 클럽 만들기 폼 — 예상 가능한 에러는 상태로 받아 인라인으로 보여줘요
+  const [createState, createFormAction, createPending] = useActionState(
+    createClubAction,
+    null
+  );
 
   /** Extract invite code from a link or raw code */
   const extractCode = (input: string): string => {
@@ -101,12 +106,13 @@ function NewClubContent() {
               </div>
             </div>
 
-            <form action={createClub} className="space-y-4">
+            <form action={createFormAction} className="space-y-4">
               <Input
                 id="name"
                 name="name"
                 label="클럽 이름"
                 placeholder="예: 강남 테니스 클럽"
+                defaultValue={createState?.values.name}
                 required
               />
               <Input
@@ -114,6 +120,7 @@ function NewClubContent() {
                 name="description"
                 label="클럽 소개"
                 placeholder="클럽에 대해 간단히 소개해주세요"
+                defaultValue={createState?.values.description}
               />
               <RegionPicker
                 value={region}
@@ -125,9 +132,19 @@ function NewClubContent() {
                 name="main_court"
                 label="주요 활동 테니스장"
                 placeholder="예: 올림픽공원 테니스코트"
+                defaultValue={createState?.values.main_court}
               />
+              {createState?.error && (
+                <div
+                  role="alert"
+                  aria-live="polite"
+                  className="rounded-xl bg-destructive/10 border border-destructive/20 px-4 py-3 text-sm text-destructive"
+                >
+                  {createState.error}
+                </div>
+              )}
               <div className="pt-4">
-                <Button type="submit" fullWidth size="lg">
+                <Button type="submit" fullWidth size="lg" loading={createPending}>
                   클럽 만들기
                 </Button>
               </div>

@@ -3,8 +3,9 @@
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/utils/check-permission';
 import { logError, logInfo, logWarn } from '@/lib/logger';
-import { redirect } from 'next/navigation';
+import { redirect, unstable_rethrow } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
+import { ZodError } from 'zod';
 import {
   createClubSchema,
   updateClubSchema,
@@ -12,6 +13,17 @@ import {
   inviteCodeSchema,
   clubRoleSchema,
 } from '@/lib/validations';
+
+// 클럽 만들기 폼 상태 (useActionState용)
+export type CreateClubFormState = {
+  error: string;
+  values: {
+    name: string;
+    description: string;
+    region: string;
+    main_court: string;
+  };
+} | null;
 
 export async function createClub(formData: FormData) {
   const supabase = await createClient();
@@ -47,6 +59,35 @@ export async function createClub(formData: FormData) {
   });
 
   redirect(`/clubs/${club.id}?created=true`);
+}
+
+// useActionState용 래퍼 — 예상 가능한 실패는 throw 대신 상태로 반환해요.
+// 성공 시 createClub 내부의 redirect는 unstable_rethrow로 그대로 통과시켜요.
+export async function createClubAction(
+  _prevState: CreateClubFormState,
+  formData: FormData
+): Promise<CreateClubFormState> {
+  const values = {
+    name: (formData.get('name') as string) || '',
+    description: (formData.get('description') as string) || '',
+    region: (formData.get('region') as string) || '',
+    main_court: (formData.get('main_court') as string) || '',
+  };
+
+  try {
+    await createClub(formData);
+    return null;
+  } catch (e) {
+    // redirect() 등 Next.js 내부 에러는 다시 던져서 프레임워크가 처리하게 한다
+    unstable_rethrow(e);
+    if (e instanceof ZodError) {
+      return { error: '입력 내용을 확인해주세요', values };
+    }
+    return {
+      error: e instanceof Error ? e.message : '클럽 생성에 실패했습니다',
+      values,
+    };
+  }
 }
 
 export async function joinClubByCode(inviteCode: string, introduction?: string) {

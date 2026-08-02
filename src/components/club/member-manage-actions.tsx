@@ -10,7 +10,7 @@ import type { ClubRole } from '@/types';
 import type { ClubPermission } from '@/lib/utils/permissions';
 import { MoreVertical, ShieldCheck, ShieldOff, UserMinus, KeyRound, Crown, X, RotateCcw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 interface MemberManageActionsProps {
@@ -41,6 +41,20 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
 
   // 운영진은 다른 운영진을 제명할 수 없음
   const canRemove = myRole === 'owner' || (myRole === 'admin' && currentRole === 'member');
+
+  // ESC 키로 열린 시트/모달 닫기
+  useEffect(() => {
+    if (!showMenu && !showTransferConfirm && !showPermissions) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowMenu(false);
+        setShowTransferConfirm(false);
+        setShowPermissions(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showMenu, showTransferConfirm, showPermissions]);
 
   const handleRemove = async () => {
     setConfirmAction({
@@ -145,14 +159,15 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
 
         {showMenu && createPortal(
           <>
-            <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowMenu(false)} />
+            <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setShowMenu(false)} />
             <div
               className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom"
-              role="menu"
+              role="dialog"
+              aria-modal="true"
               aria-label="멤버 관리"
             >
               <div className="w-10 h-1 rounded-full bg-muted mx-auto mt-3 mb-1" />
-              <div className="py-1">
+              <div className="py-1" role="menu" aria-label="멤버 관리">
                 {/* 회장만 운영진 승격/강등 가능 */}
                 {myRole === 'owner' && currentRole === 'member' && (
                   <button
@@ -239,7 +254,12 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
       {showTransferConfirm && createPortal(
         <>
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setShowTransferConfirm(false)} />
-          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 max-w-sm mx-auto bg-surface-elevated rounded-2xl border border-border shadow-xl animate-fade-in">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="클럽장 양도"
+            className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 max-w-sm mx-auto bg-surface-elevated rounded-2xl border border-border shadow-xl animate-fade-in"
+          >
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h3 className="font-semibold text-foreground">클럽장 양도</h3>
               <button
@@ -308,7 +328,12 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
       {showPermissions && createPortal(
         <>
           <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setShowPermissions(false)} />
-          <div className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 max-w-sm mx-auto bg-surface-elevated rounded-2xl border border-border shadow-xl animate-fade-in">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="권한 관리"
+            className="fixed inset-x-4 top-1/2 -translate-y-1/2 z-50 max-w-sm mx-auto bg-surface-elevated rounded-2xl border border-border shadow-xl animate-fade-in"
+          >
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h3 className="font-semibold text-foreground">권한 관리</h3>
               <button

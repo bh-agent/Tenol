@@ -83,7 +83,8 @@ export function Toast({ toast, onDismiss }: ToastProps) {
           ? 'opacity-100 translate-y-0 scale-100'
           : 'opacity-0 translate-y-3 scale-95'
       )}
-      role="alert"
+      // 에러/경고는 즉시 알림(assertive), 성공/안내는 차분하게(polite) 읽어줘요
+      role={toast.variant === 'error' || toast.variant === 'warning' ? 'alert' : 'status'}
     >
       <Icon className={cn('w-5 h-5 flex-shrink-0', config.iconClass)} />
       <p className="text-sm font-medium text-foreground flex-1">{toast.message}</p>

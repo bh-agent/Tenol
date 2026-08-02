@@ -36,6 +36,16 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
     };
   }, [isOpen]);
 
+  // ESC 키로 모달 닫기
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!mounted) return null;
 
   return createPortal(
@@ -52,6 +62,9 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       {/* Modal Container */}
       <div className="fixed inset-0 flex items-end sm:items-center sm:justify-center pointer-events-none">
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={title}
           className={cn(
             'pointer-events-auto relative z-50 w-full flex flex-col',
             // Glass effect

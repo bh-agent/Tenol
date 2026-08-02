@@ -508,6 +508,10 @@ export default function DrawPage() {
       }
       await loadData();
       toast.success('대진표가 생성되었습니다');
+      // 생성된 대진표로 자동 스크롤 (DOM 렌더링 이후 실행)
+      setTimeout(() => {
+        document.getElementById('draw-results')?.scrollIntoView({ behavior: 'smooth' });
+      }, 100);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '대진표 생성에 실패했습니다');
     } finally {
@@ -949,20 +953,23 @@ export default function DrawPage() {
             <button
               onClick={() => toggleGenderOverride(p)}
               title="성별 그룹 이동"
-              className="p-2 -m-1 rounded-full hover:bg-yellow-500/20 transition-colors cursor-pointer"
+              aria-label="성별 그룹 이동"
+              className="w-9 h-9 -m-1.5 flex items-center justify-center rounded-full hover:bg-yellow-500/20 transition-colors cursor-pointer"
             >
               <ArrowRightLeft className="w-3.5 h-3.5 text-muted-foreground hover:text-yellow-400" />
             </button>
             <button
               onClick={() => setSubstituteTarget(p)}
               title="대체 선수"
-              className="p-2 -m-1 rounded-full hover:bg-primary/20 transition-colors cursor-pointer"
+              aria-label="대체 선수 지정"
+              className="w-9 h-9 -m-1.5 flex items-center justify-center rounded-full hover:bg-primary/20 transition-colors cursor-pointer"
             >
               <Replace className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
             </button>
             <button
               onClick={() => handleRemoveParticipant(p.id, p.name)}
-              className="p-2 -m-1 rounded-full hover:bg-destructive/20 transition-colors cursor-pointer"
+              aria-label="참가자 제외"
+              className="w-9 h-9 -m-1.5 flex items-center justify-center rounded-full hover:bg-destructive/20 transition-colors cursor-pointer"
             >
               <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
             </button>
@@ -977,6 +984,11 @@ export default function DrawPage() {
     value: p.id,
     label: `${p.drawName}${p.gender === 'M' ? ' (남)' : p.gender === 'F' ? ' (여)' : ''}`,
   }));
+
+  // 하단 고정 "자동 생성" 바 노출 조건: 대진표가 아직 없고, 관리 가능하며, 수동 편집 중이 아닐 때
+  // (생성 중에도 바를 유지해 레이아웃 점프 방지 — 버튼은 disabled로 잠김)
+  const showGenerateBar =
+    canManageDraw && !isEditBlocked && !loading && !manualMode && draws.length === 0;
 
   return (
     <>
@@ -1005,7 +1017,7 @@ export default function DrawPage() {
         </div>
       )}
 
-      <div className="px-4 py-4 space-y-4 animate-fade-in">
+      <div className={cn('px-4 py-4 space-y-4 animate-fade-in', showGenerateBar && 'pb-24')}>
         {/* ── Participants ── */}
         <Card variant="glass" padding="lg">
           <div className="flex items-center justify-between mb-4">
@@ -1373,7 +1385,8 @@ export default function DrawPage() {
             }
           />
         ) : (
-          draws.map((draw) => {
+          <div id="draw-results" className="space-y-4">
+            {draws.map((draw) => {
             const gamesByOrder = getGamesByOrder(draw.games || []);
             const sortedOrders = Object.keys(gamesByOrder)
               .map(Number)
@@ -1485,9 +1498,30 @@ export default function DrawPage() {
                 )}
               </div>
             );
-          })
+            })}
+          </div>
         )}
       </div>
+
+      {/* ── 하단 고정 자동 생성 바 ── */}
+      {showGenerateBar && (
+        <div
+          className="fixed left-0 right-0 z-30"
+          style={{ bottom: 'calc(88px + env(safe-area-inset-bottom))' }}
+        >
+          <div className="max-w-lg mx-auto px-4">
+            <Button
+              onClick={handleGenerate}
+              disabled={generating || participants.length < 4}
+              fullWidth
+              className="shadow-lg shadow-primary/30"
+            >
+              <Shuffle className="w-4 h-4 mr-1.5 shrink-0" />
+              자동 생성
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* ── Delete draw confirmation modal ── */}
       <Modal isOpen={!!showDeleteModal} onClose={() => setShowDeleteModal(null)} title="대진표 삭제">

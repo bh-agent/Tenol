@@ -11,6 +11,7 @@ import { MATCH_FORMATS } from '@/lib/constants';
 import { cn } from '@/lib/utils/cn';
 import {
   CalendarPlus,
+  ChevronDown,
   Clock,
   LayoutGrid,
   MapPin,
@@ -47,6 +48,8 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
   const [offlineParticipants, setOfflineParticipants] = useState<OfflineParticipant[]>([]);
   const [activeTab, setActiveTab] = useState<ParticipantTab>('members');
   const [memberSearch, setMemberSearch] = useState('');
+  // 참가자 사전 선택 섹션 접기/펼치기 (기본: 접힘)
+  const [showParticipants, setShowParticipants] = useState(false);
 
   // Offline participant mini-form state
   const [offlineName, setOfflineName] = useState('');
@@ -216,16 +219,31 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
           placeholder="추가 안내 사항"
         />
 
-        {/* Participant pre-selection section */}
+        {/* Participant pre-selection section (기본 접힘) */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Users className="w-4 h-4 text-primary/70" />
-            <span className="font-medium">참가자 사전 등록 (선택)</span>
-          </div>
-          <p className="text-xs text-muted-foreground -mt-2">
-            경기 생성 시 참가자를 미리 등록할 수 있습니다
-          </p>
+          <button
+            type="button"
+            onClick={() => setShowParticipants((prev) => !prev)}
+            aria-expanded={showParticipants}
+            className="w-full flex items-center justify-between p-4 rounded-2xl bg-surface border border-border transition-colors hover:border-border/80 cursor-pointer"
+          >
+            <span className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Users className="w-4 h-4 text-primary/70" />
+              참가자 미리 선택 (선택)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-xs text-muted-foreground">나중에 추가할 수 있어요</span>
+              <ChevronDown
+                className={cn(
+                  'w-4 h-4 text-muted-foreground transition-transform duration-200',
+                  showParticipants && 'rotate-180'
+                )}
+              />
+            </span>
+          </button>
 
+          {showParticipants && (
+          <>
           {/* Tab toggle */}
           <div className="flex rounded-xl bg-muted p-1 gap-1">
             <button
@@ -463,6 +481,8 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
                 </div>
               )}
             </div>
+          )}
+          </>
           )}
         </div>
 

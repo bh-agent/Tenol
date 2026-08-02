@@ -11,11 +11,31 @@ import { useRouter } from 'next/navigation';
 // 서버 라우트(/auth/native-callback)가 app.tenol.club:// 딥링크로 포워딩한다.
 const NATIVE_REDIRECT = 'https://tenol-one.vercel.app/auth/native-callback';
 
+type OAuthProvider = 'apple' | 'kakao' | 'google';
+
 export default function LoginPage() {
   const supabase = createClient();
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 버튼 순서: 기본은 카카오 우선(한국 사용자 대다수).
+  // SSR과 첫 클라이언트 렌더가 일치해야 하므로 기본값으로 렌더한 뒤,
+  // 마운트 후 iOS 네이티브에서만 Apple 우선으로 교체한다(앱 심사 요건).
+  const [order, setOrder] = useState<OAuthProvider[]>(['kakao', 'google', 'apple']);
+
+  useEffect(() => {
+    if (Capacitor.getPlatform() === 'ios') {
+      setOrder(['apple', 'kakao', 'google']);
+    }
+  }, []);
+
+  // 웹/PWA: Apple JS SDK를 미리 받아둬서 탭 시점에 CDN 로딩을
+  // 기다리느라 스피너가 오래 걸리는 문제를 방지한다.
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) {
+      loadAppleScript().catch(() => {});
+    }
+  }, []);
 
   // appUrlOpen: OAuth 완료 후 iOS가 보내는 딥링크 처리
   useEffect(() => {
@@ -187,6 +207,75 @@ export default function LoginPage() {
     }
   };
 
+  // 로그인 버튼 렌더링 — 순서는 order 상태를 따른다
+  const renderLoginButton = (provider: OAuthProvider) => {
+    switch (provider) {
+      case 'apple':
+        return (
+          <button
+            key="apple"
+            onClick={handleAppleLogin}
+            disabled={loading !== null}
+            className={cn(
+              'group w-full h-14 rounded-2xl font-semibold text-white bg-black border-2 border-white',
+              'flex items-center justify-center gap-3',
+              'transition-all duration-200 ease-out',
+              'hover:bg-black/80 active:scale-[0.97]',
+              'disabled:opacity-60'
+            )}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" className="transition-transform group-hover:scale-110">
+              <path fill="white" d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+            </svg>
+            {loading === 'apple' ? '로그인 중...' : 'Apple로 시작하기'}
+          </button>
+        );
+      case 'kakao':
+        return (
+          <button
+            key="kakao"
+            onClick={() => handleOAuthLogin('kakao')}
+            disabled={loading !== null}
+            className={cn(
+              'group w-full h-14 rounded-2xl font-semibold text-[#191919] bg-[#FEE500] border-2 border-[#E5CE00]',
+              'flex items-center justify-center gap-3',
+              'transition-all duration-200 ease-out',
+              'hover:bg-[#FDD835] active:scale-[0.97]',
+              'disabled:opacity-60'
+            )}
+          >
+            <svg width="20" height="20" viewBox="0 0 18 18" className="transition-transform group-hover:scale-110">
+              <path fill="#191919" d="M9 1C4.58 1 1 3.79 1 7.21c0 2.17 1.45 4.08 3.64 5.18-.16.57-.58 2.07-.67 2.39-.1.39.14.39.3.28.12-.08 1.93-1.31 2.71-1.84.64.09 1.3.14 1.98.14 4.42 0 8-2.79 8-6.21S13.42 1 9 1" />
+            </svg>
+            {loading === 'kakao' ? '로그인 중...' : '카카오로 시작하기'}
+          </button>
+        );
+      case 'google':
+        return (
+          <button
+            key="google"
+            onClick={() => handleOAuthLogin('google')}
+            disabled={loading !== null}
+            className={cn(
+              'group w-full h-14 rounded-2xl font-semibold text-[#1F1F1F] bg-white border-2 border-gray-300',
+              'flex items-center justify-center gap-3',
+              'transition-all duration-200 ease-out',
+              'hover:bg-white/90 active:scale-[0.97]',
+              'disabled:opacity-60'
+            )}
+          >
+            <svg width="20" height="20" viewBox="0 0 18 18" className="transition-transform group-hover:scale-110">
+              <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" />
+              <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" />
+              <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.997 8.997 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" />
+              <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
+            </svg>
+            {loading === 'google' ? '로그인 중...' : 'Google로 시작하기'}
+          </button>
+        );
+    }
+  };
+
   return (
     <div className="relative flex flex-col min-h-dvh bg-background overflow-hidden">
       {/* Background gradient orb */}
@@ -253,62 +342,8 @@ export default function LoginPage() {
             {error}
           </div>
         )}
-        {/* Apple Login */}
-        <button
-          onClick={handleAppleLogin}
-          disabled={loading !== null}
-          className={cn(
-            'group w-full h-14 rounded-2xl font-semibold text-white bg-black border-2 border-white',
-            'flex items-center justify-center gap-3',
-            'transition-all duration-200 ease-out',
-            'hover:bg-black/80 active:scale-[0.97]',
-            'disabled:opacity-60'
-          )}
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" className="transition-transform group-hover:scale-110">
-            <path fill="white" d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-          </svg>
-          {loading === 'apple' ? '로그인 중...' : 'Apple로 시작하기'}
-        </button>
-
-        {/* Kakao Login */}
-        <button
-          onClick={() => handleOAuthLogin('kakao')}
-          disabled={loading !== null}
-          className={cn(
-            'group w-full h-14 rounded-2xl font-semibold text-[#191919] bg-[#FEE500] border-2 border-[#E5CE00]',
-            'flex items-center justify-center gap-3',
-            'transition-all duration-200 ease-out',
-            'hover:bg-[#FDD835] active:scale-[0.97]',
-            'disabled:opacity-60'
-          )}
-        >
-          <svg width="20" height="20" viewBox="0 0 18 18" className="transition-transform group-hover:scale-110">
-            <path fill="#191919" d="M9 1C4.58 1 1 3.79 1 7.21c0 2.17 1.45 4.08 3.64 5.18-.16.57-.58 2.07-.67 2.39-.1.39.14.39.3.28.12-.08 1.93-1.31 2.71-1.84.64.09 1.3.14 1.98.14 4.42 0 8-2.79 8-6.21S13.42 1 9 1" />
-          </svg>
-          {loading === 'kakao' ? '로그인 중...' : '카카오로 시작하기'}
-        </button>
-
-        {/* Google Login */}
-        <button
-          onClick={() => handleOAuthLogin('google')}
-          disabled={loading !== null}
-          className={cn(
-            'group w-full h-14 rounded-2xl font-semibold text-[#1F1F1F] bg-white border-2 border-gray-300',
-            'flex items-center justify-center gap-3',
-            'transition-all duration-200 ease-out',
-            'hover:bg-white/90 active:scale-[0.97]',
-            'disabled:opacity-60'
-          )}
-        >
-          <svg width="20" height="20" viewBox="0 0 18 18" className="transition-transform group-hover:scale-110">
-            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" />
-            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z" />
-            <path fill="#FBBC05" d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.997 8.997 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" />
-            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" />
-          </svg>
-          {loading === 'google' ? '로그인 중...' : 'Google로 시작하기'}
-        </button>
+        {/* 플랫폼별 순서로 로그인 버튼 렌더링 */}
+        {order.map(renderLoginButton)}
       </div>
 
       {/* Footer */}

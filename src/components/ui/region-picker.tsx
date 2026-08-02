@@ -33,6 +33,16 @@ export function RegionPicker({
     }
   }, [open, value]);
 
+  // ESC 키로 바텀시트 닫기
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [open]);
+
   const handleSelect = (sido: string, sigungu: string | null) => {
     onChange(formatRegion(sido, sigungu));
     setOpen(false);
@@ -77,8 +87,13 @@ export function RegionPicker({
       {/* Bottom Sheet */}
       {open && createPortal(
         <>
-          <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setOpen(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom max-h-[70vh] flex flex-col">
+          <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setOpen(false)} />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="지역 선택"
+            className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom max-h-[70vh] flex flex-col"
+          >
             {/* Handle */}
             <div className="w-10 h-1 rounded-full bg-muted mx-auto mt-3 mb-1 shrink-0" />
 

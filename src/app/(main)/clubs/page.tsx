@@ -37,22 +37,13 @@ export default async function ClubsPage() {
 
       <div className="px-4 py-5 animate-fade-in">
         {/* Section header */}
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-xl font-bold text-foreground">
-              <span className="text-gradient">내 클럽</span>
-            </h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {clubs.length > 0 ? `${clubs.length}개의 클럽에 가입됨` : '클럽에 가입해보세요'}
-            </p>
-          </div>
-          <Link
-            href="/clubs/new"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-black text-sm font-semibold hover:bg-primary-light transition-all duration-200 hover:shadow-[0_0_24px_rgba(0,230,118,0.25)] active:scale-[0.97]"
-          >
-            <Plus className="w-4 h-4" />
-            만들기
-          </Link>
+        <div className="mb-4">
+          <h2 className="text-xl font-bold text-foreground">
+            <span className="text-gradient">내 클럽</span>
+          </h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {clubs.length > 0 ? `${clubs.length}개의 클럽에 가입됨` : '클럽에 가입해보세요'}
+          </p>
         </div>
 
         {clubs.length === 0 ? (

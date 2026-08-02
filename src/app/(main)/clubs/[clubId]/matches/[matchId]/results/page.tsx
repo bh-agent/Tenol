@@ -11,7 +11,7 @@ import { hasPermission } from '@/lib/utils/permissions';
 import type { ClubRole } from '@/types';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ResultsShareImage, type ResultsShareImageProps } from '@/components/match/results-share-image';
-import { Trophy, RefreshCw, Crown, Share2, Download, X } from 'lucide-react';
+import { Trophy, RefreshCw, Crown, Share2, Download, X, Minus, Plus } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -403,12 +403,40 @@ export default function ResultsPage() {
     setScoreB(game.score_team_b || 0);
   };
 
+  // 점수 직접 입력 — 숫자 외 문자 제거, 0~99 범위로 제한
+  const handleScoreInput = (setter: (v: number) => void, value: string) => {
+    const digits = value.replace(/\D/g, '');
+    setter(digits === '' ? 0 : Math.min(99, parseInt(digits, 10)));
+  };
+
   const handleSave = async (gameId: string) => {
     setSaving(true);
     try {
       await submitScore(gameId, scoreA, scoreB);
-      setEditingGame(null);
+      // 저장 성공 → 표시 순서상 다음 미입력 경기로 자동 이동 (없으면 편집 종료)
+      const ordered = [...games].sort(
+        (a, b) => a.game_order - b.game_order || a.court_number - b.court_number
+      );
+      const savedIdx = ordered.findIndex((g) => g.id === gameId);
+      const nextGame = [...ordered.slice(savedIdx + 1), ...ordered.slice(0, savedIdx)].find(
+        (g) => g.score_team_a === null
+      );
+      if (nextGame) {
+        setEditingGame(nextGame.id);
+        setScoreA(0);
+        setScoreB(nextGame.score_team_b ?? 0);
+      } else {
+        setEditingGame(null);
+      }
       await loadData();
+      if (nextGame) {
+        // 리렌더 완료 후 다음 경기 카드를 화면 중앙으로 스크롤
+        setTimeout(() => {
+          document
+            .getElementById(`game-card-${nextGame.id}`)
+            ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 150);
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '점수 저장에 실패했습니다');
     } finally {
@@ -621,7 +649,7 @@ export default function ResultsPage() {
                     </div>
                     <div className="space-y-2">
                       {slotGames.map((game) => (
-                        <Card key={game.id} padding="sm" className="transition-all">
+                        <Card key={game.id} id={`game-card-${game.id}`} padding="sm" className="transition-all">
                           {/* Court label */}
                           <div className="flex items-center justify-between mb-2">
                             <Badge variant="outline" className="text-[10px]">{game.court_number}코트</Badge>
@@ -631,17 +659,76 @@ export default function ResultsPage() {
                           {/* Score row */}
                           {editingGame === game.id ? (
                             <div>
-                              <div className="flex items-center justify-center gap-3 mb-3">
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <button onClick={() => setScoreA((s) => s + 1)} className="w-11 h-11 text-lg flex items-center justify-center bg-surface-elevated rounded-lg border border-border text-foreground cursor-pointer active:scale-95 transition-transform">+</button>
-                                  <span className="text-xl font-bold w-12 text-center">{scoreA}</span>
-                                  <button onClick={() => setScoreA((s) => Math.max(0, s - 1))} className="w-11 h-11 text-lg flex items-center justify-center bg-surface-elevated rounded-lg border border-border text-foreground cursor-pointer active:scale-95 transition-transform">-</button>
+                              <div className="flex items-center justify-center gap-2 mb-3">
+                                {/* Team A */}
+                                <div className="flex-1 text-center">
+                                  <p className="text-[10px] text-muted-foreground mb-1.5 truncate">
+                                    {[game.team_a_player1_id, game.team_a_player2_id].filter(Boolean).map((id) => getName(id)).join(', ')}
+                                  </p>
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => setScoreA((s) => Math.max(0, s - 1))}
+                                      aria-label="A팀 점수 내리기"
+                                      className="w-9 h-11 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
+                                    >
+                                      <Minus className="w-4 h-4 text-muted-foreground" />
+                                    </button>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      pattern="[0-9]*"
+                                      autoFocus
+                                      value={scoreA}
+                                      onChange={(e) => handleScoreInput(setScoreA, e.target.value)}
+                                      onFocus={(e) => e.target.select()}
+                                      aria-label="A팀 점수"
+                                      className="w-12 h-11 text-center text-xl font-bold tabular-nums rounded-xl bg-muted border border-border text-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setScoreA((s) => Math.min(99, s + 1))}
+                                      aria-label="A팀 점수 올리기"
+                                      className="w-9 h-11 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
+                                    >
+                                      <Plus className="w-4 h-4 text-muted-foreground" />
+                                    </button>
+                                  </div>
                                 </div>
-                                <span className="text-muted-foreground font-bold">:</span>
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <button onClick={() => setScoreB((s) => s + 1)} className="w-11 h-11 text-lg flex items-center justify-center bg-surface-elevated rounded-lg border border-border text-foreground cursor-pointer active:scale-95 transition-transform">+</button>
-                                  <span className="text-xl font-bold w-12 text-center">{scoreB}</span>
-                                  <button onClick={() => setScoreB((s) => Math.max(0, s - 1))} className="w-11 h-11 text-lg flex items-center justify-center bg-surface-elevated rounded-lg border border-border text-foreground cursor-pointer active:scale-95 transition-transform">-</button>
+                                <span className="text-muted-foreground font-bold mt-4">:</span>
+                                {/* Team B */}
+                                <div className="flex-1 text-center">
+                                  <p className="text-[10px] text-muted-foreground mb-1.5 truncate">
+                                    {[game.team_b_player1_id, game.team_b_player2_id].filter(Boolean).map((id) => getName(id)).join(', ')}
+                                  </p>
+                                  <div className="flex items-center justify-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => setScoreB((s) => Math.max(0, s - 1))}
+                                      aria-label="B팀 점수 내리기"
+                                      className="w-9 h-11 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
+                                    >
+                                      <Minus className="w-4 h-4 text-muted-foreground" />
+                                    </button>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      pattern="[0-9]*"
+                                      value={scoreB}
+                                      onChange={(e) => handleScoreInput(setScoreB, e.target.value)}
+                                      onFocus={(e) => e.target.select()}
+                                      aria-label="B팀 점수"
+                                      className="w-12 h-11 text-center text-xl font-bold tabular-nums rounded-xl bg-muted border border-border text-foreground focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => setScoreB((s) => Math.min(99, s + 1))}
+                                      aria-label="B팀 점수 올리기"
+                                      className="w-9 h-11 rounded-lg bg-muted border border-border flex items-center justify-center hover:bg-surface-hover transition-colors cursor-pointer active:scale-95"
+                                    >
+                                      <Plus className="w-4 h-4 text-muted-foreground" />
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
                               <div className="flex gap-2 justify-end">

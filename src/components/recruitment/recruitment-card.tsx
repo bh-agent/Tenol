@@ -17,7 +17,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { closeRecruitmentPost, deleteRecruitmentPost } from '@/lib/actions/recruitment';
 import { ReportBlockMenu } from '@/components/moderation/report-block-menu';
@@ -55,6 +55,16 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
   const creatorName = post.profiles?.display_name || '알 수 없음';
   const description = post.description || '';
   const isDescriptionLong = description.length > 120;
+
+  // ESC 키로 더보기 시트 닫기
+  useEffect(() => {
+    if (!showMenu) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowMenu(false);
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showMenu]);
 
   const handleClose = () => {
     startClosing(async () => {
@@ -143,14 +153,15 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
 
             {showMenu && createPortal(
               <>
-                <div className="fixed inset-0 z-50 bg-black/40" onClick={() => setShowMenu(false)} />
+                <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setShowMenu(false)} />
                 <div
                   className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom"
-                  role="menu"
+                  role="dialog"
+                  aria-modal="true"
                   aria-label="모집글 관리"
                 >
                   <div className="w-10 h-1 rounded-full bg-muted mx-auto mt-3 mb-1" />
-                  <div className="py-1">
+                  <div className="py-1" role="menu" aria-label="모집글 관리">
                     {isOwner ? (
                       <>
                         <button
