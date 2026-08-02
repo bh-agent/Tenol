@@ -7,8 +7,9 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-// 네이티브 앱에서 OAuth 딥링크를 받을 커스텀 스킴
-const NATIVE_REDIRECT = 'app.tenol.club://auth/callback';
+// 네이티브 OAuth redirect_uri: Google/Kakao는 https만 허용하므로
+// 서버 라우트(/auth/native-callback)가 app.tenol.club:// 딥링크로 포워딩한다.
+const NATIVE_REDIRECT = 'https://tenol-one.vercel.app/auth/native-callback';
 
 export default function LoginPage() {
   const supabase = createClient();
