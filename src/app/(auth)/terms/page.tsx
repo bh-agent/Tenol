@@ -2,7 +2,7 @@ import { TopBar } from '@/components/layout/top-bar';
 
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-dvh bg-background">
       <TopBar title="이용약관" backHref="/login" />
 
       <div className="px-4 py-6 pb-32 max-w-lg mx-auto">

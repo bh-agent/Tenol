@@ -3,6 +3,13 @@
 이번 강화 작업으로 **앱 심사 통과를 막던 6개 차단 이슈**와 주요 보안/UX 문제를 수정했습니다.
 이 문서는 **출시 전 직접 해야 하는 작업**(코드 외 설정)과 **기기 테스트 항목**을 정리합니다.
 
+> **🔄 2026-08-15 최종 점검 반영:**
+> - ⚠️ **최우선**: Supabase 프로젝트가 무료 티어 auto-pause로 **정지됨** → 대시보드에서 Restore 필수 (아래 1번 앞 참조)
+> - 미들웨어 공개경로 수정 배포됨: `/terms`·`/privacy`(심사관 접근)·`/api`(cron)·`/manifest.json`·`/sw.js` 등이 로그인 리다이렉트에서 제외됨
+> - **2-1번(Supabase Redirect URLs) 절이 새로 추가됨** — 네이티브 카카오/구글 로그인의 필수 조건
+> - Google/Kakao 콘솔에는 **아무것도 추가할 필요 없음** (Supabase 중계 구조 — 웹 로그인이 되면 이미 완료)
+> - Android 딥링크 intent-filter + 버전(1.2.1/7) 코드 수정 완료 — Android 제출 시 재빌드만 하면 됨
+
 > 핵심: 네이티브 앱은 `server.url`로 **원격 사이트(Vercel)**를 로드합니다. 따라서 웹/JS/SQL 수정은
 > `vercel --prod` 배포만으로 즉시 반영됩니다. **앱 재빌드가 필요한 것은 진짜 네이티브 부분뿐**입니다
 > (Apple 로그인 플러그인·entitlements·AppDelegate·Info.plist·번들된 offline.html).
@@ -84,17 +91,35 @@ app.tenol.club.service   ← 웹/PWA (기존)
 
 ---
 
+## 2-1. ⚠️ 필수: Supabase Redirect URLs (네이티브 카카오/구글 로그인)
+
+Supabase 대시보드 → Authentication → **URL Configuration**:
+
+- **Site URL**: `https://tenol-one.vercel.app`
+- **Redirect URLs**에 아래 **둘 다** 있어야 함:
+  ```
+  https://tenol-one.vercel.app/auth/callback          ← 웹/PWA
+  https://tenol-one.vercel.app/auth/native-callback   ← 네이티브 앱 (신규 — 없으면 앱에서 카카오/구글 로그인 후 복귀 실패)
+  ```
+
+> **Google Cloud / Kakao Developers 콘솔에는 아무것도 추가하지 마세요.**
+> OAuth 공급자는 항상 Supabase 자신의 콜백(`https://yillsboerxpjrsdsrzuz.supabase.co/auth/v1/callback`)으로만
+> 리디렉션하므로, 웹 로그인이 동작한다면 두 콘솔 설정은 이미 완료 상태입니다. (확인만 하면 됨)
+
+---
+
 ## 3. iOS 빌드 (친구 Mac + Xcode) — Apple 로그인/푸시 활성화 후 제출
 
 ### 3-1. 소스 받고 동기화 (터미널)
 ```bash
 git clone https://github.com/bh-agent/Tenol.git   # 또는 최신 pull
 cd Tenol
-npm install            # @capacitor-community/apple-sign-in 등 설치
-npm run cap:sync       # ⚠️ 'npx cap sync'가 아니라 이 스크립트! (offline.html을 번들에 시드 + pod install)
+npm install            # ⚠️ 건너뛰지 말 것 — patch-package가 apple-sign-in SPM 패치를 자동 적용
+npm run cap:sync       # ⚠️ 'npx cap sync'가 아니라 이 스크립트! (offline.html을 번들에 시드)
 npx cap open ios       # Xcode 열림
 ```
-> CocoaPods가 없으면: `sudo gem install cocoapods` 후 `cd ios/App && pod install` 재시도.
+> **CocoaPods 불필요** — 이 프로젝트는 SPM(`ios/App/CapApp-SPM`)을 사용합니다. `pod install` 안내가
+> 다른 문서에 남아 있어도 무시하세요 (`docs/IOS_BUILD_GUIDE.md`는 낡았으니 이 문서만 따를 것).
 > `cap:sync`를 쓰는 이유: webDir(`out`)에 offline.html을 먼저 복사한 뒤 sync해야 네이티브 번들에
 > offline.html이 들어갑니다. 그냥 `npx cap sync`면 offline.html이 빠져 오프라인 시 빈 화면이 됩니다.
 

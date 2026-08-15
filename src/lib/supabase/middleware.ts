@@ -39,7 +39,12 @@ export async function updateSession(request: NextRequest) {
   const user = session?.user ?? null;
   const pathname = request.nextUrl.pathname;
 
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/auth');
+  // 공개 경로: 로그인/OAuth 콜백 + 약관·개인정보처리방침(앱스토어 심사관이 미로그인으로 접근)
+  const isAuthRoute =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/auth') ||
+    pathname.startsWith('/terms') ||
+    pathname.startsWith('/privacy');
 
   // 미인증 → 로그인
   if (!user && !isAuthRoute) {

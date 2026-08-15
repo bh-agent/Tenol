@@ -1,4 +1,6 @@
-const CACHE_VERSION = 'tenol-v1';
+// v2: 미들웨어가 /offline.html·/manifest.json을 /login으로 리다이렉트하던 시기에
+// 오염된 캐시(로그인 HTML이 오프라인 폴백으로 저장됨)를 강제 교체
+const CACHE_VERSION = 'tenol-v2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 

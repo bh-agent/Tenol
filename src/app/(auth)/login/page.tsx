@@ -37,29 +37,39 @@ export default function LoginPage() {
     }
   }, []);
 
-  // appUrlOpen: OAuth 완료 후 iOS가 보내는 딥링크 처리
+  // appUrlOpen: OAuth 완료 후 OS가 보내는 딥링크 처리 (성공 code / 취소·실패 error 모두)
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
-    let listenerHandle: { remove: () => void } | null = null;
+    let urlListener: { remove: () => void } | null = null;
+    let finishListener: { remove: () => void } | null = null;
 
     const setup = async () => {
       const { App } = await import('@capacitor/app');
       const { Browser } = await import('@capacitor/browser');
 
-      listenerHandle = await App.addListener('appUrlOpen', async ({ url }) => {
+      urlListener = await App.addListener('appUrlOpen', async ({ url }) => {
         try {
           const parsed = new URL(url);
-          // app.tenol.club://auth/callback?code=...
+          // app.tenol.club://auth/callback?code=... 또는 ?error=...
           const code = parsed.searchParams.get('code');
+          const oauthError = parsed.searchParams.get('error');
+
           if (code) {
             setLoading('oauth-callback');
             const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
             if (exchangeError) {
+              try { await Browser.close(); } catch {}
               setError('로그인에 실패했습니다. 다시 시도해주세요.');
             } else {
               try { await Browser.close(); } catch {}
               router.replace('/clubs');
+            }
+          } else if (oauthError) {
+            // 사용자가 동의 화면에서 취소했거나 공급자 오류 — 브라우저 닫고 안내
+            try { await Browser.close(); } catch {}
+            if (oauthError !== 'access_denied') {
+              setError('로그인이 취소되었거나 실패했습니다. 다시 시도해주세요.');
             }
           }
         } catch {
@@ -68,10 +78,19 @@ export default function LoginPage() {
           setLoading(null);
         }
       });
+
+      // 사용자가 브라우저를 '완료'로 직접 닫은 경우 — 딥링크가 없으므로
+      // 여기서 loading을 풀어줘야 버튼이 다시 활성화된다
+      finishListener = await Browser.addListener('browserFinished', () => {
+        setLoading((prev) => (prev === 'oauth-callback' ? prev : null));
+      });
     };
 
     setup();
-    return () => { listenerHandle?.remove(); };
+    return () => {
+      urlListener?.remove();
+      finishListener?.remove();
+    };
   }, [supabase, router]);
 
   const handleOAuthLogin = async (provider: 'kakao' | 'google') => {
@@ -80,8 +99,8 @@ export default function LoginPage() {
 
     try {
       if (Capacitor.isNativePlatform()) {
-        // 네이티브: 커스텀 스킴으로 리디렉션 → iOS가 딥링크로 앱에 전달
-        // SFSafariViewController는 non-http scheme 탐색 시 자동으로 닫힘
+        // 네이티브: 커스텀 스킴으로 리디렉션 → OS가 딥링크(appUrlOpen)로 앱에 전달
+        // 인앱 브라우저는 자동으로 닫히지 않으므로 딥링크 핸들러에서 Browser.close() 호출
         const { data } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
