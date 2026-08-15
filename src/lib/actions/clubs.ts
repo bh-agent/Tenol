@@ -550,14 +550,22 @@ export async function deleteClub(clubId: string) {
     throw new Error('클럽장만 클럽을 삭제할 수 있습니다');
   }
 
-  const { error } = await supabase
+  // .select()로 실제 삭제된 행을 확인 — RLS가 차단하면 에러 없이 0건이 되므로
+  // 무음 실패(화면만 새로고침되고 클럽이 남는 문제)를 방지한다.
+  const { data: deleted, error } = await supabase
     .from('clubs')
     .delete()
-    .eq('id', validClubId);
+    .eq('id', validClubId)
+    .select('id');
 
   if (error) {
     logError('club', 'Failed to delete club', { userId: user.id, clubId: validClubId, error });
     throw new Error('클럽 삭제에 실패했습니다');
+  }
+
+  if (!deleted || deleted.length === 0) {
+    logError('club', 'Club delete affected 0 rows (RLS?)', { userId: user.id, clubId: validClubId });
+    throw new Error('클럽 삭제가 처리되지 않았습니다. 잠시 후 다시 시도해주세요.');
   }
 
   logInfo('club', 'Club deleted', { userId: user.id, clubId: validClubId });
