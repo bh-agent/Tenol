@@ -47,6 +47,24 @@ function LoginContent() {
       try { sessionStorage.setItem('tenol_next', next); } catch {}
     }
   }, [next]);
+
+  // WKWebView 쿠키 커밋 지연으로 로그인 직후 /login으로 튕긴 경우 자동 복구:
+  // 세션이 이미 있으면 즉시 목적지로 이동 (마운트 시 + 0.6초 후 재확인)
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!cancelled && session) router.replace(destination);
+      } catch {}
+    };
+    check();
+    const t = setTimeout(check, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, [supabase, router, destination]);
   // 버튼 순서: 기본은 카카오 우선(한국 사용자 대다수).
   // SSR과 첫 클라이언트 렌더가 일치해야 하므로 기본값으로 렌더한 뒤,
   // 마운트 후 iOS 네이티브에서만 Apple 우선으로 교체한다(앱 심사 요건).
