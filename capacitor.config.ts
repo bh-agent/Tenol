@@ -4,6 +4,10 @@ const config: CapacitorConfig = {
   appId: 'app.tenol.club',
   appName: '테놀',
   webDir: 'out',
+  // 딥링크(app.tenol.club://) 지원 빌드 식별용 마커.
+  // 로그인 페이지가 이 UA 유무로 신·구 빌드를 구분해 OAuth 방식을 선택한다.
+  // (구버전 앱 = URL scheme 미등록 → 딥링크 대신 WebView 내 직접 진행)
+  appendUserAgent: 'TenolApp/2',
   server: {
     url: 'https://tenol-one.vercel.app',
     cleartext: false,

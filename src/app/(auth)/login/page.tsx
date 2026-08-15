@@ -127,8 +127,13 @@ function LoginContent() {
     setError(null);
 
     try {
-      if (Capacitor.isNativePlatform()) {
-        // 네이티브: 커스텀 스킴으로 리디렉션 → OS가 딥링크(appUrlOpen)로 앱에 전달
+      // 딥링크 지원 빌드 판별: capacitor.config의 appendUserAgent 마커.
+      // 구버전 앱 바이너리에는 app.tenol.club:// scheme이 등록돼 있지 않아
+      // 딥링크로 복귀 시 "주소가 유효하지 않습니다" 오류가 난다.
+      const supportsDeepLink = navigator.userAgent.includes('TenolApp/');
+
+      if (Capacitor.isNativePlatform() && supportsDeepLink) {
+        // 신규 빌드: 커스텀 스킴으로 리디렉션 → OS가 딥링크(appUrlOpen)로 앱에 전달
         // 인앱 브라우저는 자동으로 닫히지 않으므로 딥링크 핸들러에서 Browser.close() 호출
         const { data } = await supabase.auth.signInWithOAuth({
           provider,
@@ -147,6 +152,26 @@ function LoginContent() {
           await Browser.open({ url: data.url, presentationStyle: 'fullscreen' });
         }
         // 이후 처리는 appUrlOpen 리스너에서 담당
+      } else if (Capacitor.isNativePlatform()) {
+        // 구버전 앱: 팝업 브라우저 대신 앱 WebView 안에서 직접 OAuth 진행.
+        // 같은 화면으로 /auth/callback에 돌아와 세션 쿠키가 WebView에 저장된다.
+        const { data } = await supabase.auth.signInWithOAuth({
+          provider,
+          options: {
+            redirectTo: `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`,
+            skipBrowserRedirect: true,
+            ...(provider === 'kakao' ? {
+              scopes: 'profile_nickname profile_image',
+              queryParams: { scope: 'profile_nickname profile_image' },
+            } : {}),
+          },
+        });
+
+        if (data?.url) {
+          window.location.href = data.url;
+          return; // 페이지 이탈 — loading 상태 유지
+        }
+        setLoading(null);
       } else {
         // 웹/PWA: 콜백에 next를 실어 로그인 후 원래 목적지로 복귀
         await supabase.auth.signInWithOAuth({
