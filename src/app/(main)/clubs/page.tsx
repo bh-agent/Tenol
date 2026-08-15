@@ -111,7 +111,7 @@ export default async function ClubsPage() {
       <Link
         href="/clubs/new"
         aria-label="새 클럽 만들기"
-        className="fixed right-5 z-30 w-14 h-14 rounded-full bg-primary text-black flex items-center justify-center shadow-lg shadow-primary/30 hover:shadow-[0_0_30px_rgba(0,230,118,0.35)] transition-all duration-300 active:scale-90"
+        className="hide-on-keyboard fixed right-5 z-30 w-14 h-14 rounded-full bg-primary text-black flex items-center justify-center shadow-lg shadow-primary/30 hover:shadow-[0_0_30px_rgba(0,230,118,0.35)] transition-all duration-300 active:scale-90"
         style={{ bottom: 'calc(88px + env(safe-area-inset-bottom))' }}
       >
         <Plus className="w-6 h-6" strokeWidth={2.4} />

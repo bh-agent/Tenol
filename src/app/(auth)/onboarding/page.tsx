@@ -8,8 +8,8 @@ import { completeOnboarding, uploadOnboardingAvatar } from '@/lib/actions/profil
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils/cn';
 import { Camera, ChevronLeft, ChevronRight, MapPin, Zap } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense, useEffect, useRef, useState } from 'react';
 
 const NTRP_OPTIONS = [
   { value: '1.0', label: '1.0 - 입문' },
@@ -25,9 +25,21 @@ const NTRP_OPTIONS = [
 
 const TOTAL_STEPS = 3;
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 온보딩 완료 후 복귀 목적지: 쿼리 → sessionStorage(로그인 페이지가 백업) → /clubs
+  const resolveDestination = (): string => {
+    const fromQuery = searchParams.get('next');
+    if (fromQuery && fromQuery.startsWith('/') && !fromQuery.startsWith('//')) return fromQuery;
+    try {
+      const stored = sessionStorage.getItem('tenol_next');
+      if (stored && stored.startsWith('/') && !stored.startsWith('//')) return stored;
+    } catch {}
+    return '/clubs';
+  };
   const [step, setStep] = useState(1);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -170,7 +182,9 @@ export default function OnboardingPage() {
       formData.set('bio', bio);
       formData.set('ntrp_level', ntrp);
       await completeOnboarding(formData);
-      router.push('/clubs');
+      const dest = resolveDestination();
+      try { sessionStorage.removeItem('tenol_next'); } catch {}
+      router.push(dest);
     } catch (e) {
       setError(e instanceof Error ? e.message : '오류가 발생했습니다');
       setSubmitting(false);
@@ -188,8 +202,27 @@ export default function OnboardingPage() {
         }}
       />
 
+      {/* 탈출구: 온보딩을 원치 않으면 로그아웃하고 로그인 화면으로 */}
+      <div className="relative z-10 px-4 pb-1" style={{ paddingTop: 'max(env(safe-area-inset-top), 0.75rem)' }}>
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              const supabase = createClient();
+              await supabase.auth.signOut();
+            } catch {}
+            window.location.replace('/login');
+          }}
+          className="flex items-center gap-1 min-h-[44px] px-2 -ml-2 text-sm text-muted-foreground hover:text-foreground transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-lg"
+          aria-label="로그아웃하고 로그인 화면으로 돌아가기"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          다른 계정으로 로그인
+        </button>
+      </div>
+
       {/* Progress */}
-      <div className="relative z-10 px-6 pb-4" style={{ paddingTop: 'max(env(safe-area-inset-top), 2.5rem)' }}>
+      <div className="relative z-10 px-6 pb-4 pt-2">
         <div className="flex items-center justify-center gap-2 mb-8">
           {Array.from({ length: TOTAL_STEPS }, (_, i) => (
             <div
@@ -242,7 +275,6 @@ export default function OnboardingPage() {
                       label="닉네임"
                       placeholder="테놀에서 사용할 이름"
                       required
-                      autoFocus
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
                       className="bg-surface border-border focus:border-primary"
@@ -498,5 +530,14 @@ export default function OnboardingPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+// useSearchParams는 Suspense 경계가 필요 (Next.js 요건)
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={null}>
+      <OnboardingContent />
+    </Suspense>
   );
 }

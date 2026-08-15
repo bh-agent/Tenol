@@ -47,8 +47,45 @@
 }
 
 /* ── Global Reset ── */
+/* keep-all: 한글 어절 단위 줄바꿈. overflow-wrap: 공백 없는 긴 문자열(URL 등)이
+   컨테이너를 뚫고 가로 오버플로를 만들 때만 강제 줄바꿈. */
 * {
   word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
+/* iOS 자동 확대 차단: 16px 미만 input/textarea/select 포커스 시 iOS가 화면을
+   확대하고 블러 후에도 확대가 남아 가로 스크롤이 생긴다. 최소 16px 강제.
+   (핀치 줌 접근성은 유지 — viewport userScalable은 그대로) */
+input,
+textarea,
+select {
+  font-size: max(16px, 1em);
+}
+
+/* 더블탭 확대 방지: 점수 +/- 같은 연타 버튼에서 두 번째 탭이 화면 확대로
+   오인되는 문제. 인터랙티브 요소만 지정해 핀치 줌은 유지. */
+button,
+a,
+input,
+select,
+textarea,
+[role='button'] {
+  touch-action: manipulation;
+}
+
+/* 네이티브 롱프레스 오작동 방지: 버튼/링크 라벨의 텍스트 선택·링크 미리보기 차단 */
+button,
+a {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 키보드 열림(KeyboardScrollFix가 body에 부여) 시 하단 고정 요소 숨김 —
+   KeyboardResize.Body 모드에서 fixed 요소가 키보드 위에 떠다니는 문제 방지 */
+body.keyboard-open .hide-on-keyboard {
+  display: none;
 }
 
 ::selection {
@@ -63,6 +100,19 @@ body {
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* 가로 오버플로 차단: 화면 폭을 넘는 요소가 있어도 수평 스크롤 방지.
+   iOS 16+는 clip(sticky 안전), 이하 버전은 html 단독 hidden 폴백
+   (body가 아닌 html의 hidden은 내부 sticky에 영향 없음). */
+html {
+  overflow-x: hidden;
+}
+@supports (overflow-x: clip) {
+  html,
+  body {
+    overflow-x: clip;
+  }
 }
 
 /* ── Scrollbar ── */

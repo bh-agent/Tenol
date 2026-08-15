@@ -16,7 +16,7 @@ export function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 px-4 pb-[max(env(safe-area-inset-bottom),8px)]">
+    <nav className="hide-on-keyboard fixed bottom-0 left-0 right-0 z-40 px-4 pb-[max(env(safe-area-inset-bottom),8px)]">
       <div className="max-w-lg mx-auto glass border border-border/50 rounded-2xl">
         <div className="flex items-center justify-around h-16">
           {navItems.map((item) => {

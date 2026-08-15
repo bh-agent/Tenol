@@ -822,7 +822,8 @@ export default function DrawPage() {
 
     // Create a temporary VISIBLE container (html2canvas needs it in layout)
     const tempContainer = document.createElement('div');
-    tempContainer.style.cssText = 'position:absolute;left:0;top:0;z-index:99999;pointer-events:none;';
+    // 화면 밖 왼쪽에 배치: left:0이면 1080px 요소가 문서 폭을 넓혀 가로 스크롤 + 화면 깜빡임 발생
+    tempContainer.style.cssText = 'position:absolute;left:-2000px;top:0;pointer-events:none;';
     document.body.appendChild(tempContainer);
 
     let root: ReturnType<typeof createRoot> | null = null;
@@ -1506,7 +1507,7 @@ export default function DrawPage() {
       {/* ── 하단 고정 자동 생성 바 ── */}
       {showGenerateBar && (
         <div
-          className="fixed left-0 right-0 z-30"
+          className="hide-on-keyboard fixed left-0 right-0 z-30"
           style={{ bottom: 'calc(88px + env(safe-area-inset-bottom))' }}
         >
           <div className="max-w-lg mx-auto px-4">

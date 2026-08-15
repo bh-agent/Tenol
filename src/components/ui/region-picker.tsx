@@ -111,7 +111,7 @@ export function RegionPicker({
             {/* Two-column picker */}
             <div className="flex flex-1 min-h-0">
               {/* 시/도 (왼쪽) */}
-              <div className="w-[40%] border-r border-border overflow-y-auto">
+              <div className="w-[40%] border-r border-border overflow-y-auto overscroll-contain">
                 {REGIONS.map((r) => (
                   <button
                     key={r.short}
@@ -140,7 +140,7 @@ export function RegionPicker({
               </div>
 
               {/* 시/군/구 (오른쪽) */}
-              <div className="flex-1 overflow-y-auto">
+              <div className="flex-1 overflow-y-auto overscroll-contain">
                 {selectedSido && currentSigunguList.length > 0 ? (
                   <>
                     {/* 전체 옵션 */}

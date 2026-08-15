@@ -42,11 +42,10 @@
 	<array>
 		<string>armv7</string>
 	</array>
+	<!-- iPhone 세로 고정: 가로 모드는 노치 safe-area-left/right 미대응으로 레이아웃 깨짐 -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
-		<string>UIInterfaceOrientationLandscapeLeft</string>
-		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
 	<key>UISupportedInterfaceOrientations~ipad</key>
 	<array>

@@ -187,24 +187,36 @@ export function MyMatchesTabs({ upcoming, history }: MyMatchesTabsProps) {
                   />
                 )}
 
-                {/* 날짜 범위 필터 */}
+                {/* 날짜 범위 필터 — iOS는 date input placeholder를 무시하므로 라벨 겹침 표시 */}
                 <div className="flex gap-2">
-                  <div className="flex-1">
+                  <div className="relative flex-1 min-w-0">
                     <input
                       type="date"
                       value={startDate}
                       onChange={(e) => setStartDate(e.target.value)}
-                      className="w-full h-9 px-3 rounded-xl border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                      aria-label="시작일"
+                      className="w-full min-w-0 h-9 px-3 rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
                     />
+                    {!startDate && (
+                      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-subtle">
+                        시작일
+                      </span>
+                    )}
                   </div>
                   <span className="flex items-center text-muted-foreground text-sm">~</span>
-                  <div className="flex-1">
+                  <div className="relative flex-1 min-w-0">
                     <input
                       type="date"
                       value={endDate}
                       onChange={(e) => setEndDate(e.target.value)}
-                      className="w-full h-9 px-3 rounded-xl border border-border bg-surface text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
+                      aria-label="종료일"
+                      className="w-full min-w-0 h-9 px-3 rounded-xl border border-border bg-surface text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-colors"
                     />
+                    {!endDate && (
+                      <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-subtle">
+                        종료일
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

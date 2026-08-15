@@ -46,17 +46,26 @@ export async function updateSession(request: NextRequest) {
     pathname.startsWith('/terms') ||
     pathname.startsWith('/privacy');
 
-  // 미인증 → 로그인
+  // 미인증 → 로그인 (원래 목적지를 ?next=로 보존 — 초대 링크 등 복귀용)
   if (!user && !isAuthRoute) {
     const url = request.nextUrl.clone();
     url.pathname = '/login';
+    url.search = '';
+    if (pathname !== '/' && pathname !== '/clubs') {
+      url.searchParams.set('next', pathname);
+    }
     return NextResponse.redirect(url);
   }
 
-  // 인증된 유저가 로그인 페이지 접근 시 → 홈으로
+  // 인증된 유저가 로그인 페이지 접근 시 → next 목적지(내부 경로만) 또는 홈으로
   if (user && pathname.startsWith('/login')) {
+    const nextParam = request.nextUrl.searchParams.get('next');
     const url = request.nextUrl.clone();
-    url.pathname = '/clubs';
+    url.search = '';
+    url.pathname =
+      nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')
+        ? nextParam
+        : '/clubs';
     return NextResponse.redirect(url);
   }
 

@@ -326,7 +326,7 @@ export default function ResultsPage() {
       const props: ResultsShareImageProps = { matchTitle, matchDate, mvpTop3, highlights, funStats, gameResults };
 
       const tempContainer = document.createElement('div');
-      tempContainer.style.cssText = 'position:absolute;left:0;top:0;z-index:99999;pointer-events:none;';
+      tempContainer.style.cssText = 'position:absolute;left:-2000px;top:0;pointer-events:none;';
       document.body.appendChild(tempContainer);
 
       let root: ReturnType<typeof createRoot> | null = null;

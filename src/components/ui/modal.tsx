@@ -59,18 +59,23 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
         onClick={onClose}
       />
 
-      {/* Modal Container */}
-      <div className="fixed inset-0 flex items-end sm:items-center sm:justify-center pointer-events-none">
+      {/* Modal Container — --keyboard-height는 KeyboardScrollFix가 네이티브 키보드 표시 시 설정.
+          시트 전체를 키보드 위로 들어올려 입력창이 가려지지 않게 한다. */}
+      <div
+        className="fixed inset-0 flex items-end sm:items-center sm:justify-center pointer-events-none"
+        style={{ paddingBottom: 'var(--keyboard-height, 0px)' }}
+      >
         <div
           role="dialog"
           aria-modal="true"
           aria-label={title}
+          style={{ maxHeight: 'calc(95vh - var(--keyboard-height, 0px))' }}
           className={cn(
             'pointer-events-auto relative z-50 w-full flex flex-col',
             // Glass effect
             'glass border-t border-white/[0.06]',
             // Mobile: bottom-sheet style
-            'max-h-[95vh] rounded-t-2xl',
+            'rounded-t-2xl',
             // Desktop: centered modal
             'sm:max-w-md sm:rounded-2xl sm:max-h-[85vh] sm:border sm:border-white/[0.06]',
             // Animation
@@ -90,7 +95,8 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
             )}
             <button
               onClick={onClose}
-              className="p-2.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-all duration-200 cursor-pointer"
+              aria-label="닫기"
+              className="p-2.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-surface-elevated transition-all duration-200 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             >
               <X className="w-5 h-5" />
             </button>

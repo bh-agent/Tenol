@@ -1,11 +1,18 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 
+/** 내부 경로만 허용 (open redirect 방지) */
+function sanitizeNext(raw: string | null): string | null {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return null;
+  return raw;
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
+  const next = sanitizeNext(searchParams.get('next'));
 
   // OAuth 에러 처리
   if (error) {
@@ -27,10 +34,13 @@ export async function GET(request: Request) {
           .maybeSingle();
 
         if (!profile?.is_onboarded) {
-          return NextResponse.redirect(`${origin}/onboarding`);
+          // 온보딩 완료 후 원래 목적지(초대 링크 등)로 복귀할 수 있게 전달
+          return NextResponse.redirect(
+            `${origin}/onboarding${next ? `?next=${encodeURIComponent(next)}` : ''}`
+          );
         }
       }
-      return NextResponse.redirect(`${origin}/clubs`);
+      return NextResponse.redirect(`${origin}${next ?? '/clubs'}`);
     }
 
     console.error('Code exchange failed:', exchangeError);

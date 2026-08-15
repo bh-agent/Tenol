@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { ToastProvider } from '@/components/ui/toast-provider';
 import { OfflineBanner } from '@/components/ui/offline-banner';
+import { KeyboardScrollFix } from '@/components/native/keyboard-scroll-fix';
 import ServiceWorkerRegister from '@/components/pwa/sw-register';
 import InstallPrompt from '@/components/pwa/install-prompt';
 import './globals.css';
@@ -38,7 +39,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  // 핀치 줌 허용 — 접근성(WCAG 1.4.4) 및 40~60대 사용자 가독성. 입력창은 16px라 iOS 자동 확대 없음.
+  // 핀치 줌 허용 — 접근성(WCAG 1.4.4) 및 40~60대 사용자 가독성.
+  // iOS 자동 확대는 globals.css의 input/textarea/select font-size:max(16px,1em) 규칙으로 차단.
   maximumScale: 5,
   userScalable: true,
   viewportFit: 'cover',
@@ -67,6 +69,7 @@ export default function RootLayout({
         </ToastProvider>
         <ServiceWorkerRegister />
         <InstallPrompt />
+        <KeyboardScrollFix />
       </body>
     </html>
   );

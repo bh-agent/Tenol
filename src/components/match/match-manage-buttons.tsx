@@ -66,9 +66,10 @@ export function MatchManageButtons({ matchId, clubId, status }: MatchManageButto
         )}
       </div>
 
+      {/* 진행 중에도 닫기 허용 — 요청이 느릴 때 화면 전체가 잠기는 문제 방지 (작업은 서버에서 계속됨) */}
       <Modal
         isOpen={showDeleteModal}
-        onClose={() => !deleting && setShowDeleteModal(false)}
+        onClose={() => setShowDeleteModal(false)}
         title="경기 삭제"
       >
         <div className="space-y-4">

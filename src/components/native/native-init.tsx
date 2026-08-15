@@ -10,6 +10,10 @@ export function NativeInit() {
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
+    // 리스너 핸들 수집: 레이아웃 재마운트 시 중복 등록되면 뒤로가기 1회에
+    // router.back()이 N회 실행되는 등 오작동 → cleanup에서 반드시 제거
+    const removers: Array<() => void> = [];
+
     const initNative = async () => {
       // Status Bar
       try {
@@ -30,13 +34,14 @@ export function NativeInit() {
       // Android back button
       try {
         const { App } = await import('@capacitor/app');
-        App.addListener('backButton', ({ canGoBack }) => {
+        const h = await App.addListener('backButton', ({ canGoBack }) => {
           if (canGoBack) {
             router.back();
           } else {
             App.exitApp();
           }
         });
+        removers.push(() => h.remove());
       } catch {}
 
       // Push notifications — 리스너를 먼저 등록한 뒤 권한 처리
@@ -44,15 +49,16 @@ export function NativeInit() {
         const { PushNotifications } = await import('@capacitor/push-notifications');
         const platform = Capacitor.getPlatform() === 'ios' ? 'ios' : 'android';
 
-        await PushNotifications.addListener('registration', async (token) => {
+        const hReg = await PushNotifications.addListener('registration', async (token) => {
           try {
             const { saveDeviceToken } = await import('@/lib/actions/push');
             await saveDeviceToken(token.value, platform);
           } catch {}
         });
+        removers.push(() => hReg.remove());
 
         // 알림 탭 시 관련 화면으로 이동
-        await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+        const hTap = await PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
           const data = (action.notification?.data ?? {}) as Record<string, string>;
           if (data.club_id && data.match_id) {
             router.push(`/clubs/${data.club_id}/matches/${data.match_id}`);
@@ -62,6 +68,7 @@ export function NativeInit() {
             router.push('/notifications');
           }
         });
+        removers.push(() => hTap.remove());
 
         // 이미 허용된 기기는 즉시 토큰 등록.
         // 미결정 상태면 최초 1회만 요청하고, 사용자가 거부한 선택은 존중한다.
@@ -82,6 +89,9 @@ export function NativeInit() {
     };
 
     initNative();
+    return () => {
+      removers.forEach((r) => r());
+    };
   }, [router]);
 
   return null;

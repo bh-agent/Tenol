@@ -4,8 +4,8 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils/cn';
 import { Capacitor } from '@capacitor/core';
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 // 네이티브 OAuth redirect_uri: Google/Kakao는 https만 허용하므로
 // 서버 라우트(/auth/native-callback)가 app.tenol.club:// 딥링크로 포워딩한다.
@@ -13,11 +13,40 @@ const NATIVE_REDIRECT = 'https://tenol-one.vercel.app/auth/native-callback';
 
 type OAuthProvider = 'apple' | 'kakao' | 'google';
 
-export default function LoginPage() {
+/** 로그인 후 복귀 경로 검증: 내부 경로만 허용 (open redirect 방지) */
+function sanitizeNext(raw: string | null): string | null {
+  if (!raw) return null;
+  if (!raw.startsWith('/') || raw.startsWith('//')) return null;
+  return raw;
+}
+
+function LoginContent() {
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // 초대 링크 등에서 넘어온 복귀 목적지 (미들웨어가 ?next=로 전달)
+  const next = sanitizeNext(searchParams.get('next'));
+  const destination = next ?? '/clubs';
+
+  // 정지 계정·OAuth 실패 안내 (미들웨어/콜백이 쿼리로 전달)
+  useEffect(() => {
+    if (searchParams.get('banned') === '1') {
+      setError('이용이 정지된 계정입니다. 문의: forybh2@gmail.com');
+    } else if (searchParams.get('error')) {
+      setError('로그인에 실패했습니다. 다시 시도해주세요.');
+    }
+  }, [searchParams]);
+
+  // 온보딩이 필요한 신규 유저도 목적지를 잃지 않도록 백업
+  // (온보딩 완료 화면이 sessionStorage에서 읽어 복귀)
+  useEffect(() => {
+    if (next) {
+      try { sessionStorage.setItem('tenol_next', next); } catch {}
+    }
+  }, [next]);
   // 버튼 순서: 기본은 카카오 우선(한국 사용자 대다수).
   // SSR과 첫 클라이언트 렌더가 일치해야 하므로 기본값으로 렌더한 뒤,
   // 마운트 후 iOS 네이티브에서만 Apple 우선으로 교체한다(앱 심사 요건).
@@ -63,7 +92,7 @@ export default function LoginPage() {
               setError('로그인에 실패했습니다. 다시 시도해주세요.');
             } else {
               try { await Browser.close(); } catch {}
-              router.replace('/clubs');
+              router.replace(destination);
             }
           } else if (oauthError) {
             // 사용자가 동의 화면에서 취소했거나 공급자 오류 — 브라우저 닫고 안내
@@ -91,7 +120,7 @@ export default function LoginPage() {
       urlListener?.remove();
       finishListener?.remove();
     };
-  }, [supabase, router]);
+  }, [supabase, router, destination]);
 
   const handleOAuthLogin = async (provider: 'kakao' | 'google') => {
     setLoading(provider);
@@ -119,11 +148,11 @@ export default function LoginPage() {
         }
         // 이후 처리는 appUrlOpen 리스너에서 담당
       } else {
-        // 웹/PWA: 기존 방식 유지
+        // 웹/PWA: 콜백에 next를 실어 로그인 후 원래 목적지로 복귀
         await supabase.auth.signInWithOAuth({
           provider,
           options: {
-            redirectTo: `${window.location.origin}/auth/callback`,
+            redirectTo: `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`,
             ...(provider === 'kakao' ? {
               scopes: 'profile_nickname profile_image',
               queryParams: { scope: 'profile_nickname profile_image' },
@@ -164,7 +193,7 @@ export default function LoginPage() {
         .eq('display_name', '사용자');
     }
 
-    window.location.href = '/clubs';
+    window.location.href = destination;
   };
 
   const handleAppleLogin = async () => {
@@ -373,6 +402,15 @@ export default function LoginPage() {
         동의하게 됩니다.
       </p>
     </div>
+  );
+}
+
+// useSearchParams는 Suspense 경계가 필요 (Next.js 요건)
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
   );
 }
 

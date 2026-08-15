@@ -25,10 +25,13 @@ const config: CapacitorConfig = {
     },
   },
   ios: {
-    contentInset: 'automatic',
+    // never: CSS env(safe-area-inset-*) + .safe-top 방식과 충돌하는 네이티브 인셋 비활성
+    contentInset: 'never',
     preferredContentMode: 'mobile',
     scheme: 'tenol',
     backgroundColor: '#0A0A0A',
+    // 롱프레스 시 vercel.app URL 미리보기 시트가 떠서 네이티브 느낌을 깨는 것 방지
+    allowsLinkPreview: false,
   },
   android: {
     backgroundColor: '#0A0A0A',

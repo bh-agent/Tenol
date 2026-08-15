@@ -100,6 +100,7 @@ export default async function UserProfilePage({
     <>
       <TopBar
         title={isOwnProfile ? '프로필' : profile.display_name}
+        backHref={isOwnProfile ? undefined : '/clubs'}
         rightAction={
           user && !isOwnProfile ? (
             <ReportMenuButton

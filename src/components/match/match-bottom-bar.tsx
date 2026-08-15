@@ -153,7 +153,7 @@ export function MatchBottomBar({
 
   return (
     <>
-      <div className="fixed bottom-[calc(4.5rem+max(env(safe-area-inset-bottom),8px))] left-0 right-0 z-30 border-t border-border glass px-4 py-3">
+      <div className="hide-on-keyboard fixed bottom-[calc(4.5rem+max(env(safe-area-inset-bottom),8px))] left-0 right-0 z-30 border-t border-border glass px-4 py-3">
         <div className="max-w-lg mx-auto flex gap-2">
           {/* Main action area */}
           <div className="flex-1">

@@ -24,7 +24,7 @@ export function ScrollTopButton() {
       onClick={scrollToTop}
       aria-label="맨 위로 이동"
       className={`
-        fixed bottom-24 left-1/2 -translate-x-1/2 z-20
+        hide-on-keyboard fixed bottom-24 left-1/2 -translate-x-1/2 z-20
         h-8 px-4 rounded-full
         bg-surface-elevated/90 border border-border
         flex items-center justify-center gap-1.5
