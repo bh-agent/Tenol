@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/ui/toast-provider';
 import { createMatchFromTemplate, deleteTemplate } from '@/lib/actions/templates';
+import { isRedirectError } from '@/lib/utils/redirect-error';
 import { DAYS_OF_WEEK, FREQUENCY_OPTIONS, MATCH_FORMATS } from '@/lib/constants';
 import { formatDate } from '@/lib/utils/format';
 import type { MatchTemplate } from '@/types';
@@ -63,6 +64,8 @@ function TemplateCard({ template }: { template: TemplateWithDate }) {
         await createMatchFromTemplate(template.id);
         success('경기가 생성되었습니다');
       } catch (e) {
+        // redirect() 신호(성공 후 경기 페이지로 이동)는 다시 던져 Next가 처리하게 한다
+        if (isRedirectError(e)) throw e;
         error(e instanceof Error ? e.message : '경기 생성에 실패했습니다');
       }
     });

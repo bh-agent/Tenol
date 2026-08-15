@@ -10,11 +10,13 @@ import { ClubAvatar } from '@/components/club/club-avatar';
 import { updateClub, updateClubLogo, deleteClub } from '@/lib/actions/clubs';
 import { useToast } from '@/components/ui/toast-provider';
 import { createClient } from '@/lib/supabase/client';
+import { isRedirectError } from '@/lib/utils/redirect-error';
 import { Settings, AlertTriangle, Camera, Loader2, RefreshCw } from 'lucide-react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function ClubSettingsPage() {
+  const router = useRouter();
   const params = useParams();
   const clubId = params.clubId as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -111,6 +113,8 @@ export default function ClubSettingsPage() {
     try {
       await updateClub(clubId, formData);
     } catch (e) {
+      // redirect() 신호는 다시 던져 Next가 페이지 이동을 처리하게 한다
+      if (isRedirectError(e)) throw e;
       setSaveError(e instanceof Error ? e.message : '클럽 정보 수정에 실패했습니다');
       setSaving(false);
     }
@@ -125,6 +129,12 @@ export default function ClubSettingsPage() {
     try {
       await deleteClub(clubId);
     } catch (e) {
+      // onClick 핸들러는 transition 밖이라 redirect()를 Next가 처리하지 못함 → 직접 이동
+      if (isRedirectError(e)) {
+        toast.success('클럽이 삭제되었습니다');
+        router.replace('/clubs');
+        return;
+      }
       toast.error(e instanceof Error ? e.message : '클럽 삭제에 실패했습니다');
       setDeleting(false);
     }

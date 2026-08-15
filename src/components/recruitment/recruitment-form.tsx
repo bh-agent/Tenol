@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils/cn';
 import { createRecruitmentPost } from '@/lib/actions/recruitment';
+import { isRedirectError } from '@/lib/utils/redirect-error';
 import { MATCH_FORMATS } from '@/lib/constants';
 import { useState, useTransition } from 'react';
 
@@ -35,6 +36,8 @@ export function RecruitmentForm({ clubId, upcomingMatches }: RecruitmentFormProp
       try {
         await createRecruitmentPost(formData);
       } catch (e) {
+        // redirect() 신호는 다시 던져 Next가 페이지 이동을 처리하게 한다
+        if (isRedirectError(e)) throw e;
         setError(e instanceof Error ? e.message : '모집글 작성에 실패했습니다');
       }
     });

@@ -3,8 +3,10 @@
 import { Button } from '@/components/ui/button';
 import { Modal } from '@/components/ui/modal';
 import { deleteMatch } from '@/lib/actions/matches';
+import { isRedirectError } from '@/lib/utils/redirect-error';
 import { Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 interface MatchManageButtonsProps {
@@ -14,6 +16,7 @@ interface MatchManageButtonsProps {
 }
 
 export function MatchManageButtons({ matchId, clubId, status }: MatchManageButtonsProps) {
+  const router = useRouter();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -29,6 +32,11 @@ export function MatchManageButtons({ matchId, clubId, status }: MatchManageButto
     try {
       await deleteMatch(matchId);
     } catch (e) {
+      // onClick 핸들러는 transition 밖이라 redirect()를 Next가 처리하지 못함 → 직접 이동
+      if (isRedirectError(e)) {
+        router.replace(`/clubs/${clubId}`);
+        return;
+      }
       setError(e instanceof Error ? e.message : '경기 삭제에 실패했습니다');
       setDeleting(false);
     }

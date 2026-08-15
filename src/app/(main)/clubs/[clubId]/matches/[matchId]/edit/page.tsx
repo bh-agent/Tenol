@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { TopBar } from '@/components/layout/top-bar';
 import { updateMatch } from '@/lib/actions/matches';
+import { isRedirectError } from '@/lib/utils/redirect-error';
 import { MATCH_FORMATS } from '@/lib/constants';
 import { CalendarPlus, MapPin, Clock, LayoutGrid } from 'lucide-react';
 import { useParams, useRouter } from 'next/navigation';
@@ -68,6 +69,8 @@ export default function EditMatchPage() {
     try {
       await updateMatch(matchId, formData);
     } catch (e) {
+      // redirect() 신호는 다시 던져 Next가 페이지 이동을 처리하게 한다
+      if (isRedirectError(e)) throw e;
       setError(e instanceof Error ? e.message : '경기 수정에 실패했습니다');
       setSubmitting(false);
     }
