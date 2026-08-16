@@ -41,7 +41,28 @@ export async function GET(request: Request) {
 
   const cutoff = todayPlusDays(LEAD_DAYS);
 
-  // 3. 활성 템플릿 조회
+  // 3. 날짜가 지난 예정/진행중 경기 자동 종료 (매일 자정 KST에 어제까지의 경기 정리)
+  let autoCompleted = 0;
+  {
+    const todayKst = todayPlusDays(0);
+    const { data: closedMatches, error: closeError } = await supabase
+      .from('matches')
+      .update({ status: 'completed', updated_at: new Date().toISOString() })
+      .lt('match_date', todayKst)
+      .in('status', ['upcoming', 'in_progress'])
+      .select('id');
+
+    if (closeError) {
+      logError('match', 'Cron: 지난 경기 자동 종료 실패', { error: closeError });
+    } else {
+      autoCompleted = closedMatches?.length ?? 0;
+      if (autoCompleted > 0) {
+        logInfo('match', 'Cron: 지난 경기 자동 종료', { metadata: { autoCompleted } });
+      }
+    }
+  }
+
+  // 4. 활성 템플릿 조회
   const { data: templates, error: templatesError } = await supabase
     .from('match_templates')
     .select('*')
@@ -138,5 +159,5 @@ export async function GET(request: Request) {
     metadata: { created, total: templates?.length ?? 0 },
   });
 
-  return NextResponse.json({ ok: true, created, matchIds: createdMatchIds });
+  return NextResponse.json({ ok: true, created, autoCompleted, matchIds: createdMatchIds });
 }
