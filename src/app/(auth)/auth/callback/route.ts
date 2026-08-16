@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { logError } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 
 /** 내부 경로만 허용 (open redirect 방지) */
@@ -32,12 +33,41 @@ export async function GET(request: Request) {
   // OAuth 에러 처리
   if (error) {
     console.error('OAuth callback error:', error, errorDescription);
+    await logError('auth', 'OAuth 콜백에 공급자 에러 도착', {
+      path: '/auth/callback',
+      metadata: { error, errorDescription },
+    });
     return NextResponse.redirect(`${origin}/login?error=${error}`);
   }
 
   if (code) {
     const supabase = await createClient();
     const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
+    // 진단용: 첫 시도 실패 문제 추적 — 실패 시 원인과 verifier 쿠키 존재 여부 기록
+    if (exchangeError) {
+      const cookieHeader = request.headers.get('cookie') ?? '';
+      const cookieNames = cookieHeader
+        .split(';')
+        .map((c) => c.split('=')[0].trim())
+        .filter(Boolean);
+      await logError('auth', '코드 교환 실패 (첫 시도 실패 추적)', {
+        path: '/auth/callback',
+        error: exchangeError,
+        metadata: {
+          exchangeMessage: exchangeError.message,
+          exchangeStatus: (exchangeError as { status?: number }).status ?? null,
+          hasVerifierCookie: cookieNames.some((n) => n.includes('code-verifier')),
+          hasAuthTokenCookie: cookieNames.some((n) => n.includes('auth-token') && !n.includes('verifier')),
+          cookieNames: cookieNames.filter((n) => n.startsWith('sb-')),
+          userAgent: (request.headers.get('user-agent') ?? '').slice(0, 120),
+          referer: request.headers.get('referer') ?? null,
+        },
+      });
+      // logError는 fire-and-forget — 서버리스 함수가 응답 후 얼어붙기 전에
+      // insert가 도착하도록 실패 경로에서만 잠시 대기 (진단용)
+      await new Promise((r) => setTimeout(r, 400));
+    }
 
     if (!exchangeError) {
       const { data: { user } } = await supabase.auth.getUser();
