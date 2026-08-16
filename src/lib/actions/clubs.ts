@@ -529,15 +529,23 @@ export async function cancelJoinRequest(requestId: string) {
 }
 
 // club.edit 권한 필요 (회장만) - 클럽 삭제
-export async function deleteClub(clubId: string) {
+// 예상 가능한 실패는 throw 대신 { error }로 반환한다 — 프로덕션에서 서버 액션의
+// throw 메시지는 보안상 가려져("An error occurred in the Server Components render...")
+// 사용자가 원인을 알 수 없기 때문. 성공 시에는 redirect가 throw되어 반환 없음.
+export async function deleteClub(clubId: string): Promise<{ error: string } | undefined> {
   const validClubId = uuidSchema.parse(clubId);
-  await requirePermission(validClubId, 'club.edit');
+
+  try {
+    await requirePermission(validClubId, 'club.edit');
+  } catch {
+    return { error: '클럽을 삭제할 권한이 없습니다' };
+  }
 
   const supabase = await createClient();
 
   // 회장만 삭제 가능하므로 추가 검증
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('인증이 필요합니다');
+  if (!user) return { error: '인증이 필요합니다. 다시 로그인해주세요.' };
 
   const { data: membership } = await supabase
     .from('club_members')
@@ -547,7 +555,7 @@ export async function deleteClub(clubId: string) {
     .maybeSingle();
 
   if (membership?.role !== 'owner') {
-    throw new Error('클럽장만 클럽을 삭제할 수 있습니다');
+    return { error: '클럽장만 클럽을 삭제할 수 있습니다' };
   }
 
   // .select()로 실제 삭제된 행을 확인 — RLS가 차단하면 에러 없이 0건이 되므로
@@ -560,12 +568,12 @@ export async function deleteClub(clubId: string) {
 
   if (error) {
     logError('club', 'Failed to delete club', { userId: user.id, clubId: validClubId, error });
-    throw new Error('클럽 삭제에 실패했습니다');
+    return { error: '클럽 삭제에 실패했습니다. 잠시 후 다시 시도해주세요.' };
   }
 
   if (!deleted || deleted.length === 0) {
-    logError('club', 'Club delete affected 0 rows (RLS?)', { userId: user.id, clubId: validClubId });
-    throw new Error('클럽 삭제가 처리되지 않았습니다. 잠시 후 다시 시도해주세요.');
+    logError('club', 'Club delete affected 0 rows (RLS policy?)', { userId: user.id, clubId: validClubId });
+    return { error: '클럽 삭제가 처리되지 않았습니다. 문제가 계속되면 문의해주세요.' };
   }
 
   logInfo('club', 'Club deleted', { userId: user.id, clubId: validClubId });

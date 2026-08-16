@@ -127,7 +127,16 @@ export default function ClubSettingsPage() {
     }
     setDeleting(true);
     try {
-      await deleteClub(clubId);
+      // 예상 실패는 { error }로 반환됨 (프로덕션에서 throw 메시지는 가려지므로)
+      const result = await deleteClub(clubId);
+      if (result?.error) {
+        toast.error(result.error);
+        setDeleting(false);
+        return;
+      }
+      // 성공 시 서버 redirect가 throw되므로 여기 도달하지 않음 — 도달하면 직접 이동
+      toast.success('클럽이 삭제되었습니다');
+      router.replace('/clubs');
     } catch (e) {
       // onClick 핸들러는 transition 밖이라 redirect()를 Next가 처리하지 못함 → 직접 이동
       if (isRedirectError(e)) {
@@ -135,7 +144,7 @@ export default function ClubSettingsPage() {
         router.replace('/clubs');
         return;
       }
-      toast.error(e instanceof Error ? e.message : '클럽 삭제에 실패했습니다');
+      toast.error('클럽 삭제 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.');
       setDeleting(false);
     }
   };

@@ -16,10 +16,10 @@ CREATE POLICY "Club owner can delete" ON public.clubs
   FOR DELETE TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM public.club_members
-      WHERE club_id = id
-        AND user_id = auth.uid()
-        AND role = 'owner'
+      SELECT 1 FROM public.club_members cm
+      WHERE cm.club_id = clubs.id
+        AND cm.user_id = auth.uid()
+        AND cm.role = 'owner'
     )
   );
 
