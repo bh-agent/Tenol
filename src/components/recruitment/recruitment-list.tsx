@@ -14,6 +14,7 @@ interface RecruitmentListProps {
   initialType?: RecruitmentType | 'all';
   initialQuery?: string;
   currentUserId?: string;
+  myClubIds?: string[];
 }
 
 const filterTabs: { key: RecruitmentType | 'all'; label: string }[] = [
@@ -27,6 +28,7 @@ export function RecruitmentList({
   initialType = 'all',
   initialQuery = '',
   currentUserId,
+  myClubIds,
 }: RecruitmentListProps) {
   const router = useRouter();
   const [activeType, setActiveType] = useState<RecruitmentType | 'all'>(initialType);
@@ -109,6 +111,7 @@ export function RecruitmentList({
               key={post.id}
               post={post}
               currentUserId={currentUserId}
+              isMyClub={myClubIds?.includes(post.club_id)}
               onClose={handleRemovePost}
               onDelete={handleRemovePost}
             />

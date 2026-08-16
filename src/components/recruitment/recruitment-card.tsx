@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   X,
   Trash2,
+  Check,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState, useTransition } from 'react';
@@ -25,6 +26,8 @@ import { ReportBlockMenu } from '@/components/moderation/report-block-menu';
 interface RecruitmentCardProps {
   post: RecruitmentPost;
   currentUserId?: string;
+  /** 현재 사용자가 이 모집글의 클럽에 이미 가입돼 있는지 */
+  isMyClub?: boolean;
   onClose?: (id: string) => void;
   onDelete?: (id: string) => void;
 }
@@ -41,7 +44,7 @@ function formatSlots(post: RecruitmentPost): string | null {
   return null;
 }
 
-export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: RecruitmentCardProps) {
+export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDelete }: RecruitmentCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [closing, startClosing] = useTransition();
@@ -279,9 +282,22 @@ export function RecruitmentCard({ post, currentUserId, onClose, onDelete }: Recr
         </div>
       )}
 
-      {/* Action Button */}
+      {/* Action Button — 이미 가입한 클럽이면 신청 대신 상태/바로가기 표시 */}
       <div className="px-4 pb-4">
-        {isMemberRecruit ? (
+        {isMyClub ? (
+          <Link
+            href={
+              !isMemberRecruit && post.match_id
+                ? `/clubs/${post.club_id}/matches/${post.match_id}`
+                : `/clubs/${post.club_id}`
+            }
+          >
+            <Button variant="ghost" size="sm" fullWidth className="text-muted-foreground">
+              <Check className="w-4 h-4 text-primary" />
+              {isMemberRecruit ? '가입된 클럽' : '내 클럽 경기 보기'}
+            </Button>
+          </Link>
+        ) : isMemberRecruit ? (
           <Link href={`/clubs/${post.club_id}`}>
             <Button
               variant="outline"

@@ -31,6 +31,9 @@ export default async function RecruitPage({
     .filter((club) => hasPermission(club.role, 'member.manage'))
     .map((club) => ({ id: club.id as string, name: club.name as string }));
 
+  // 이미 가입한 클럽 — 카드에서 '가입 신청' 대신 가입됨 상태를 보여주기 위함
+  const myClubIds = (myClubs as any[]).map((club) => club.id as string);
+
   return (
     <>
       <TopBar title="모집" />
@@ -51,6 +54,7 @@ export default async function RecruitPage({
         initialType={typeFilter || 'all'}
         initialQuery={q || ''}
         currentUserId={user?.id}
+        myClubIds={myClubIds}
       />
 
       <RecruitCreateFab clubs={managedClubs} />
