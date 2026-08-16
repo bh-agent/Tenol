@@ -20,6 +20,34 @@ function sanitizeNext(raw: string | null): string | null {
   return raw;
 }
 
+/**
+ * PKCE verifier 쿠키를 서버 Set-Cookie로 백업.
+ *
+ * iOS WKWebView는 document.cookie 쓰기 직후 페이지를 떠나면 쿠키가 네트워크
+ * 저장소에 반영되기 전에 유실될 수 있어("PKCE code verifier not found") 첫
+ * 로그인이 실패한다. OAuth로 이동하기 전에 서버가 같은 값을 HTTP 쿠키로
+ * 다시 심어 유실을 방지한다. (실패해도 로그인 자체는 계속 진행)
+ */
+async function backupVerifierCookies(): Promise<void> {
+  try {
+    const cookies = document.cookie
+      .split(';')
+      .map((c) => c.trim())
+      .filter((c) => c.includes('-code-verifier'))
+      .map((c) => {
+        const i = c.indexOf('=');
+        return { name: c.slice(0, i), value: c.slice(i + 1) };
+      });
+    if (cookies.length === 0) return;
+    await fetch('/api/auth/verifier-backup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cookies }),
+      keepalive: true,
+    });
+  } catch {}
+}
+
 function LoginContent() {
   const supabase = createClient();
   const router = useRouter();
@@ -178,22 +206,32 @@ function LoginContent() {
         });
 
         if (data?.url) {
+          await backupVerifierCookies(); // WKWebView 쿠키 유실 방지
           window.location.href = data.url;
           return; // 페이지 이탈 — loading 상태 유지
         }
         setLoading(null);
       } else {
-        // 웹/PWA: 콜백에 next를 실어 로그인 후 원래 목적지로 복귀
-        await supabase.auth.signInWithOAuth({
+        // 웹/PWA: 콜백에 next를 실어 로그인 후 원래 목적지로 복귀.
+        // skipBrowserRedirect로 URL만 받아 verifier 백업 후 직접 이동
+        // (iOS Safari도 동일한 쿠키 유실 사례가 관측됨)
+        const { data } = await supabase.auth.signInWithOAuth({
           provider,
           options: {
             redirectTo: `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`,
+            skipBrowserRedirect: true,
             ...(provider === 'kakao' ? {
               scopes: 'profile_nickname profile_image',
               queryParams: { scope: 'profile_nickname profile_image' },
             } : {}),
           },
         });
+        if (data?.url) {
+          await backupVerifierCookies();
+          window.location.href = data.url;
+          return;
+        }
+        setLoading(null);
       }
     } catch (e) {
       console.error('OAuth login error:', e);
@@ -261,12 +299,17 @@ function LoginContent() {
       // 웹/PWA: Supabase가 Apple OAuth를 직접 처리 (카카오/구글과 동일한 검증된 경로).
       // Apple JS SDK 팝업은 브라우저 환경에 따라 "문제가 발생했습니다. 다시
       // 시도하십시오." 오류가 잦아 전체 페이지 리디렉션 방식으로 교체함.
-      await supabase.auth.signInWithOAuth({
+      const { data: appleData } = await supabase.auth.signInWithOAuth({
         provider: 'apple',
         options: {
           redirectTo: `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`,
+          skipBrowserRedirect: true,
         },
       });
+      if (appleData?.url) {
+        await backupVerifierCookies(); // 쿠키 유실 방지 후 이동
+        window.location.href = appleData.url;
+      }
       return; // 페이지 이탈 — 이후 처리는 /auth/callback에서
     } catch (e: any) {
       // 사용자가 직접 취소한 경우는 에러로 표시하지 않음.
