@@ -76,14 +76,6 @@ function LoginContent() {
     }
   }, []);
 
-  // 웹/PWA: Apple JS SDK를 미리 받아둬서 탭 시점에 CDN 로딩을
-  // 기다리느라 스피너가 오래 걸리는 문제를 방지한다.
-  useEffect(() => {
-    if (!Capacitor.isNativePlatform()) {
-      loadAppleScript().catch(() => {});
-    }
-  }, []);
-
   // appUrlOpen: OAuth 완료 후 OS가 보내는 딥링크 처리 (성공 code / 취소·실패 error 모두)
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
@@ -266,19 +258,16 @@ function LoginContent() {
         return;
       }
 
-      // 웹/PWA: Apple JS SDK 팝업
-      await loadAppleScript();
-      // @ts-ignore - AppleID is loaded from script
-      const response = await window.AppleID.auth.signIn();
-      if (response.authorization?.id_token) {
-        const appleUser = response.user;
-        const fullName = appleUser?.name
-          ? [appleUser.name.firstName, appleUser.name.lastName].filter(Boolean).join(' ').trim()
-          : '';
-        await finishAppleSignIn(response.authorization.id_token, fullName, appleUser?.email ?? '');
-      } else {
-        setError('Apple 로그인에 실패했습니다. 다시 시도해주세요.');
-      }
+      // 웹/PWA: Supabase가 Apple OAuth를 직접 처리 (카카오/구글과 동일한 검증된 경로).
+      // Apple JS SDK 팝업은 브라우저 환경에 따라 "문제가 발생했습니다. 다시
+      // 시도하십시오." 오류가 잦아 전체 페이지 리디렉션 방식으로 교체함.
+      await supabase.auth.signInWithOAuth({
+        provider: 'apple',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`,
+        },
+      });
+      return; // 페이지 이탈 — 이후 처리는 /auth/callback에서
     } catch (e: any) {
       // 사용자가 직접 취소한 경우는 에러로 표시하지 않음.
       // 네이티브 플러그인은 code 없이 메시지만 reject하므로(예: "...error 1001.")
@@ -457,33 +446,3 @@ export default function LoginPage() {
   );
 }
 
-// Apple JS SDK 로드
-function loadAppleScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if ((window as any).AppleID) {
-      // 이미 초기화된 경우 재설정
-      (window as any).AppleID.auth.init({
-        clientId: 'app.tenol.club.service',
-        scope: 'name email',
-        redirectURI: window.location.origin + '/auth/callback',
-        usePopup: true,
-      });
-      resolve();
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
-    script.onload = () => {
-      (window as any).AppleID.auth.init({
-        clientId: 'app.tenol.club.service',
-        scope: 'name email',
-        redirectURI: window.location.origin + '/auth/callback',
-        usePopup: true,
-      });
-      resolve();
-    };
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-}
