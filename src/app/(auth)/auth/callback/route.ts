@@ -42,7 +42,8 @@ export async function GET(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    const { data: exchangeData, error: exchangeError } =
+      await supabase.auth.exchangeCodeForSession(code);
 
     // 진단용: 첫 시도 실패 문제 추적 — 실패 시 원인과 verifier 쿠키 존재 여부 기록
     if (exchangeError) {
@@ -70,7 +71,8 @@ export async function GET(request: Request) {
     }
 
     if (!exchangeError) {
-      const { data: { user } } = await supabase.auth.getUser();
+      // 교환 응답에 이미 검증된 user가 있으므로 getUser() 재조회(왕복 1회) 불필요
+      const user = exchangeData.user;
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -110,10 +112,11 @@ export async function POST(request: Request) {
 
   if (code) {
     const supabase = await createClient();
-    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+    const { data: exchangeData, error: exchangeError } =
+      await supabase.auth.exchangeCodeForSession(code);
 
     if (!exchangeError) {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = exchangeData.user;
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
