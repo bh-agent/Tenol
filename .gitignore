@@ -52,3 +52,6 @@ AuthKey_*
 
 # Xcode SPM resolution cache
 ios/App/App.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+
+# 개인 자료 (앱과 무관)
+/Teylenol*/
