@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils/cn';
 import { Capacitor } from '@capacitor/core';
 import Image from 'next/image';
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 // 네이티브 OAuth redirect_uri: Google/Kakao는 https만 허용하므로
@@ -21,31 +21,15 @@ function sanitizeNext(raw: string | null): string | null {
 }
 
 /**
- * PKCE verifier 쿠키를 서버 Set-Cookie로 백업.
+ * 웹/구버전 앱의 OAuth 시작 URL.
  *
- * iOS WKWebView는 document.cookie 쓰기 직후 페이지를 떠나면 쿠키가 네트워크
- * 저장소에 반영되기 전에 유실될 수 있어("PKCE code verifier not found") 첫
- * 로그인이 실패한다. OAuth로 이동하기 전에 서버가 같은 값을 HTTP 쿠키로
- * 다시 심어 유실을 방지한다. (실패해도 로그인 자체는 계속 진행)
+ * 서버 라우트(/auth/signin)가 PKCE verifier를 302 응답의 Set-Cookie로 심고
+ * 공급자로 리다이렉트한다. 클라이언트 document.cookie 저장은 iOS WKWebView에서
+ * 공급자 페이지로 이동하는 사이 유실되는 것이 실측 로그로 확인돼(첫 로그인
+ * 실패의 원인) 서버 시작 방식으로 교체했다. HTTP 쿠키는 유실 레이스가 없다.
  */
-async function backupVerifierCookies(): Promise<void> {
-  try {
-    const cookies = document.cookie
-      .split(';')
-      .map((c) => c.trim())
-      .filter((c) => c.includes('-code-verifier'))
-      .map((c) => {
-        const i = c.indexOf('=');
-        return { name: c.slice(0, i), value: c.slice(i + 1) };
-      });
-    if (cookies.length === 0) return;
-    await fetch('/api/auth/verifier-backup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ cookies }),
-      keepalive: true,
-    });
-  } catch {}
+function serverSignInUrl(provider: OAuthProvider, next: string | null): string {
+  return `/auth/signin?provider=${provider}${next ? `&next=${encodeURIComponent(next)}` : ''}`;
 }
 
 function LoginContent() {
@@ -54,6 +38,8 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 딥링크로 이미 교환을 시도한 OAuth code 기록 (중복 전달 방지)
+  const handledCodesRef = useRef<Set<string>>(new Set());
 
   // 초대 링크 등에서 넘어온 복귀 목적지 (미들웨어가 ?next=로 전달)
   const next = sanitizeNext(searchParams.get('next'));
@@ -78,8 +64,26 @@ function LoginContent() {
 
   // WKWebView 쿠키 커밋 지연으로 로그인 직후 /login으로 튕긴 경우 자동 복구:
   // 세션이 이미 있으면 즉시 목적지로 이동 (마운트 시 + 0.6초 후 재확인)
+  //
+  // 추가로 화면 복귀 시에도 복구한다:
+  // - bfcache 복원(pageshow persisted) / 앱 백그라운드 복귀(visibilitychange):
+  //   OAuth 도중 이탈했다 돌아오면 loading이 남아 버튼이 비활성(흐릿)로
+  //   먹통이 되는 문제 → 세션 있으면 이동, 없으면 버튼 복구
   useEffect(() => {
     let cancelled = false;
+    const recover = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled) return;
+        if (session) {
+          router.replace(destination);
+          return;
+        }
+      } catch {}
+      // 세션 없이 돌아옴 — 진행 중이던 로그인은 중단된 것으로 보고 버튼 복구.
+      // (딥링크 코드 교환 중(oauth-callback)은 곧 스스로 끝나므로 유지)
+      if (!cancelled) setLoading((prev) => (prev === 'oauth-callback' ? prev : null));
+    };
     const check = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
@@ -88,9 +92,20 @@ function LoginContent() {
     };
     check();
     const t = setTimeout(check, 600);
+
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) recover();
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') recover();
+    };
+    window.addEventListener('pageshow', onPageShow);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       cancelled = true;
       clearTimeout(t);
+      window.removeEventListener('pageshow', onPageShow);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [supabase, router, destination]);
   // 버튼 순서: 기본은 카카오 우선(한국 사용자 대다수).
@@ -123,8 +138,18 @@ function LoginContent() {
           const oauthError = parsed.searchParams.get('error');
 
           if (code) {
+            // 같은 딥링크가 중복 전달돼도 코드 교환은 한 번만 (재교환은 무조건 실패)
+            if (handledCodesRef.current.has(code)) return;
+            handledCodesRef.current.add(code);
             setLoading('oauth-callback');
-            const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+            // 네트워크가 멎은 채 복귀한 경우 교환 요청이 영원히 안 끝나
+            // 화면이 먹통(버튼 비활성)으로 남지 않도록 15초 타임아웃
+            const { error: exchangeError } = await Promise.race([
+              supabase.auth.exchangeCodeForSession(code),
+              new Promise<{ error: Error }>((resolve) =>
+                setTimeout(() => resolve({ error: new Error('exchange timeout') }), 15000)
+              ),
+            ]);
             if (exchangeError) {
               try { await Browser.close(); } catch {}
               setError('로그인에 실패했습니다. 다시 시도해주세요.');
@@ -190,48 +215,11 @@ function LoginContent() {
           await Browser.open({ url: data.url, presentationStyle: 'fullscreen' });
         }
         // 이후 처리는 appUrlOpen 리스너에서 담당
-      } else if (Capacitor.isNativePlatform()) {
-        // 구버전 앱: 팝업 브라우저 대신 앱 WebView 안에서 직접 OAuth 진행.
-        // 같은 화면으로 /auth/callback에 돌아와 세션 쿠키가 WebView에 저장된다.
-        const { data } = await supabase.auth.signInWithOAuth({
-          provider,
-          options: {
-            redirectTo: `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`,
-            skipBrowserRedirect: true,
-            ...(provider === 'kakao' ? {
-              scopes: 'profile_nickname profile_image',
-              queryParams: { scope: 'profile_nickname profile_image' },
-            } : {}),
-          },
-        });
-
-        if (data?.url) {
-          await backupVerifierCookies(); // WKWebView 쿠키 유실 방지
-          window.location.href = data.url;
-          return; // 페이지 이탈 — loading 상태 유지
-        }
-        setLoading(null);
       } else {
-        // 웹/PWA: 콜백에 next를 실어 로그인 후 원래 목적지로 복귀.
-        // skipBrowserRedirect로 URL만 받아 verifier 백업 후 직접 이동
-        // (iOS Safari도 동일한 쿠키 유실 사례가 관측됨)
-        const { data } = await supabase.auth.signInWithOAuth({
-          provider,
-          options: {
-            redirectTo: `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`,
-            skipBrowserRedirect: true,
-            ...(provider === 'kakao' ? {
-              scopes: 'profile_nickname profile_image',
-              queryParams: { scope: 'profile_nickname profile_image' },
-            } : {}),
-          },
-        });
-        if (data?.url) {
-          await backupVerifierCookies();
-          window.location.href = data.url;
-          return;
-        }
-        setLoading(null);
+        // 웹/PWA/구버전 앱: 서버 라우트가 verifier를 HTTP 쿠키로 심고 공급자로 이동.
+        // 같은 화면으로 /auth/callback에 돌아와 세션 쿠키가 저장된다.
+        window.location.href = serverSignInUrl(provider, next);
+        return; // 페이지 이탈 — loading 유지 (복귀 시 pageshow/visibilitychange에서 복구)
       }
     } catch (e) {
       console.error('OAuth login error:', e);
@@ -299,17 +287,8 @@ function LoginContent() {
       // 웹/PWA: Supabase가 Apple OAuth를 직접 처리 (카카오/구글과 동일한 검증된 경로).
       // Apple JS SDK 팝업은 브라우저 환경에 따라 "문제가 발생했습니다. 다시
       // 시도하십시오." 오류가 잦아 전체 페이지 리디렉션 방식으로 교체함.
-      const { data: appleData } = await supabase.auth.signInWithOAuth({
-        provider: 'apple',
-        options: {
-          redirectTo: `${window.location.origin}/auth/callback${next ? `?next=${encodeURIComponent(next)}` : ''}`,
-          skipBrowserRedirect: true,
-        },
-      });
-      if (appleData?.url) {
-        await backupVerifierCookies(); // 쿠키 유실 방지 후 이동
-        window.location.href = appleData.url;
-      }
+      // 서버 라우트가 verifier를 HTTP 쿠키로 심는다 (WKWebView 유실 방지).
+      window.location.href = serverSignInUrl('apple', next);
       return; // 페이지 이탈 — 이후 처리는 /auth/callback에서
     } catch (e: any) {
       // 사용자가 직접 취소한 경우는 에러로 표시하지 않음.
