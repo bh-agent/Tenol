@@ -82,8 +82,13 @@ export async function claimHandoffSession(
   const base = storageBase();
   if (!base || !HANDOFF_TOKEN_RE.test(token)) return null;
 
-  const res = await fetch(`${base.url}/object/${BUCKET}/${token}.json`, {
+  // 내용 읽기. Supabase Storage 읽기는 CDN 캐시를 타므로 삭제 후에도 캐시된
+  // 200이 올 수 있다 → 일회용 판정은 읽기가 아니라 아래 '삭제'가 담당한다.
+  // (캐시 우회를 위해 유일 쿼리 파라미터 부여)
+  const bust = makeHandoffToken();
+  const res = await fetch(`${base.url}/object/${BUCKET}/${token}.json?_=${bust}`, {
     headers: base.headers,
+    cache: 'no-store',
   });
   if (!res.ok) return null;
 
@@ -94,23 +99,31 @@ export async function claimHandoffSession(
     return null;
   }
 
-  // 유효성(TTL·필수 필드)을 먼저 확인해, 손상/만료 객체 때문에 정상 재시도가
-  // 토큰을 잃는 일을 막는다. 유효할 때만 삭제해 일회용으로 소비한다.
-  const valid =
-    !!stored?.access_token &&
-    !!stored?.refresh_token &&
-    !!stored?.created_at &&
-    Date.now() - stored.created_at <= TTL_MS;
-  if (!valid) return null;
-
-  // 일회용 보장: 반환 전에 반드시 삭제 (배치 삭제 API — 단건 DELETE는 빈 본문 400).
-  // 삭제 실패 시 세션을 반환하지 않는다 — 이중 소비(리플레이) 방지가 우선.
+  // 일회용의 진짜 관문: 배치 삭제(원자적 DELETE … RETURNING).
+  // 동시/재요청이 있어도 실제로 행을 지운 요청만 객체 메타를 돌려받는다.
+  // 반환 배열이 비어 있으면 이미 소비된 것(리플레이) → 세션 미반환.
   const del = await fetch(`${base.url}/object/${BUCKET}`, {
     method: 'DELETE',
     headers: { ...base.headers, 'Content-Type': 'application/json' },
     body: JSON.stringify({ prefixes: [`${token}.json`] }),
   });
   if (!del.ok) return null;
+  let deleted: unknown;
+  try {
+    deleted = await del.json();
+  } catch {
+    return null;
+  }
+  const weClaimed = Array.isArray(deleted) && deleted.length > 0;
+  if (!weClaimed) return null; // 이미 소비됨 — 우리가 지운 게 아님
+
+  // TTL·필수 필드 검증 (만료/손상 객체는 소비만 하고 세션은 주지 않음)
+  const valid =
+    !!stored?.access_token &&
+    !!stored?.refresh_token &&
+    !!stored?.created_at &&
+    Date.now() - stored.created_at <= TTL_MS;
+  if (!valid) return null;
 
   return { access_token: stored.access_token, refresh_token: stored.refresh_token };
 }
