@@ -4,14 +4,16 @@ import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils/cn';
 import { Capacitor } from '@capacitor/core';
 import Image from 'next/image';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-// 네이티브 OAuth redirect_uri: Google/Kakao는 https만 허용하므로
-// 서버 라우트(/auth/native-callback)가 app.tenol.club:// 딥링크로 포워딩한다.
-const NATIVE_REDIRECT = 'https://tenol-one.vercel.app/auth/native-callback';
-
 type OAuthProvider = 'apple' | 'kakao' | 'google';
+
+// 네이티브 핸드오프 최대 대기 (외부 브라우저 로그인이 이 시간 안에 안 끝나면 초기화)
+const HANDOFF_TIMEOUT_MS = 4 * 60 * 1000;
+
+/** 서버가 딥링크로 준 핸드오프 토큰 형식 (hex 48자) */
+const HANDOFF_TOKEN_RE = /^[a-f0-9]{48}$/;
 
 /** 로그인 후 복귀 경로 검증: 내부 경로만 허용 (open redirect 방지) */
 function sanitizeNext(raw: string | null): string | null {
@@ -38,12 +40,99 @@ function LoginContent() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  // 딥링크로 이미 교환을 시도한 OAuth code 기록 (중복 전달 방지)
-  const handledCodesRef = useRef<Set<string>>(new Set());
+
+  // 네이티브 세션 핸드오프 진행 상태 (외부 브라우저에서 로그인 진행 중)
+  const [handoff, setHandoff] = useState<{ provider: string } | null>(null);
+  const claimBusyRef = useRef(false);
+  const claimedRef = useRef(false); // 성공 후 재진입(브라우저 닫힘/재개) 방지
+  const handoffTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 초대 링크 등에서 넘어온 복귀 목적지 (미들웨어가 ?next=로 전달)
   const next = sanitizeNext(searchParams.get('next'));
   const destination = next ?? '/clubs';
+
+  // ── 네이티브 세션 핸드오프 ─────────────────────────────────────────
+  // Capacitor WebView는 OAuth 공급자로의 이동을 외부 브라우저로 넘기므로,
+  // 로그인은 외부 브라우저에서 끝나고 세션도 거기에만 남는다. 서버가 로그인을
+  // 마친 '본인 기기'에만 일회용 토큰을 딥링크로 전달하고, 앱은 그 토큰으로
+  // 세션을 HTTP Set-Cookie로 수령한다(document.cookie 미사용 → WKWebView 유실 없음).
+
+  const clearHandoffTimer = () => {
+    if (handoffTimerRef.current) {
+      clearTimeout(handoffTimerRef.current);
+      handoffTimerRef.current = null;
+    }
+  };
+
+  /** 딥링크로 받은 토큰으로 세션 수령. 성공하면 브라우저를 닫고 목적지로 이동 */
+  const claimSession = useCallback(async (token: string): Promise<void> => {
+    if (!HANDOFF_TOKEN_RE.test(token)) return;
+    if (claimedRef.current || claimBusyRef.current) return;
+    claimBusyRef.current = true;
+    try {
+      const res = await fetch('/api/auth/handoff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean };
+      if (!res.ok || json.ok !== true) {
+        // 토큰이 유효하지 않음(만료·재사용·손상) — 사용자에게 알리고 초기화
+        claimBusyRef.current = false;
+        clearHandoffTimer();
+        setHandoff(null);
+        setLoading(null);
+        setError('로그인 확인에 실패했습니다. 다시 시도해주세요.');
+        try {
+          const { Browser } = await import('@capacitor/browser');
+          await Browser.close();
+        } catch {}
+        return;
+      }
+
+      claimedRef.current = true;
+      clearHandoffTimer();
+      setHandoff(null);
+      setLoading('oauth-callback'); // 이동할 때까지 버튼 잠금 유지
+      try {
+        const { Browser } = await import('@capacitor/browser');
+        await Browser.close();
+      } catch {}
+      // 세션 쿠키는 HTTP 응답으로 이미 심어졌으므로 전체 내비게이션으로 이동.
+      // (미들웨어가 쿠키를 읽어 인증 통과 → 목적지 렌더)
+      window.location.href = destination;
+    } catch {
+      // 네트워크 오류 — 딥링크/버튼 재시도로 회복 가능하므로 상태 유지
+      claimBusyRef.current = false;
+    }
+  }, [destination]);
+
+  const cancelHandoff = useCallback(async () => {
+    clearHandoffTimer();
+    setHandoff(null);
+    setLoading(null);
+    try {
+      const { Browser } = await import('@capacitor/browser');
+      await Browser.close();
+    } catch {}
+  }, []);
+
+  /** 외부 브라우저 로그인을 시작하고 대기 상태로 전환 */
+  const beginHandoff = useCallback((provider: 'kakao' | 'google') => {
+    claimedRef.current = false;
+    claimBusyRef.current = false;
+    setHandoff({ provider });
+    clearHandoffTimer();
+    handoffTimerRef.current = setTimeout(() => {
+      if (claimedRef.current) return;
+      setHandoff(null);
+      setLoading(null);
+      setError('로그인 시간이 초과되었습니다. 다시 시도해주세요.');
+    }, HANDOFF_TIMEOUT_MS);
+  }, []);
+
+  // 언마운트 시 진행 중 타이머 정리 (메모리 누수/유령 setState 방지)
+  useEffect(() => () => clearHandoffTimer(), []);
 
   // 정지 계정·OAuth 실패 안내 (미들웨어/콜백이 쿼리로 전달)
   useEffect(() => {
@@ -72,6 +161,8 @@ function LoginContent() {
   useEffect(() => {
     let cancelled = false;
     const recover = async () => {
+      // 핸드오프 완료 후 이동 중이면 건드리지 않는다
+      if (claimedRef.current) return;
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (cancelled) return;
@@ -80,9 +171,11 @@ function LoginContent() {
           return;
         }
       } catch {}
-      // 세션 없이 돌아옴 — 진행 중이던 로그인은 중단된 것으로 보고 버튼 복구.
-      // (딥링크 코드 교환 중(oauth-callback)은 곧 스스로 끝나므로 유지)
-      if (!cancelled) setLoading((prev) => (prev === 'oauth-callback' ? prev : null));
+      // 세션 없이 돌아옴 — 핸드오프 대기 중이 아니라면 버튼 복구.
+      // (대기 중이면 딥링크/버튼으로 완료되므로 화면 유지)
+      if (!cancelled && !handoff) {
+        setLoading((prev) => (prev === 'oauth-callback' ? prev : null));
+      }
     };
     const check = async () => {
       try {
@@ -107,7 +200,7 @@ function LoginContent() {
       window.removeEventListener('pageshow', onPageShow);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [supabase, router, destination]);
+  }, [supabase, router, destination, handoff]);
   // 버튼 순서: 기본은 카카오 우선(한국 사용자 대다수).
   // SSR과 첫 클라이언트 렌더가 일치해야 하므로 기본값으로 렌더한 뒤,
   // 마운트 후 iOS 네이티브에서만 Apple 우선으로 교체한다(앱 심사 요건).
@@ -132,49 +225,21 @@ function LoginContent() {
 
       urlListener = await App.addListener('appUrlOpen', async ({ url }) => {
         try {
-          const parsed = new URL(url);
-          // app.tenol.club://auth/callback?code=... 또는 ?error=...
-          const code = parsed.searchParams.get('code');
-          const oauthError = parsed.searchParams.get('error');
-
-          if (code) {
-            // 같은 딥링크가 중복 전달돼도 코드 교환은 한 번만 (재교환은 무조건 실패)
-            if (handledCodesRef.current.has(code)) return;
-            handledCodesRef.current.add(code);
-            setLoading('oauth-callback');
-            // 네트워크가 멎은 채 복귀한 경우 교환 요청이 영원히 안 끝나
-            // 화면이 먹통(버튼 비활성)으로 남지 않도록 15초 타임아웃
-            const { error: exchangeError } = await Promise.race([
-              supabase.auth.exchangeCodeForSession(code),
-              new Promise<{ error: Error }>((resolve) =>
-                setTimeout(() => resolve({ error: new Error('exchange timeout') }), 15000)
-              ),
-            ]);
-            if (exchangeError) {
-              try { await Browser.close(); } catch {}
-              setError('로그인에 실패했습니다. 다시 시도해주세요.');
-            } else {
-              try { await Browser.close(); } catch {}
-              router.replace(destination);
-            }
-          } else if (oauthError) {
-            // 사용자가 동의 화면에서 취소했거나 공급자 오류 — 브라우저 닫고 안내
-            try { await Browser.close(); } catch {}
-            if (oauthError !== 'access_denied') {
-              setError('로그인이 취소되었거나 실패했습니다. 다시 시도해주세요.');
-            }
-          }
-        } catch {
-          setError('로그인 처리 중 오류가 발생했습니다.');
-        } finally {
-          setLoading(null);
-        }
+          // app.tenol.club://auth/handoff?token=... — 인터스티셜의 '앱으로 돌아가기'
+          // (콜드 스타트 포함: OS가 앱 실행 URL로 이 리스너를 호출)
+          if (!url.includes('auth/handoff')) return;
+          const token = new URL(url).searchParams.get('token');
+          if (token) claimSession(token);
+        } catch {}
       });
 
-      // 사용자가 브라우저를 '완료'로 직접 닫은 경우 — 딥링크가 없으므로
-      // 여기서 loading을 풀어줘야 버튼이 다시 활성화된다
+      // 사용자가 브라우저를 로그인 완료 없이 직접 닫은 경우 대기 상태 해제.
+      // (완료로 닫힌 경우엔 claimedRef가 서 있어 건드리지 않는다)
       finishListener = await Browser.addListener('browserFinished', () => {
-        setLoading((prev) => (prev === 'oauth-callback' ? prev : null));
+        if (claimedRef.current || claimBusyRef.current) return;
+        clearHandoffTimer();
+        setHandoff(null);
+        setLoading(null);
       });
     };
 
@@ -183,41 +248,33 @@ function LoginContent() {
       urlListener?.remove();
       finishListener?.remove();
     };
-  }, [supabase, router, destination]);
+  }, [claimSession]);
 
   const handleOAuthLogin = async (provider: 'kakao' | 'google') => {
-    setLoading(provider);
     setError(null);
 
     try {
-      // 딥링크 지원 빌드 판별: capacitor.config의 appendUserAgent 마커.
-      // 구버전 앱 바이너리에는 app.tenol.club:// scheme이 등록돼 있지 않아
-      // 딥링크로 복귀 시 "주소가 유효하지 않습니다" 오류가 난다.
-      const supportsDeepLink = navigator.userAgent.includes('TenolApp/');
-
-      if (Capacitor.isNativePlatform() && supportsDeepLink) {
-        // 신규 빌드: 커스텀 스킴으로 리디렉션 → OS가 딥링크(appUrlOpen)로 앱에 전달
-        // 인앱 브라우저는 자동으로 닫히지 않으므로 딥링크 핸들러에서 Browser.close() 호출
-        const { data } = await supabase.auth.signInWithOAuth({
-          provider,
-          options: {
-            redirectTo: NATIVE_REDIRECT,
-            skipBrowserRedirect: true,
-            ...(provider === 'kakao' ? {
-              scopes: 'profile_nickname profile_image',
-              queryParams: { scope: 'profile_nickname profile_image' },
-            } : {}),
-          },
-        });
-
-        if (data?.url) {
+      if (Capacitor.isNativePlatform()) {
+        // 네이티브: Capacitor WebView는 외부 호스트(OAuth 공급자) 이동을 가로채
+        // 외부 브라우저를 띄우므로(쿠키 저장소가 분리됨), 처음부터 외부 브라우저에서
+        // 로그인 전 과정을 진행한다. 세션은 서버가 로그인 완료한 본인 기기에만
+        // 딥링크로 전달하는 일회용 토큰으로 수령한다(app.tenol.club://auth/handoff).
+        // 구글은 WebView 내 OAuth를 정책적으로 차단하므로 이 방식이 유일하게 안전하다.
+        const url = `${window.location.origin}/auth/signin?provider=${provider}&native=1${next ? `&next=${encodeURIComponent(next)}` : ''}`;
+        beginHandoff(provider);
+        try {
           const { Browser } = await import('@capacitor/browser');
-          await Browser.open({ url: data.url, presentationStyle: 'fullscreen' });
+          await Browser.open({ url, presentationStyle: 'fullscreen' });
+        } catch {
+          // 아주 오래된 빌드(Browser 플러그인 없음): WebView 이동 —
+          // Capacitor가 외부 호스트 도달 시점에 외부 브라우저로 연다
+          window.location.href = url;
         }
-        // 이후 처리는 appUrlOpen 리스너에서 담당
+        // 이후 처리는 appUrlOpen(딥링크)·browserFinished가 담당
       } else {
-        // 웹/PWA/구버전 앱: 서버 라우트가 verifier를 HTTP 쿠키로 심고 공급자로 이동.
+        // 웹/PWA: 서버 라우트가 verifier를 HTTP 쿠키로 심고 공급자로 이동.
         // 같은 화면으로 /auth/callback에 돌아와 세션 쿠키가 저장된다.
+        setLoading(provider);
         window.location.href = serverSignInUrl(provider, next);
         return; // 페이지 이탈 — loading 유지 (복귀 시 pageshow/visibilitychange에서 복구)
       }
@@ -225,8 +282,9 @@ function LoginContent() {
       console.error('OAuth login error:', e);
       setError('로그인 중 문제가 발생했습니다. 다시 시도해주세요.');
       setLoading(null);
+      clearHandoffTimer();
+      setHandoff(null);
     }
-    // 네이티브 성공 시 loading은 appUrlOpen 핸들러에서 해제
   };
 
   // id_token 확보 후 공통 처리: Supabase 로그인 + 이름 자동 채우기 + 이동
@@ -317,7 +375,7 @@ function LoginContent() {
           <button
             key="apple"
             onClick={handleAppleLogin}
-            disabled={loading !== null}
+            disabled={loading !== null || handoff !== null}
             className={cn(
               'group w-full h-14 rounded-2xl font-semibold text-white bg-black border-2 border-white',
               'flex items-center justify-center gap-3',
@@ -337,7 +395,7 @@ function LoginContent() {
           <button
             key="kakao"
             onClick={() => handleOAuthLogin('kakao')}
-            disabled={loading !== null}
+            disabled={loading !== null || handoff !== null}
             className={cn(
               'group w-full h-14 rounded-2xl font-semibold text-[#191919] bg-[#FEE500] border-2 border-[#E5CE00]',
               'flex items-center justify-center gap-3',
@@ -357,7 +415,7 @@ function LoginContent() {
           <button
             key="google"
             onClick={() => handleOAuthLogin('google')}
-            disabled={loading !== null}
+            disabled={loading !== null || handoff !== null}
             className={cn(
               'group w-full h-14 rounded-2xl font-semibold text-[#1F1F1F] bg-white border-2 border-gray-300',
               'flex items-center justify-center gap-3',
@@ -436,6 +494,23 @@ function LoginContent() {
 
       {/* Login Buttons — sticky at bottom, always visible */}
       <div className="relative z-10 px-6 w-full max-w-sm mx-auto space-y-3 animate-fade-in pb-[max(env(safe-area-inset-bottom),24px)]" style={{ animationDelay: '0.3s' }}>
+        {handoff && (
+          <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-4 text-center">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+              <span className="text-sm font-medium">브라우저에서 로그인을 진행해주세요</span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              로그인이 끝나면 자동으로 이어집니다
+            </p>
+            <button
+              onClick={cancelHandoff}
+              className="text-xs text-subtle underline underline-offset-2"
+            >
+              취소
+            </button>
+          </div>
+        )}
         {error && (
           <div
             role="alert"
