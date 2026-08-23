@@ -1,5 +1,14 @@
 apply plugin: 'com.android.application'
 
+// 릴리스 서명 정보는 저장소에 커밋하지 않는다.
+// android/keystore.properties (gitignore됨)에서 읽으며, 파일이 없으면
+// 서명 없이 빌드(디버그/CI 안전). 예시: android/keystore.properties.example
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
 android {
     namespace = "app.tenol.club"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,11 +25,25 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            // keystore.properties가 있을 때만 서명 (없으면 미서명 릴리스)
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }
