@@ -207,9 +207,16 @@ function LoginContent() {
   const [order, setOrder] = useState<OAuthProvider[]>(['kakao', 'google', 'apple']);
 
   useEffect(() => {
-    if (Capacitor.getPlatform() === 'ios') {
+    const platform = Capacitor.getPlatform();
+    if (platform === 'ios') {
+      // iOS는 앱 심사 요건상 Apple 우선
       setOrder(['apple', 'kakao', 'google']);
+    } else if (platform === 'android') {
+      // Android는 Apple 로그인 불필요(심사 요건 아님) + 네이티브 Apple 플러그인
+      // 미지원이라 버튼을 숨긴다. 카카오/구글만 노출.
+      setOrder(['kakao', 'google']);
     }
+    // web/PWA: 기본값 유지 (kakao, google, apple)
   }, []);
 
   // appUrlOpen: OAuth 완료 후 OS가 보내는 딥링크 처리 (성공 code / 취소·실패 error 모두)
