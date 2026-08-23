@@ -72,7 +72,7 @@ a.btn{display:block;padding:16px;border-radius:16px;background:#00E676;color:#0A
 <h1>${heading}</h1>
 <p>${desc}</p>
 <a class="btn" id="back" href="${deepLink}">테놀 앱으로 돌아가기</a>
-<div class="hint">버튼을 눌러도 앱이 열리지 않으면<br>이 창을 닫고 테놀 앱을 직접 열어주세요.</div>
+<div class="hint">'주소가 유효하지 않다'는 오류가 뜨면<br>앱이 최신 버전이 아닙니다 — 앱을 업데이트한 뒤<br>이 창을 닫고 다시 로그인해주세요.</div>
 <script>
 // 성공 시 딥링크 자동 시도(앱 자동 복귀). 실패해도 버튼으로 수동 복귀 가능.
 // iOS는 "테놀에서 열기?" 확인창이 뜰 수 있어 사용자 탭이 가장 확실하다.
