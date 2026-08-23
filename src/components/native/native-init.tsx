@@ -70,19 +70,28 @@ export function NativeInit() {
         });
         removers.push(() => hTap.remove());
 
-        // 이미 허용된 기기는 즉시 토큰 등록.
-        // 미결정 상태면 최초 1회만 요청하고, 사용자가 거부한 선택은 존중한다.
-        const perm = await PushNotifications.checkPermissions();
-        if (perm.receive === 'granted') {
-          await PushNotifications.register();
-        } else if (
-          (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') &&
-          !localStorage.getItem('tenol_push_asked')
-        ) {
-          localStorage.setItem('tenol_push_asked', '1');
-          const req = await PushNotifications.requestPermissions();
-          if (req.receive === 'granted') {
+        // Android 푸시는 Firebase(google-services.json) 설정 전까지 비활성.
+        // 설정 없이 register()를 호출하면 네이티브에서
+        // "Default FirebaseApp is not initialized" FATAL EXCEPTION이 발생해
+        // 앱이 즉시 종료된다(JS try/catch로도 못 잡음). Android에 google-services.json을
+        // 추가하고 재빌드한 뒤 이 가드를 iOS+Android로 열면 된다.
+        const pushSupported = platform === 'ios';
+
+        if (pushSupported) {
+          // 이미 허용된 기기는 즉시 토큰 등록.
+          // 미결정 상태면 최초 1회만 요청하고, 사용자가 거부한 선택은 존중한다.
+          const perm = await PushNotifications.checkPermissions();
+          if (perm.receive === 'granted') {
             await PushNotifications.register();
+          } else if (
+            (perm.receive === 'prompt' || perm.receive === 'prompt-with-rationale') &&
+            !localStorage.getItem('tenol_push_asked')
+          ) {
+            localStorage.setItem('tenol_push_asked', '1');
+            const req = await PushNotifications.requestPermissions();
+            if (req.receive === 'granted') {
+              await PushNotifications.register();
+            }
           }
         }
       } catch {}
