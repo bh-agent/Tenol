@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { requirePermission, requireMatchPermission } from '@/lib/utils/check-permission';
+import { requirePermission, requireMatchPermission, requireMatchDrawEdit } from '@/lib/utils/check-permission';
 import { logError, logInfo, logWarn } from '@/lib/logger';
 import { redirect } from 'next/navigation';
 import {
@@ -600,7 +600,8 @@ export async function replaceParticipant(matchId: string, oldParticipantId: stri
     const validMatchId = uuidSchema.parse(matchId);
     const validOldId = uuidSchema.parse(oldParticipantId);
     const validNewUserId = uuidSchema.parse(newUserId);
-    await requireMatchPermission(validMatchId, 'match.create');
+    // 선수 교체: 종료된 대진은 회장·운영진만 가능
+    await requireMatchDrawEdit(validMatchId);
 
     const supabase = await createClient();
 
@@ -684,7 +685,8 @@ export async function replaceWithOffline(
   try {
     const validMatchId = uuidSchema.parse(matchId);
     const validOldId = uuidSchema.parse(oldParticipantId);
-    await requireMatchPermission(validMatchId, 'match.create');
+    // 선수 교체(오프라인): 종료된 대진은 회장·운영진만 가능
+    await requireMatchDrawEdit(validMatchId);
 
     const supabase = await createClient();
 

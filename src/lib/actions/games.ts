@@ -35,6 +35,26 @@ async function getClubIdFromGame(gameId: string): Promise<string> {
   return match.club_id;
 }
 
+async function getMatchIdFromGame(gameId: string): Promise<string> {
+  const supabase = await createClient();
+
+  const { data: game } = await supabase
+    .from('games')
+    .select('draw_id')
+    .eq('id', gameId)
+    .maybeSingle();
+  if (!game) throw new Error('게임을 찾을 수 없습니다');
+
+  const { data: draw } = await supabase
+    .from('draws')
+    .select('match_id')
+    .eq('id', game.draw_id)
+    .maybeSingle();
+  if (!draw) throw new Error('대진표를 찾을 수 없습니다');
+
+  return draw.match_id;
+}
+
 // Helper: get match status from a game ID using an existing supabase client
 async function getMatchStatusFromGame(supabase: any, gameId: string): Promise<string | null> {
   const { data: game } = await supabase
@@ -251,9 +271,9 @@ export async function updateGamePlayers(
 ) {
   const validated = updateGamePlayersSchema.parse({ gameId, data });
 
-  const { requirePermission } = await import('@/lib/utils/check-permission');
-  const clubId = await getClubIdFromGame(validated.gameId);
-  await requirePermission(clubId, 'draw.manage');
+  const { requireMatchDrawEdit } = await import('@/lib/utils/check-permission');
+  const matchId = await getMatchIdFromGame(validated.gameId);
+  await requireMatchDrawEdit(matchId);
 
   const supabase = await createClient();
   const { error } = await supabase

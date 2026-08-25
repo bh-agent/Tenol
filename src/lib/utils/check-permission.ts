@@ -63,6 +63,26 @@ export async function requirePermission(clubId: string, permission: Permission):
 }
 
 /**
+ * 대진 편집(개별 게임 수정·선수 교체) 권한 검증.
+ * draw.manage 권한이 있어야 하고, 매치가 종료(completed/cancelled)된 경우에는
+ * 회장(owner)·운영진(admin)만 편집할 수 있다. (일반 회원은 종료 대진 편집 불가)
+ */
+export async function requireMatchDrawEdit(matchId: string): Promise<{ userId: string; role: ClubRole; clubId: string }> {
+  const ctx = await requireMatchPermission(matchId, 'draw.manage');
+  const supabase = await createClient();
+  const { data: match } = await supabase
+    .from('matches')
+    .select('status')
+    .eq('id', matchId)
+    .maybeSingle();
+  const ended = match?.status === 'completed' || match?.status === 'cancelled';
+  if (ended && ctx.role !== 'owner' && ctx.role !== 'admin') {
+    throw new Error('종료된 대진은 회장·운영진만 수정할 수 있습니다');
+  }
+  return ctx;
+}
+
+/**
  * match_id로부터 club_id를 조회하고 권한 검증
  */
 export async function requireMatchPermission(matchId: string, permission: Permission): Promise<{ userId: string; role: ClubRole; clubId: string }> {

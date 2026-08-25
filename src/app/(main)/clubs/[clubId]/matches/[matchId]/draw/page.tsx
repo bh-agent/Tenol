@@ -280,7 +280,11 @@ export default function DrawPage() {
   const [savingEdit, setSavingEdit] = useState(false);
 
   const isMatchEnded = matchStatus === 'completed' || matchStatus === 'cancelled';
+  const isOwnerOrAdmin = myRole === 'owner' || myRole === 'admin';
+  // 전체 관리(생성·재생성·삭제·수동편집)는 종료 전에만.
   const canManageDraw = hasPermission(myRole, 'draw.manage') && !isMatchEnded;
+  // 개별 게임 수정·선수 교체: 종료된 대진은 회장·운영진만 (점수 보존, 재생성·삭제는 불가).
+  const canEditGames = canManageDraw || (isMatchEnded && isOwnerOrAdmin);
   const canInputScore = hasPermission(myRole, 'result.input');
 
   // Whether editing is blocked by another user's lock
@@ -744,8 +748,8 @@ export default function DrawPage() {
         const hasPlayers = g.team_a_player1_id || g.team_a_player2_id || g.team_b_player1_id || g.team_b_player2_id;
         if (!hasPlayers) continue;
         gameInserts.push({
-          court_number: court - 1, // 0-indexed like V2 engine
-          game_order: slot - 1, // 0-indexed like V2 engine
+          court_number: court, // 1-based (matches auto-generate + renderers)
+          game_order: slot, // 1-based (matches auto-generate + renderers)
           team_a_player1_id: g.team_a_player1_id || null,
           team_a_player2_id: g.team_a_player2_id || null,
           team_b_player1_id: g.team_b_player1_id || null,
@@ -949,16 +953,18 @@ export default function DrawPage() {
         {isOverridden && (
           <span className="text-[10px] text-yellow-400 font-semibold">(이동)</span>
         )}
-        {canManageDraw && !isEditBlocked && (
+        {canEditGames && !isEditBlocked && (
           <>
-            <button
-              onClick={() => toggleGenderOverride(p)}
-              title="성별 그룹 이동"
-              aria-label="성별 그룹 이동"
-              className="w-9 h-9 -m-1.5 flex items-center justify-center rounded-full hover:bg-yellow-500/20 transition-colors cursor-pointer"
-            >
-              <ArrowRightLeft className="w-3.5 h-3.5 text-muted-foreground hover:text-yellow-400" />
-            </button>
+            {canManageDraw && (
+              <button
+                onClick={() => toggleGenderOverride(p)}
+                title="성별 그룹 이동"
+                aria-label="성별 그룹 이동"
+                className="w-9 h-9 -m-1.5 flex items-center justify-center rounded-full hover:bg-yellow-500/20 transition-colors cursor-pointer"
+              >
+                <ArrowRightLeft className="w-3.5 h-3.5 text-muted-foreground hover:text-yellow-400" />
+              </button>
+            )}
             <button
               onClick={() => setSubstituteTarget(p)}
               title="대체 선수"
@@ -967,13 +973,15 @@ export default function DrawPage() {
             >
               <Replace className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
             </button>
-            <button
-              onClick={() => handleRemoveParticipant(p.id, p.name)}
-              aria-label="참가자 제외"
-              className="w-9 h-9 -m-1.5 flex items-center justify-center rounded-full hover:bg-destructive/20 transition-colors cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
-            </button>
+            {canManageDraw && (
+              <button
+                onClick={() => handleRemoveParticipant(p.id, p.name)}
+                aria-label="참가자 제외"
+                className="w-9 h-9 -m-1.5 flex items-center justify-center rounded-full hover:bg-destructive/20 transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5 text-muted-foreground hover:text-destructive" />
+              </button>
+            )}
           </>
         )}
       </div>
@@ -1015,6 +1023,14 @@ export default function DrawPage() {
         <div className="mx-4 mt-3 px-4 py-2 rounded-xl bg-primary/5 border border-primary/20 flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
           <p className="text-xs text-primary/80">수정 중</p>
+        </div>
+      )}
+      {isMatchEnded && isOwnerOrAdmin && (
+        <div className="mx-4 mt-3 px-4 py-2.5 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center gap-2">
+          <Lock className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+          <p className="text-xs text-yellow-300/90">
+            종료된 대진입니다 — 회장·운영진만 선수 교체·개별 경기 수정이 가능합니다 (재생성·삭제 불가)
+          </p>
         </div>
       )}
 
@@ -1479,7 +1495,7 @@ export default function DrawPage() {
                         games={slotGames}
                         participantMap={participantMap}
                         courtNames={courtNames}
-                        canManage={canManageDraw && !isEditBlocked}
+                        canManage={canEditGames && !isEditBlocked}
                         canInputScore={canInputScore}
                         sitOutNames={sitOutNames.length > 0 ? sitOutNames : undefined}
                         onEditGame={handleEditGame}

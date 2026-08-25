@@ -15,6 +15,7 @@ export type DrawInputV2 = {
   mode: DrawMode;
   startTime: string; // "08:00"
   timeSlotMinutes: number; // 30
+  seed?: number; // optional: deterministic generation (tests). Omit for random.
 };
 
 export type GameSlot = {
@@ -98,10 +99,31 @@ function getGender(p: MatchParticipant): 'M' | 'F' | null {
   return (profiles?.gender as 'M' | 'F' | null) || p.guest_gender || null;
 }
 
+/** Seeded PRNG (mulberry32) so generation is reproducible and testable. */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0;
+  return function () {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 function shuffle<T>(array: T[]): T[] {
   const arr = [...array];
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function shuffleWith<T>(array: T[], rng: () => number): T[] {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
@@ -120,230 +142,145 @@ function getPlayerId(p: MatchParticipant): string {
 }
 
 // ============================================================
-// V2 Engine: Core Algorithm
+// V2 Engine: Core Algorithm (fair-by-construction)
 // ============================================================
+//
+// Fairness is GUARANTEED at construction time via the "lift-smallest-k"
+// invariant, not fixed up afterwards:
+//   Keep a per-player game counter within each pool. Each time slot, fill that
+//   pool's seat demand k by taking the k players with the SMALLEST counters and
+//   incrementing exactly those. Then max-min <= 1 within the pool at all times,
+//   provided k <= poolSize every slot.
+// Male and female pools are independent (a person belongs to exactly one), so
+// cross-gender balance is decided solely by the game-type allocation (Stage 1),
+// which is chosen to match each pool's seat demand to its headcount.
+
+type GameTypeCounts = { mens: number; womens: number; mixed: number; free: number };
+
+type Allocation = {
+  slotGames: number; // games per time slot (<= courts)
+  gEff: number; // total realizable games = slotGames * T
+  counts: GameTypeCounts; // total games of each type
+  structuralMinSpread: number; // best achievable max-min game count across all players
+  poolMode: 'single' | 'gendered'; // free => single pool of whole roster
+};
+
+/** Per-player target counts distributing `seats` among `n` players; spread <= 1. */
+function distributeEven(seats: number, n: number): number[] {
+  if (n <= 0) return [];
+  const q = Math.floor(seats / n);
+  const r = seats % n;
+  return Array.from({ length: n }, (_, i) => (i < r ? q + 1 : q));
+}
+
+/** Combined min/max spread of per-player counts across several pools. */
+function combinedSpread(pools: { seats: number; n: number }[]): number {
+  const vals: number[] = [];
+  for (const { seats, n } of pools) {
+    if (n <= 0) continue;
+    const q = Math.floor(seats / n);
+    const r = seats % n;
+    vals.push(q);
+    if (r > 0) vals.push(q + 1);
+  }
+  if (vals.length === 0) return 0;
+  return Math.max(...vals) - Math.min(...vals);
+}
 
 /**
- * Plan game type distribution for a given mode and gender counts.
+ * Stage 1 — capacity + game-type allocation.
  *
- * For mixed_all, we solve a system of constraints:
- *   mixedGames * 2 + mensGames * 4 = totalMaleSlots
- *   mixedGames * 2 + womensGames * 4 = totalFemaleSlots
- * where totalMaleSlots and totalFemaleSlots are proportional to
- * the number of males and females respectively.
+ * For gendered/mixed modes we search over a single per-slot composition
+ * (a men's, b women's, c mixed games) repeated across every slot. Constraints:
+ *   4a + 2c <= M,  4b + 2c <= F,  a + b + c <= C,  plus mode restrictions.
+ * We pick the composition that MAXIMIZES games per slot (people came to play),
+ * then MINIMIZES the resulting game-count spread. Repeating one feasible
+ * composition every slot guarantees a feasible packing, and per-gender counts
+ * come out floor/ceil-even (spread <= 1 within each pool by Stage 3).
  *
- * The key insight: each player should play ~the same number of games.
- * If we have M males and F females, and each plays G games:
- *   Male player-slots = M * G
- *   Female player-slots = F * G
- *   mixed uses 2M + 2F per game, mens uses 4M, womens uses 4F
- *
- * So: 2*mx + 4*mn = M*G  and  2*mx + 4*wm = F*G
- * Subtracting: 4*mn - 4*wm = (M-F)*G  =>  mn - wm = (M-F)*G/4
- * Also: mx + mn + wm = totalGames
- *
- * We solve for the distribution that best balances play.
+ * M/F = male/female headcount (known gender), nTotal = confirmed count
+ * (includes unknown gender — only used by `free`). C courts, T time slots.
  */
-function planGameTypes(
-  totalGames: number,
-  maleCount: number,
-  femaleCount: number,
+function computeAllocation(
   mode: DrawMode,
-): GameType[] {
+  M: number,
+  F: number,
+  nTotal: number,
+  C: number,
+  T: number,
+): Allocation {
   if (mode === 'free') {
-    return Array(totalGames).fill('free');
+    const slotGames = Math.min(C, Math.floor(nTotal / 4));
+    const gEff = slotGames * T;
+    return {
+      slotGames,
+      gEff,
+      counts: { mens: 0, womens: 0, mixed: 0, free: gEff },
+      structuralMinSpread: combinedSpread([{ seats: 4 * gEff, n: nTotal }]),
+      poolMode: 'single',
+    };
   }
 
-  if (mode === 'mixed_only') {
-    return Array(totalGames).fill('mixed');
-  }
+  const allowMens = mode === 'gendered_only' || mode === 'mixed_all';
+  const allowWomens = mode === 'gendered_only' || mode === 'mixed_all';
+  const allowMixed = mode === 'mixed_only' || mode === 'mixed_all';
 
-  if (mode === 'gendered_only') {
-    if (maleCount < 4 && femaleCount < 4) {
-      throw new Error('남복 또는 여복을 진행할 수 있는 충분한 참가자가 없습니다');
-    }
+  const maxA = allowMens ? Math.floor(M / 4) : 0;
+  const maxB = allowWomens ? Math.floor(F / 4) : 0;
+  const maxC = allowMixed ? Math.min(Math.floor(M / 2), Math.floor(F / 2)) : 0;
 
-    // Solve: 4*mn = M*G, 4*wm = F*G where G = totalGames*4/(M+F)
-    // Simplify: mn/wm = M/F ratio of player-slots needed
-    // mn = totalGames * M / (M + F), wm = totalGames * F / (M + F)
-    // But we need at least 4 of a gender to play gendered games
-    let mensGames: number;
-    let womensGames: number;
-    if (maleCount < 4) {
-      mensGames = 0;
-      womensGames = totalGames;
-    } else if (femaleCount < 4) {
-      mensGames = totalGames;
-      womensGames = 0;
-    } else {
-      mensGames = Math.round(totalGames * maleCount / (maleCount + femaleCount));
-      womensGames = totalGames - mensGames;
-      if (mensGames === 0 && maleCount >= 4) mensGames = 1;
-      if (womensGames === 0 && femaleCount >= 4) womensGames = 1;
-      // Re-normalize
-      if (mensGames + womensGames !== totalGames) {
-        if (mensGames > womensGames) mensGames = totalGames - womensGames;
-        else womensGames = totalGames - mensGames;
-      }
-    }
-
-    return interleaveTypes(mensGames, womensGames, 0);
-  }
-
-  // mixed_all: find optimal distribution
-  // We want every player to play the same number of games (G).
-  // totalGames * 4 = total player-slots.
-  // G_base = floor(totalGames * 4 / (M + F))
-  //
-  // Male slots used = 2*mx + 4*mn
-  // Female slots used = 2*mx + 4*wm
-  // We want: male slots ~= M * G_target, female slots ~= F * G_target
-  //
-  // From the constraint mx + mn + wm = totalGames:
-  //   2*mx + 4*mn = maleSlots    ... (1)
-  //   2*mx + 4*wm = femaleSlots  ... (2)
-  //   mx + mn + wm = totalGames  ... (3)
-  //
-  // From (1)-(2): 4*(mn - wm) = maleSlots - femaleSlots
-  //   mn - wm = (maleSlots - femaleSlots) / 4
-  //
-  // We target maleSlots/femaleSlots proportional to M/F:
-  //   maleSlots = totalGames * 4 * M / (M + F)
-  //   femaleSlots = totalGames * 4 * F / (M + F)
-  //
-  // From (3): mx = totalGames - mn - wm
-  // From (1): 2*(totalGames - mn - wm) + 4*mn = maleSlots
-  //   2*totalGames + 2*mn - 2*wm = maleSlots
-  //   mn - wm = (maleSlots - 2*totalGames) / 2
-  //
-  // Similarly from (2): wm - mn = (femaleSlots - 2*totalGames) / 2
-  // These are consistent since maleSlots + femaleSlots = 4*totalGames.
-  //
-  // Let d = mn - wm = (maleSlots - 2*totalGames) / 2
-  // From (3): mx = totalGames - mn - wm
-  // Also mn = wm + d, so mx = totalGames - 2*wm - d
-  // From (2): 2*(totalGames - 2*wm - d) + 4*wm = femaleSlots
-  //   2*totalGames - 4*wm - 2*d + 4*wm = femaleSlots
-  //   2*totalGames - 2*d = femaleSlots
-  //   wm = (femaleSlots - 2*totalGames + 2*d) / 0  -- this is always true (identity)
-  //
-  // We need another constraint. Let's pick wm directly:
-  // From (2): wm = (femaleSlots - 2*mx) / 4
-  // From (1): mn = (maleSlots - 2*mx) / 4
-  // mx must satisfy: mx >= 0, mn >= 0, wm >= 0
-  //   mx <= maleSlots/2, mx <= femaleSlots/2, mx <= totalGames
-  //   mx = totalGames - mn - wm
-
-  const totalPlayerSlots = totalGames * 4;
-  const totalPlayers = maleCount + femaleCount;
-  const maleSlots = Math.round(totalPlayerSlots * maleCount / totalPlayers);
-  const femaleSlots = totalPlayerSlots - maleSlots;
-
-  let mixedGames: number;
-  let mensGames: number;
-  let womensGames: number;
-
-  if (maleCount < 2 || femaleCount < 2) {
-    // Cannot do mixed at all
-    mixedGames = 0;
-    if (maleCount >= 4 && femaleCount >= 4) {
-      mensGames = Math.round(totalGames * maleCount / totalPlayers);
-      womensGames = totalGames - mensGames;
-    } else if (maleCount >= 4) {
-      mensGames = totalGames;
-      womensGames = 0;
-    } else if (femaleCount >= 4) {
-      mensGames = 0;
-      womensGames = totalGames;
-    } else {
-      throw new Error('경기를 진행할 수 있는 충분한 참가자가 없습니다');
-    }
-  } else {
-    // We can do mixed games. Now find the right split.
-    // mn = (maleSlots - 2*mx) / 4
-    // wm = (femaleSlots - 2*mx) / 4
-    // We need mn >= 0 => mx <= maleSlots/2
-    // We need wm >= 0 => mx <= femaleSlots/2
-    // We need mx >= 0
-    // Also mn + wm + mx = totalGames => (maleSlots - 2mx)/4 + (femaleSlots - 2mx)/4 + mx = totalGames
-    //   (maleSlots + femaleSlots - 4mx)/4 + mx = totalGames
-    //   (4*totalGames - 4mx)/4 + mx = totalGames
-    //   totalGames - mx + mx = totalGames  (identity! any mx works as long as constraints hold)
-    //
-    // So we pick mx to maximize mixed games (most fun), subject to:
-    //   mx <= maleSlots / 2, mx <= femaleSlots / 2, mx >= 0
-    //   mn = (maleSlots - 2*mx) / 4 >= 0  (same as mx <= maleSlots/2)
-    //   wm = (femaleSlots - 2*mx) / 4 >= 0  (same as mx <= femaleSlots/2)
-    //   Also need maleCount >= 4 for mn > 0, femaleCount >= 4 for wm > 0
-    //   mn, wm must be non-negative integers
-
-    const maxMx = Math.min(Math.floor(maleSlots / 2), Math.floor(femaleSlots / 2), totalGames);
-
-    // Target ~50% mixed for good variety (user's preference from example).
-    // For 6M+6F, 12 games: target mx=6, which gives mn=3, wm=3. Perfect balance.
-    // Each swap of 1 mixed <-> (0.5 mens + 0.5 womens) changes nothing in slot count,
-    // but: replacing 2 mixed with 1 mens + 1 womens preserves slot balance:
-    //   2 mixed = 4M + 4F slots, 1 mens + 1 womens = 4M + 4F slots.
-    //
-    // So any mx value where (maleSlots - 2*mx) % 4 == 0 works.
-    // Target: ~50% of totalGames as mixed.
-    const targetMx = Math.round(totalGames * 0.5);
-
-    // Search outward from target to find valid mx (where remainders are divisible by 4)
-    let bestMx = -1;
-    for (let delta = 0; delta <= totalGames; delta++) {
-      for (const tryMx of [targetMx + delta, targetMx - delta]) {
-        if (tryMx < 0 || tryMx > maxMx) continue;
-        const remM = maleSlots - 2 * tryMx;
-        const remF = femaleSlots - 2 * tryMx;
-        if (remM >= 0 && remF >= 0 && remM % 4 === 0 && remF % 4 === 0) {
-          bestMx = tryMx;
-          break;
+  let best: { a: number; b: number; c: number; g: number; spread: number } | null = null;
+  for (let a = 0; a <= maxA; a++) {
+    for (let b = 0; b <= maxB; b++) {
+      for (let c = 0; c <= maxC; c++) {
+        const g = a + b + c;
+        if (g === 0 || g > C) continue;
+        if (4 * a + 2 * c > M) continue;
+        if (4 * b + 2 * c > F) continue;
+        const maleSeats = (4 * a + 2 * c) * T;
+        const femaleSeats = (4 * b + 2 * c) * T;
+        const spread = combinedSpread([
+          { seats: maleSeats, n: M },
+          { seats: femaleSeats, n: F },
+        ]);
+        // Maximize games per slot, then minimize spread.
+        if (!best || g > best.g || (g === best.g && spread < best.spread)) {
+          best = { a, b, c, g, spread };
         }
       }
-      if (bestMx >= 0) break;
-    }
-
-    if (bestMx < 0) {
-      // Fallback: all mixed
-      bestMx = totalGames;
-    }
-
-    mixedGames = bestMx;
-    mensGames = Math.max(0, (maleSlots - 2 * mixedGames) / 4);
-    womensGames = Math.max(0, (femaleSlots - 2 * mixedGames) / 4);
-
-    // Sanity: if mensGames > 0 but maleCount < 4, push to mixed
-    if (mensGames > 0 && maleCount < 4) {
-      mixedGames += mensGames;
-      mensGames = 0;
-    }
-    if (womensGames > 0 && femaleCount < 4) {
-      mixedGames += womensGames;
-      womensGames = 0;
-    }
-
-    // Ensure we didn't break the total
-    const sum = mixedGames + mensGames + womensGames;
-    if (sum !== totalGames) {
-      // Fallback: simple heuristic
-      mixedGames = totalGames;
-      mensGames = 0;
-      womensGames = 0;
-    }
-
-    // Ensure variety: if we have enough of both genders, ensure at least 1 gendered game
-    if (mensGames === 0 && womensGames === 0 && maleCount >= 4 && femaleCount >= 4 && totalGames >= 4) {
-      // Replacing 2 mixed with 1 mens + 1 womens preserves player-slot balance.
-      if (mixedGames >= 4) {
-        mixedGames -= 2;
-        mensGames = 1;
-        womensGames = 1;
-      }
     }
   }
 
-  return interleaveTypes(mensGames, womensGames, mixedGames);
+  if (!best) {
+    if (mode === 'mixed_only') throw new Error('혼복을 진행하려면 남성과 여성이 각각 2명 이상 필요합니다');
+    if (mode === 'gendered_only') throw new Error('남복 또는 여복을 진행할 수 있는 충분한 참가자가 없습니다');
+    throw new Error('경기를 진행할 수 있는 충분한 참가자가 없습니다');
+  }
+
+  return {
+    slotGames: best.g,
+    gEff: best.g * T,
+    counts: { mens: best.a * T, womens: best.b * T, mixed: best.c * T, free: 0 },
+    structuralMinSpread: best.spread,
+    poolMode: 'gendered',
+  };
+}
+
+/**
+ * Exported so tests assert against the SAME fairness oracle the engine enforces.
+ * Returns the best achievable max-min game count for this roster/mode/capacity.
+ */
+export function structuralMinSpread(
+  mode: DrawMode,
+  participants: MatchParticipant[],
+  courts: number,
+  gamesPerCourt: number,
+): number {
+  const confirmed = participants.filter((p) => p.status === 'confirmed');
+  const M = confirmed.filter((p) => getGender(p) === 'M').length;
+  const F = confirmed.filter((p) => getGender(p) === 'F').length;
+  const alloc = computeAllocation(mode, M, F, confirmed.length, courts, gamesPerCourt);
+  return alloc.structuralMinSpread;
 }
 
 /**
@@ -362,7 +299,6 @@ function interleaveTypes(mensGames: number, womensGames: number, mixedGames: num
     if (mnR > 0) candidates.push({ type: 'mens', remain: mnR, orig: mensGames || 1 });
     if (wmR > 0) candidates.push({ type: 'womens', remain: wmR, orig: womensGames || 1 });
 
-    // Sort by highest remaining ratio, break ties by highest remain
     candidates.sort((a, b) => {
       const ratioA = a.remain / a.orig;
       const ratioB = b.remain / b.orig;
@@ -390,26 +326,23 @@ function pairByNtrp(
   gameType: GameType,
 ): { teamA: { player1: MatchParticipant; player2: MatchParticipant }; teamB: { player1: MatchParticipant; player2: MatchParticipant } } {
   if (gameType === 'mixed') {
-    const males = players.filter(p => getGender(p) === 'M').sort((a, b) => getNtrp(b) - getNtrp(a));
-    const females = players.filter(p => getGender(p) === 'F').sort((a, b) => getNtrp(b) - getNtrp(a));
+    const males = players.filter((p) => getGender(p) === 'M').sort((a, b) => getNtrp(b) - getNtrp(a));
+    const females = players.filter((p) => getGender(p) === 'F').sort((a, b) => getNtrp(b) - getNtrp(a));
 
-    if (males.length !== 2 || females.length !== 2) {
-      // This should never happen if selectPlayersForGame is correct, but guard anyway.
-      // Fall through to generic pairing as a safety net.
-      console.error('[draw-engine] pairByNtrp called with mixed type but not 2M+2F:', {
-        males: males.length,
-        females: females.length,
-      });
-    } else {
+    if (males.length === 2 && females.length === 2) {
       // High M + Low F vs Low M + High F (for NTRP balance)
       return {
         teamA: { player1: males[0], player2: females[1] },
         teamB: { player1: males[1], player2: females[0] },
       };
     }
+    // Safety net (should not happen with correct seat assignment)
+    console.error('[draw-engine] pairByNtrp mixed but not 2M+2F:', {
+      males: males.length,
+      females: females.length,
+    });
   }
 
-  // General: sort by NTRP desc, pair 1st+4th vs 2nd+3rd
   const sorted = [...players].sort((a, b) => getNtrp(b) - getNtrp(a));
   return {
     teamA: { player1: sorted[0], player2: sorted[3] },
@@ -417,640 +350,390 @@ function pairByNtrp(
   };
 }
 
+/** Pick the k players with the smallest game counts (the fairness core). */
+function pickLowestK(
+  pool: MatchParticipant[],
+  k: number,
+  gameCount: Map<string, number>,
+  lastSlot: Map<string, number>,
+  rng: () => number,
+): MatchParticipant[] {
+  if (k <= 0) return [];
+  const sorted = [...pool].sort((a, b) => {
+    const ca = gameCount.get(getPlayerId(a)) ?? 0;
+    const cb = gameCount.get(getPlayerId(b)) ?? 0;
+    if (ca !== cb) return ca - cb; // fewest games first — the invariant
+    // Tie-break (never harms fairness, only quality):
+    const la = lastSlot.get(getPlayerId(a)) ?? -1;
+    const lb = lastSlot.get(getPlayerId(b)) ?? -1;
+    if (la !== lb) return la - lb; // played longest ago first (time-spread)
+    return rng() - 0.5; // seed randomness
+  });
+  return sorted.slice(0, k);
+}
+
+const seatsM = (t: GameType): number => (t === 'mens' ? 4 : t === 'mixed' ? 2 : 0);
+const seatsF = (t: GameType): number => (t === 'womens' ? 4 : t === 'mixed' ? 2 : 0);
+
+/**
+ * Stage 2 — pack the allocated games into T time slots so that EACH slot is
+ * feasible: male seats <= M, female seats <= F, and exactly slotGames games.
+ * Complete backtracking search (sizes are small; games are capped for a real
+ * event), so it finds a feasible layout whenever one exists — which is what
+ * makes k <= poolSize hold per slot and the lift-smallest-k fairness exact.
+ * Returns null only when no feasible layout exists (caller retries/other seed).
+ */
+function packSlots(
+  counts: GameTypeCounts,
+  slotGames: number,
+  T: number,
+  M: number,
+  F: number,
+  poolMode: 'single' | 'gendered',
+  rng: () => number,
+): GameType[][] | null {
+  const rem: Record<GameType, number> = {
+    mens: counts.mens,
+    womens: counts.womens,
+    mixed: counts.mixed,
+    free: counts.free,
+  };
+  // Type order shuffled per seed so different seeds can find different layouts.
+  const typeList = shuffleWith<GameType>(['mens', 'womens', 'mixed', 'free'], rng);
+  const result: GameType[][] = [];
+  let nodes = 0;
+  const NODE_CAP = 200000;
+
+  function solve(slot: number, cur: GameType[], male: number, female: number, minIdx: number): boolean {
+    if (++nodes > NODE_CAP) return false;
+
+    if (cur.length === slotGames) {
+      result[slot] = [...cur];
+      if (slot + 1 === T) {
+        return rem.mens === 0 && rem.womens === 0 && rem.mixed === 0 && rem.free === 0;
+      }
+      return solve(slot + 1, [], 0, 0, 0);
+    }
+
+    for (let ti = minIdx; ti < typeList.length; ti++) {
+      const t = typeList[ti];
+      if (rem[t] <= 0) continue;
+      if (poolMode === 'gendered' && (male + seatsM(t) > M || female + seatsF(t) > F)) continue;
+      rem[t]--;
+      // minIdx = ti keeps a slot's types non-decreasing → no permutation blowup.
+      if (solve(slot, [...cur, t], male + seatsM(t), female + seatsF(t), ti)) return true;
+      rem[t]++;
+    }
+    return false;
+  }
+
+  if (!solve(0, [], 0, 0, 0)) return null;
+  return result;
+}
+
+/**
+ * Distribute chosen players across the games needing them (round-robin over an
+ * NTRP-sorted list so high/low skill spreads across games, not clumped).
+ */
+function dealRoundRobin(
+  players: MatchParticipant[],
+  needs: { gameIdx: number; count: number }[],
+): Map<number, MatchParticipant[]> {
+  const result = new Map<number, MatchParticipant[]>();
+  needs.forEach((n) => result.set(n.gameIdx, []));
+  const sorted = [...players].sort((a, b) => getNtrp(b) - getNtrp(a));
+  let pi = 0;
+  let remaining = needs.reduce((s, n) => s + n.count, 0);
+  while (remaining > 0) {
+    let progressed = false;
+    for (const need of needs) {
+      const bucket = result.get(need.gameIdx)!;
+      if (bucket.length < need.count && pi < sorted.length) {
+        bucket.push(sorted[pi++]);
+        remaining--;
+        progressed = true;
+      }
+    }
+    if (!progressed) break;
+  }
+  return result;
+}
+
+type Attempt = {
+  games: GameSlot[];
+  spread: number;
+  cost: number;
+};
+
+/** One full assignment attempt for a given seed. */
+function buildAttempt(
+  confirmed: MatchParticipant[],
+  males: MatchParticipant[],
+  females: MatchParticipant[],
+  alloc: Allocation,
+  courts: { name: string }[],
+  T: number,
+  startTime: string,
+  timeSlotMinutes: number,
+  seed: number,
+): Attempt | null {
+  const rng = mulberry32(seed);
+  const { slotGames, counts, poolMode } = alloc;
+
+  // Stage 2: feasibility-aware packing of games into T slots.
+  const slotTypes = packSlots(counts, slotGames, T, males.length, females.length, poolMode, rng);
+  if (!slotTypes) return null;
+
+  const gameCount = new Map<string, number>();
+  const lastSlot = new Map<string, number>();
+  confirmed.forEach((p) => gameCount.set(getPlayerId(p), 0));
+
+  const games: GameSlot[] = [];
+
+  for (let s = 0; s < T; s++) {
+    const chunk = slotTypes[s];
+    if (chunk.length === 0) continue;
+    const slotStart = addMinutes(startTime, s * timeSlotMinutes);
+    const slotEnd = addMinutes(startTime, (s + 1) * timeSlotMinutes);
+
+    // Stage 3: pick lowest-k per pool.
+    let assignments: Map<number, MatchParticipant[]>;
+
+    if (poolMode === 'single') {
+      const seats = chunk.length * 4;
+      const chosen = pickLowestK(confirmed, seats, gameCount, lastSlot, rng);
+      const needs = chunk.map((_, i) => ({ gameIdx: i, count: 4 }));
+      assignments = dealRoundRobin(chosen, needs);
+    } else {
+      const maleSeats = chunk.reduce((sum, t) => sum + (t === 'mens' ? 4 : t === 'mixed' ? 2 : 0), 0);
+      const femaleSeats = chunk.reduce((sum, t) => sum + (t === 'womens' ? 4 : t === 'mixed' ? 2 : 0), 0);
+      const chosenM = pickLowestK(males, maleSeats, gameCount, lastSlot, rng);
+      const chosenF = pickLowestK(females, femaleSeats, gameCount, lastSlot, rng);
+
+      const maleNeeds = chunk
+        .map((t, i) => ({ gameIdx: i, count: t === 'mens' ? 4 : t === 'mixed' ? 2 : 0 }))
+        .filter((n) => n.count > 0);
+      const femaleNeeds = chunk
+        .map((t, i) => ({ gameIdx: i, count: t === 'womens' ? 4 : t === 'mixed' ? 2 : 0 }))
+        .filter((n) => n.count > 0);
+
+      const maleDeal = dealRoundRobin(chosenM, maleNeeds);
+      const femaleDeal = dealRoundRobin(chosenF, femaleNeeds);
+      assignments = new Map<number, MatchParticipant[]>();
+      chunk.forEach((_, i) => {
+        assignments.set(i, [...(maleDeal.get(i) ?? []), ...(femaleDeal.get(i) ?? [])]);
+      });
+    }
+
+    // Stage 4: build games from the four-player foursomes.
+    chunk.forEach((gameType, courtIdx) => {
+      const foursome = assignments.get(courtIdx) ?? [];
+      if (foursome.length !== 4) return; // should not happen; skip defensively
+      foursome.forEach((p) => {
+        const pid = getPlayerId(p);
+        gameCount.set(pid, (gameCount.get(pid) ?? 0) + 1);
+        lastSlot.set(pid, s);
+      });
+      const { teamA, teamB } = pairByNtrp(foursome, gameType);
+      games.push({
+        timeSlotIndex: s,
+        courtIndex: courtIdx,
+        courtName: courts[courtIdx]?.name ?? `${courtIdx + 1}코트`,
+        gameType,
+        teamA,
+        teamB,
+        startTime: slotStart,
+        endTime: slotEnd,
+      });
+    });
+  }
+
+  // Score the attempt over the ELIGIBLE pool (unknown genders sit out in
+  // gendered/mixed modes and must not count against fairness).
+  const pool = poolMode === 'single' ? confirmed : [...males, ...females];
+  const values = pool.map((p) => gameCount.get(getPlayerId(p)) ?? 0);
+  const spread = values.length ? Math.max(...values) - Math.min(...values) : 0;
+  const cost = secondaryCost(games);
+  return { games, spread, cost };
+}
+
+/** Lower is better: NTRP imbalance within games + repeated partner pairs. */
+function secondaryCost(games: GameSlot[]): number {
+  let cost = 0;
+  const pairSeen = new Map<string, number>();
+  for (const g of games) {
+    const aN = getNtrp(g.teamA.player1) + getNtrp(g.teamA.player2);
+    const bN = getNtrp(g.teamB.player1) + getNtrp(g.teamB.player2);
+    cost += Math.abs(aN - bN);
+    for (const [x, y] of [
+      [g.teamA.player1, g.teamA.player2],
+      [g.teamB.player1, g.teamB.player2],
+    ]) {
+      const key = [getPlayerId(x), getPlayerId(y)].sort().join('|');
+      const prev = pairSeen.get(key) ?? 0;
+      cost += prev * 2; // repeated partners penalized
+      pairSeen.set(key, prev + 1);
+    }
+  }
+  return cost;
+}
+
 // ============================================================
 // Main V2 Export
 // ============================================================
 
 export function generateDrawV2(input: DrawInputV2): DrawResultV2 {
-  const { participants, courts, gamesPerCourt, mode, startTime, timeSlotMinutes } = input;
+  const { participants, courts, gamesPerCourt, mode, startTime, timeSlotMinutes, seed } = input;
 
-  const confirmed = participants.filter(p => p.status === 'confirmed');
+  const confirmed = participants.filter((p) => p.status === 'confirmed');
   if (confirmed.length < 4) {
     throw new Error('경기를 위해 최소 4명의 참가자가 필요합니다');
   }
 
+  // Downgrade to free when too many unknown genders.
   let effectiveMode = mode;
-  const unknownCount = confirmed.filter(p => getGender(p) === null).length;
+  const unknownCount = confirmed.filter((p) => getGender(p) === null).length;
   if (mode !== 'free' && unknownCount > confirmed.length * 0.3) effectiveMode = 'free';
 
-  // mixed_only 모드에서 남녀 모두 있는지 검증
-  if (effectiveMode === 'mixed_only') {
-    const males = confirmed.filter(p => getGender(p) === 'M').length;
-    const females = confirmed.filter(p => getGender(p) === 'F').length;
-    if (males === 0 || females === 0) {
-      throw new Error('혼복 모드에는 남성과 여성 참가자가 모두 필요합니다. 다른 모드를 선택해주세요.');
-    }
+  const males = confirmed.filter((p) => getGender(p) === 'M');
+  const females = confirmed.filter((p) => getGender(p) === 'F');
+
+  if (effectiveMode === 'mixed_only' && (males.length === 0 || females.length === 0)) {
+    throw new Error('혼복 모드에는 남성과 여성 참가자가 모두 필요합니다. 다른 모드를 선택해주세요.');
   }
 
-  const totalGames = courts.length * gamesPerCourt;
-  const totalPlayerSlots = totalGames * 4;
-  const totalTimeSlots = gamesPerCourt; // number of time slots = games per court
+  const T = gamesPerCourt;
+  const alloc = computeAllocation(effectiveMode, males.length, females.length, confirmed.length, courts.length, T);
 
-  const allMales = confirmed.filter(p => getGender(p) === 'M');
-  const allFemales = confirmed.filter(p => getGender(p) === 'F');
-
-  // Plan game types upfront
-  const gameTypePlan = planGameTypes(totalGames, allMales.length, allFemales.length, effectiveMode);
-
-  // Compute per-player quotas for equal games
-  const baseGames = Math.floor(totalPlayerSlots / confirmed.length);
-  const extraPlayers = totalPlayerSlots % confirmed.length;
-
-  const shuffledForQuota = shuffle([...confirmed]);
-  const quota = new Map<string, number>();
-  shuffledForQuota.forEach((p, i) => {
-    quota.set(getPlayerId(p), i < extraPlayers ? baseGames + 1 : baseGames);
-  });
-
-  // Track per-player state
-  const gameCount = new Map<string, number>();
-  const gameTypeCounts = new Map<string, { mixed: number; mens: number; womens: number; free: number }>();
-  confirmed.forEach(p => {
-    gameCount.set(getPlayerId(p), 0);
-    gameTypeCounts.set(getPlayerId(p), { mixed: 0, mens: 0, womens: 0, free: 0 });
-  });
-
-  // Organize game types into time slots.
-  // Each time slot has `courts.length` games running in parallel.
-  // The gameTypePlan has `totalGames` entries; assign them to slots.
-  const slotGameTypes: GameType[][] = [];
-  let planIdx = 0;
-  for (let slot = 0; slot < totalTimeSlots; slot++) {
-    const slotTypes: GameType[] = [];
-    for (let c = 0; c < courts.length && planIdx < totalGames; c++) {
-      slotTypes.push(gameTypePlan[planIdx]);
-      planIdx++;
-    }
-    slotGameTypes.push(slotTypes);
+  if (alloc.gEff === 0) {
+    throw new Error('선택한 모드로 진행할 수 있는 경기가 없습니다. 참가자 구성이나 모드를 확인해주세요.');
   }
 
-  const games: GameSlot[] = [];
-
-  // For each time slot, assign players to courts
-  for (let slot = 0; slot < totalTimeSlots; slot++) {
-    const slotStart = addMinutes(startTime, slot * timeSlotMinutes);
-    const slotEnd = addMinutes(startTime, (slot + 1) * timeSlotMinutes);
-    const typesThisSlot = slotGameTypes[slot];
-    if (!typesThisSlot || typesThisSlot.length === 0) continue;
-
-    const usedThisSlot = new Set<string>(); // prevent double-booking
-
-    // Sort games in this slot: gendered games first (they are more constrained)
-    // mens/womens need 4 of one gender, mixed needs 2+2
-    const slotEntries = typesThisSlot.map((gt, courtIdx) => ({ gameType: gt, courtIdx }));
-    slotEntries.sort((a, b) => {
-      const order = { mens: 0, womens: 0, mixed: 1, free: 2 };
-      return (order[a.gameType] ?? 2) - (order[b.gameType] ?? 2);
-    });
-
-    for (const { gameType, courtIdx } of slotEntries) {
-      const selected = selectPlayersForGame(
-        gameType,
-        confirmed,
-        usedThisSlot,
-        gameCount,
-        quota,
-        gameTypeCounts,
-        slot,
-      );
-
-      if (!selected) {
-        // Cannot fill this game with proper gender composition.
-        // Try to fill with fallback: any 4 available players
-        const fallbackType = tryFallbackGameType(
-          confirmed,
-          usedThisSlot,
-          gameCount,
-          quota,
-          effectiveMode,
-        );
-        if (fallbackType) {
-          const fallbackSelected = selectPlayersForGame(
-            fallbackType.type,
-            confirmed,
-            usedThisSlot,
-            gameCount,
-            quota,
-            gameTypeCounts,
-            slot,
-          );
-          if (fallbackSelected) {
-            for (const p of fallbackSelected) {
-              usedThisSlot.add(getPlayerId(p));
-              gameCount.set(getPlayerId(p), (gameCount.get(getPlayerId(p)) || 0) + 1);
-              const tc = gameTypeCounts.get(getPlayerId(p))!;
-              tc[fallbackType.type]++;
-            }
-            const { teamA, teamB } = pairByNtrp(fallbackSelected, fallbackType.type);
-            games.push({
-              timeSlotIndex: slot,
-              courtIndex: courtIdx,
-              courtName: courts[courtIdx].name,
-              gameType: fallbackType.type,
-              teamA,
-              teamB,
-              startTime: slotStart,
-              endTime: slotEnd,
-            });
-            continue;
-          }
-        }
-        // If we truly can't fill this slot, skip (will be caught by validation)
-        continue;
-      }
-
-      for (const p of selected) {
-        usedThisSlot.add(getPlayerId(p));
-        gameCount.set(getPlayerId(p), (gameCount.get(getPlayerId(p)) || 0) + 1);
-        const tc = gameTypeCounts.get(getPlayerId(p))!;
-        tc[gameType]++;
-      }
-
-      const { teamA, teamB } = pairByNtrp(selected, gameType);
-      games.push({
-        timeSlotIndex: slot,
-        courtIndex: courtIdx,
-        courtName: courts[courtIdx].name,
-        gameType,
-        teamA,
-        teamB,
-        startTime: slotStart,
-        endTime: slotEnd,
-      });
+  // Retry across seeds; keep the best (lowest spread, then secondary cost).
+  const K = 40;
+  const baseSeed = seed ?? Math.floor(Math.random() * 0x7fffffff);
+  let best: Attempt | null = null;
+  for (let attempt = 0; attempt < K; attempt++) {
+    const candidate = buildAttempt(
+      confirmed,
+      males,
+      females,
+      alloc,
+      courts,
+      T,
+      startTime,
+      timeSlotMinutes,
+      (baseSeed + attempt * 2654435761) >>> 0,
+    );
+    if (!candidate) continue;
+    if (!best || candidate.spread < best.spread || (candidate.spread === best.spread && candidate.cost < best.cost)) {
+      best = candidate;
     }
+    if (best.spread <= alloc.structuralMinSpread) break; // can't do better
   }
 
-  // === Post-generation repair: ensure game count fairness ===
-  // If some games couldn't be filled, we may have fewer than totalGames.
-  // Also verify game count balance.
-  repairGameCounts(games, confirmed, courts, totalGames, totalTimeSlots, gameCount, quota, gameTypeCounts, startTime, timeSlotMinutes, effectiveMode);
+  if (!best) {
+    throw new Error('대진표를 생성할 수 없습니다. 참가자 구성을 확인해주세요.');
+  }
 
-  // === Post-generation balance: swap players to equalize game counts ===
-  balanceGameCounts(games, confirmed, effectiveMode);
+  const fairnessPool = effectiveMode === 'free' ? confirmed : [...males, ...females];
+  validateDraw(best.games, fairnessPool, alloc.structuralMinSpread);
 
-  // === Validation ===
-  validateDraw(games, confirmed, totalGames, effectiveMode);
-
-  // Compute sit-outs per slot
+  // Sit-outs per slot.
   const sitOutsPerSlot = new Map<number, MatchParticipant[]>();
-  for (let slot = 0; slot < totalTimeSlots; slot++) {
+  for (let s = 0; s < T; s++) {
     const playingIds = new Set<string>();
-    games.filter(g => g.timeSlotIndex === slot).forEach(g => {
-      [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2]
-        .forEach(p => playingIds.add(getPlayerId(p)));
-    });
-    const sitting = confirmed.filter(p => !playingIds.has(getPlayerId(p)));
-    if (sitting.length > 0) sitOutsPerSlot.set(slot, sitting);
+    best.games
+      .filter((g) => g.timeSlotIndex === s)
+      .forEach((g) => {
+        [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2].forEach((p) =>
+          playingIds.add(getPlayerId(p)),
+        );
+      });
+    const sitting = confirmed.filter((p) => !playingIds.has(getPlayerId(p)));
+    if (sitting.length > 0) sitOutsPerSlot.set(s, sitting);
   }
 
-  // Build player summaries
+  // Player summaries.
   const summaryMap = new Map<string, PlayerSummary>();
-  confirmed.forEach(p => summaryMap.set(getPlayerId(p), { participant: p, totalGames: 0, games: [] }));
-
-  games.forEach((g, idx) => {
-    [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2].forEach(p => {
-      const s = summaryMap.get(getPlayerId(p));
-      if (s) {
-        s.totalGames++;
-        s.games.push({ timeSlotIndex: g.timeSlotIndex, courtName: g.courtName, gameType: g.gameType, gameOrder: idx + 1 });
+  confirmed.forEach((p) => summaryMap.set(getPlayerId(p), { participant: p, totalGames: 0, games: [] }));
+  best.games.forEach((g, idx) => {
+    [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2].forEach((p) => {
+      const summ = summaryMap.get(getPlayerId(p));
+      if (summ) {
+        summ.totalGames++;
+        summ.games.push({ timeSlotIndex: g.timeSlotIndex, courtName: g.courtName, gameType: g.gameType, gameOrder: idx + 1 });
       }
     });
   });
 
   return {
-    games,
+    games: best.games,
     playerSummary: Array.from(summaryMap.values()),
-    totalTimeSlots,
+    totalTimeSlots: T,
     sitOuts: Array.from(sitOutsPerSlot.entries()).map(([slot, players]) => ({ timeSlotIndex: slot, players })),
   };
 }
 
 /**
- * Select 4 players for a game of the given type.
- * Returns null if not enough eligible players.
- *
- * Gender rules are STRICT:
- *  - mixed: exactly 2M + 2F
- *  - mens: exactly 4M
- *  - womens: exactly 4F
- *  - free: any 4
- */
-function selectPlayersForGame(
-  gameType: GameType,
-  allPlayers: MatchParticipant[],
-  usedThisSlot: Set<string>,
-  gameCount: Map<string, number>,
-  quota: Map<string, number>,
-  gameTypeCounts: Map<string, { mixed: number; mens: number; womens: number; free: number }>,
-  currentSlot: number,
-): MatchParticipant[] | null {
-  const available = allPlayers.filter(p => !usedThisSlot.has(getPlayerId(p)));
-
-  // Score players: lower = higher priority
-  function playerScore(p: MatchParticipant): number {
-    const pid = getPlayerId(p);
-    const played = gameCount.get(pid) || 0;
-    const playerQuota = quota.get(pid) || 0;
-    const remaining = playerQuota - played;
-    let score = 0;
-
-    // Primary: players who still have quota remaining get much higher priority
-    if (remaining <= 0) {
-      score += 10000; // strongly deprioritize over-quota players
-    } else {
-      score -= remaining * 1000; // more remaining = higher priority
-    }
-
-    // Secondary: players with fewer games of THIS type get priority (variety)
-    const tc = gameTypeCounts.get(pid);
-    if (tc) {
-      const typeKey = gameType === 'free' ? 'free' : gameType;
-      score += tc[typeKey] * 100;
-    }
-
-    // Random tiebreaker for variety on regeneration
-    score += Math.random() * 0.5;
-
-    return score;
-  }
-
-  if (gameType === 'mixed') {
-    const males = available.filter(p => getGender(p) === 'M').sort((a, b) => playerScore(a) - playerScore(b));
-    const females = available.filter(p => getGender(p) === 'F').sort((a, b) => playerScore(a) - playerScore(b));
-    if (males.length < 2 || females.length < 2) return null;
-    return [males[0], males[1], females[0], females[1]];
-  }
-
-  if (gameType === 'mens') {
-    const males = available.filter(p => getGender(p) === 'M').sort((a, b) => playerScore(a) - playerScore(b));
-    if (males.length < 4) return null;
-    return males.slice(0, 4);
-  }
-
-  if (gameType === 'womens') {
-    const females = available.filter(p => getGender(p) === 'F').sort((a, b) => playerScore(a) - playerScore(b));
-    if (females.length < 4) return null;
-    return females.slice(0, 4);
-  }
-
-  // free
-  const sorted = available.sort((a, b) => playerScore(a) - playerScore(b));
-  if (sorted.length < 4) return null;
-  return sorted.slice(0, 4);
-}
-
-/**
- * When the planned game type can't be filled, find a fallback type
- * that CAN be filled from the remaining available players.
- */
-function tryFallbackGameType(
-  allPlayers: MatchParticipant[],
-  usedThisSlot: Set<string>,
-  gameCount: Map<string, number>,
-  quota: Map<string, number>,
-  mode: DrawMode,
-): { type: GameType } | null {
-  const available = allPlayers.filter(p => !usedThisSlot.has(getPlayerId(p)));
-  const males = available.filter(p => getGender(p) === 'M');
-  const females = available.filter(p => getGender(p) === 'F');
-
-  if (mode === 'free') {
-    return available.length >= 4 ? { type: 'free' } : null;
-  }
-
-  // Try in order: mixed (most flexible), mens, womens
-  if (males.length >= 2 && females.length >= 2) return { type: 'mixed' };
-  if (males.length >= 4) return { type: 'mens' };
-  if (females.length >= 4) return { type: 'womens' };
-
-  return null;
-}
-
-/**
- * Attempt to repair the draw if we have fewer games than totalGames.
- * This can happen when the initial assignment couldn't fill all slots.
- */
-function repairGameCounts(
-  games: GameSlot[],
-  confirmed: MatchParticipant[],
-  courts: { name: string }[],
-  totalGames: number,
-  totalTimeSlots: number,
-  gameCount: Map<string, number>,
-  quota: Map<string, number>,
-  gameTypeCounts: Map<string, { mixed: number; mens: number; womens: number; free: number }>,
-  startTime: string,
-  timeSlotMinutes: number,
-  mode: DrawMode,
-): void {
-  if (games.length >= totalGames) return;
-
-  // Find empty court slots
-  for (let slot = 0; slot < totalTimeSlots && games.length < totalGames; slot++) {
-    const gamesInSlot = games.filter(g => g.timeSlotIndex === slot);
-    const usedCourts = new Set(gamesInSlot.map(g => g.courtIndex));
-    const usedPlayers = new Set<string>();
-    gamesInSlot.forEach(g => {
-      [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2]
-        .forEach(p => usedPlayers.add(getPlayerId(p)));
-    });
-
-    for (let courtIdx = 0; courtIdx < courts.length && games.length < totalGames; courtIdx++) {
-      if (usedCourts.has(courtIdx)) continue;
-
-      // Try to fill this empty slot
-      const fallback = tryFallbackGameType(confirmed, usedPlayers, gameCount, quota, mode);
-      if (!fallback) continue;
-
-      const selected = selectPlayersForGame(
-        fallback.type,
-        confirmed,
-        usedPlayers,
-        gameCount,
-        quota,
-        gameTypeCounts,
-        slot,
-      );
-      if (!selected) continue;
-
-      for (const p of selected) {
-        usedPlayers.add(getPlayerId(p));
-        gameCount.set(getPlayerId(p), (gameCount.get(getPlayerId(p)) || 0) + 1);
-        const tc = gameTypeCounts.get(getPlayerId(p))!;
-        tc[fallback.type]++;
-      }
-
-      const slotStart = addMinutes(startTime, slot * timeSlotMinutes);
-      const slotEnd = addMinutes(startTime, (slot + 1) * timeSlotMinutes);
-      const { teamA, teamB } = pairByNtrp(selected, fallback.type);
-      games.push({
-        timeSlotIndex: slot,
-        courtIndex: courtIdx,
-        courtName: courts[courtIdx].name,
-        gameType: fallback.type,
-        teamA,
-        teamB,
-        startTime: slotStart,
-        endTime: slotEnd,
-      });
-    }
-  }
-}
-
-/**
- * Post-generation balance pass: swap overplayed players with underplayed ones.
- *
- * After the greedy slot-by-slot assignment, some players may have more games
- * than others due to gender constraints limiting choices. This function iterates
- * over games, finds swaps between overplayed and underplayed players that
- * preserve team composition validity and time-slot uniqueness, and applies them.
- *
- * Target: max - min game count <= 1.
- */
-function balanceGameCounts(
-  games: GameSlot[],
-  confirmed: MatchParticipant[],
-  mode: DrawMode,
-): void {
-  const MAX_ITERATIONS = 200; // safety cap
-
-  // Helper: rebuild game count map from scratch
-  function buildGameCounts(): Map<string, number> {
-    const counts = new Map<string, number>();
-    confirmed.forEach(p => counts.set(getPlayerId(p), 0));
-    for (const g of games) {
-      for (const p of [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2]) {
-        counts.set(getPlayerId(p), (counts.get(getPlayerId(p)) || 0) + 1);
-      }
-    }
-    return counts;
-  }
-
-  // Helper: get all player IDs in a time slot (excluding a specific game)
-  function playersInSlot(slotIndex: number, excludeGame: GameSlot): Set<string> {
-    const ids = new Set<string>();
-    for (const g of games) {
-      if (g === excludeGame) continue;
-      if (g.timeSlotIndex !== slotIndex) continue;
-      for (const p of [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2]) {
-        ids.add(getPlayerId(p));
-      }
-    }
-    return ids;
-  }
-
-  // Helper: check if swapping playerOut for playerIn in a game keeps valid composition
-  function isValidSwap(
-    game: GameSlot,
-    playerOut: MatchParticipant,
-    playerIn: MatchParticipant,
-  ): { valid: boolean; newGameType?: GameType } {
-    // Build the 4-player list after swap
-    const allPlayers = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
-    const outIdx = allPlayers.findIndex(p => getPlayerId(p) === getPlayerId(playerOut));
-    if (outIdx === -1) return { valid: false };
-
-    const newPlayers = [...allPlayers];
-    newPlayers[outIdx] = playerIn;
-
-    // Check no duplicates
-    const ids = new Set(newPlayers.map(p => getPlayerId(p)));
-    if (ids.size !== 4) return { valid: false };
-
-    const males = newPlayers.filter(p => getGender(p) === 'M').length;
-    const females = newPlayers.filter(p => getGender(p) === 'F').length;
-
-    if (mode === 'free') {
-      return { valid: true, newGameType: 'free' };
-    }
-
-    // Determine what game type the new composition supports
-    if (males === 2 && females === 2) {
-      // Can be mixed - also verify each team is 1M+1F after re-pairing
-      return { valid: true, newGameType: 'mixed' };
-    }
-    if (males === 4) {
-      if (mode === 'mixed_only') return { valid: false }; // mixed_only doesn't allow mens
-      return { valid: true, newGameType: 'mens' };
-    }
-    if (females === 4) {
-      if (mode === 'mixed_only') return { valid: false }; // mixed_only doesn't allow womens
-      return { valid: true, newGameType: 'womens' };
-    }
-
-    // Invalid composition (e.g., 3M+1F) - not allowed in any gendered mode
-    return { valid: false };
-  }
-
-  // Helper: apply a swap - replace playerOut with playerIn in the game, re-pair by NTRP
-  function applySwap(
-    game: GameSlot,
-    playerOut: MatchParticipant,
-    playerIn: MatchParticipant,
-    newGameType: GameType,
-  ): void {
-    const allPlayers = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
-    const outIdx = allPlayers.findIndex(p => getPlayerId(p) === getPlayerId(playerOut));
-    allPlayers[outIdx] = playerIn;
-
-    // Re-pair by NTRP for the new game type
-    const { teamA, teamB } = pairByNtrp(allPlayers, newGameType);
-    game.teamA = teamA;
-    game.teamB = teamB;
-    game.gameType = newGameType;
-  }
-
-  // === Balance game COUNTS: swap overplayed ↔ underplayed ===
-  for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
-    const counts = buildGameCounts();
-    const values = Array.from(counts.values());
-    const minCount = Math.min(...values);
-    const maxCount = Math.max(...values);
-
-    if (maxCount - minCount <= 1) break; // balanced!
-
-    const overplayed = confirmed.filter(p => (counts.get(getPlayerId(p)) || 0) === maxCount);
-    const underplayed = confirmed.filter(p => (counts.get(getPlayerId(p)) || 0) === minCount);
-
-    let swapped = false;
-
-    for (const overPlayer of overplayed) {
-      if (swapped) break;
-      const overId = getPlayerId(overPlayer);
-
-      // Shuffle games to try different swaps each iteration
-      const shuffledGames = [...games].sort(() => Math.random() - 0.5);
-
-      for (const game of shuffledGames) {
-        if (swapped) break;
-        const gamePlayers = [game.teamA.player1, game.teamA.player2, game.teamB.player1, game.teamB.player2];
-        if (!gamePlayers.some(p => getPlayerId(p) === overId)) continue;
-
-        const slotPlayers = playersInSlot(game.timeSlotIndex, game);
-
-        for (const underPlayer of underplayed) {
-          const underId = getPlayerId(underPlayer);
-          if (slotPlayers.has(underId)) continue;
-          if (gamePlayers.some(p => getPlayerId(p) === underId)) continue;
-
-          const { valid, newGameType } = isValidSwap(game, overPlayer, underPlayer);
-          if (!valid || !newGameType) continue;
-
-          applySwap(game, overPlayer, underPlayer, newGameType);
-          swapped = true;
-          break;
-        }
-      }
-    }
-
-    if (!swapped) break;
-  }
-
-  // === Verify final balance ===
-  const finalCounts = buildGameCounts();
-  const finalValues = Array.from(finalCounts.values());
-  const finalMin = Math.min(...finalValues);
-  const finalMax = Math.max(...finalValues);
-  if (finalMax - finalMin > 1) {
-    console.warn(`[DrawEngine] Game count imbalance after balancing: min=${finalMin}, max=${finalMax}`);
-  }
-}
-
-/**
- * Post-generation validation. Logs warnings for any violations.
- * Throws on critical violations.
+ * Post-generation validation. Throws on any correctness violation, INCLUDING
+ * game-count imbalance beyond the structural minimum (never ship an unfair draw).
  */
 function validateDraw(
   games: GameSlot[],
-  confirmed: MatchParticipant[],
-  totalGames: number,
-  mode: DrawMode,
+  fairnessPool: MatchParticipant[],
+  maxAllowedSpread: number,
 ): void {
-  const errors: string[] = [];
+  const critical: string[] = [];
 
-  // 1. Total game count
-  if (games.length !== totalGames) {
-    errors.push(`총 경기 수 불일치: expected ${totalGames}, got ${games.length}`);
-  }
-
-  // 2. Game type composition (gender validation)
   for (let i = 0; i < games.length; i++) {
     const g = games[i];
     const players = [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2];
-    const ids = players.map(p => getPlayerId(p));
+    const ids = players.map(getPlayerId);
 
-    // 5. No duplicate players in same game
-    const uniqueIds = new Set(ids);
-    if (uniqueIds.size !== 4) {
-      errors.push(`경기 ${i + 1}: 같은 선수가 중복 배정됨`);
+    if (new Set(ids).size !== 4) {
+      critical.push(`경기 ${i + 1}: 같은 선수가 중복 배정됨`);
     }
 
-    // Gender composition check
-    const males = players.filter(p => getGender(p) === 'M').length;
-    const females = players.filter(p => getGender(p) === 'F').length;
-
+    const males = players.filter((p) => getGender(p) === 'M').length;
+    const females = players.filter((p) => getGender(p) === 'F').length;
     if (g.gameType === 'mixed' && (males !== 2 || females !== 2)) {
-      errors.push(`경기 ${i + 1}: 혼복인데 ${males}M+${females}F (2M+2F여야 함)`);
+      critical.push(`경기 ${i + 1}: 혼복 구성 오류 (${males}M+${females}F)`);
     }
-    if (g.gameType === 'mens' && males !== 4) {
-      errors.push(`경기 ${i + 1}: 남복인데 남자 ${males}명 (4M이어야 함)`);
-    }
-    if (g.gameType === 'womens' && females !== 4) {
-      errors.push(`경기 ${i + 1}: 여복인데 여자 ${females}명 (4F이어야 함)`);
-    }
-
-    // For mixed games, verify teams are 1M+1F vs 1M+1F
-    if (g.gameType === 'mixed') {
-      const teamAMales = [g.teamA.player1, g.teamA.player2].filter(p => getGender(p) === 'M').length;
-      const teamBMales = [g.teamB.player1, g.teamB.player2].filter(p => getGender(p) === 'M').length;
-      if (teamAMales !== 1 || teamBMales !== 1) {
-        errors.push(`경기 ${i + 1}: 혼복 팀 구성 오류 - 팀A ${teamAMales}M, 팀B ${teamBMales}M (각 1M+1F여야 함)`);
-      }
-    }
+    if (g.gameType === 'mens' && males !== 4) critical.push(`경기 ${i + 1}: 남복 구성 오류`);
+    if (g.gameType === 'womens' && females !== 4) critical.push(`경기 ${i + 1}: 여복 구성 오류`);
   }
 
-  // 3. No double booking (same player in same time slot on different courts)
+  // No double-booking within a time slot.
   const slotMap = new Map<number, string[]>();
   for (const g of games) {
-    const players = [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2];
-    const ids = players.map(p => getPlayerId(p));
+    const ids = [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2].map(getPlayerId);
     if (!slotMap.has(g.timeSlotIndex)) slotMap.set(g.timeSlotIndex, []);
     slotMap.get(g.timeSlotIndex)!.push(...ids);
   }
   for (const [slot, ids] of slotMap) {
-    const seen = new Set<string>();
-    for (const id of ids) {
-      if (seen.has(id)) {
-        errors.push(`시간 슬롯 ${slot}: 선수 ${id}가 같은 시간에 두 코트에 배정됨`);
-      }
-      seen.add(id);
+    if (new Set(ids).size !== ids.length) {
+      critical.push(`시간 ${slot}: 같은 선수가 두 코트에 동시 배정됨`);
     }
   }
 
-  // 4. Game count per player (max diff = 1)
-  const playerGames = new Map<string, number>();
-  confirmed.forEach(p => playerGames.set(getPlayerId(p), 0));
+  // Game-count fairness — measured over the eligible pool only.
+  const played = new Map<string, number>();
   for (const g of games) {
-    [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2].forEach(p => {
-      playerGames.set(getPlayerId(p), (playerGames.get(getPlayerId(p)) || 0) + 1);
+    [g.teamA.player1, g.teamA.player2, g.teamB.player1, g.teamB.player2].forEach((p) => {
+      played.set(getPlayerId(p), (played.get(getPlayerId(p)) ?? 0) + 1);
     });
   }
-  const counts = Array.from(playerGames.values());
-  const minCount = Math.min(...counts);
-  const maxCount = Math.max(...counts);
-  if (maxCount - minCount > 1) {
-    errors.push(`경기 수 불균형: min=${minCount}, max=${maxCount} (차이는 최대 1이어야 함)`);
-  }
+  const counts = fairnessPool.map((p) => played.get(getPlayerId(p)) ?? 0);
+  const spread = counts.length ? Math.max(...counts) - Math.min(...counts) : 0;
 
-  if (errors.length > 0) {
-    console.warn('[draw-engine] Validation warnings:', errors);
-    // Don't throw for now -- log warnings. The draw is still usable but imperfect.
-    // Only throw for truly critical issues (duplicate players).
-    const critical = errors.filter(e => e.includes('중복 배정') || e.includes('두 코트에 배정'));
-    if (critical.length > 0) {
-      console.error('Draw engine critical errors:', critical);
-      throw new Error('대진표를 생성할 수 없습니다. 참가자 구성을 확인해주세요.');
-    }
+  if (critical.length > 0) {
+    console.error('[draw-engine] critical:', critical);
+    throw new Error('대진표를 생성할 수 없습니다. 참가자 구성을 확인해주세요.');
+  }
+  if (spread > maxAllowedSpread) {
+    console.error(`[draw-engine] unfair spread=${spread} > allowed=${maxAllowedSpread}`);
+    throw new Error('공평한 대진표를 만들지 못했습니다. 코트 수나 경기 수를 조정해 다시 시도해주세요.');
   }
 }
 
@@ -1125,7 +808,7 @@ function generateTimeSlots(
 }
 
 export function generateDrawNew(input: DrawInput): DrawResult {
-  const confirmed = input.participants.filter(p => p.status === 'confirmed');
+  const confirmed = input.participants.filter((p) => p.status === 'confirmed');
   const {
     courtCount, gamesPerCourt, drawType,
     timeSlotMinutes = 30, startTime = '08:00', courtNames = [],
@@ -1136,9 +819,9 @@ export function generateDrawNew(input: DrawInput): DrawResult {
 
   switch (drawType) {
     case 'mixed_doubles': {
-      const males = confirmed.filter(p => getGender(p) === 'M');
-      const females = confirmed.filter(p => getGender(p) === 'F');
-      const noGender = confirmed.filter(p => !getGender(p));
+      const males = confirmed.filter((p) => getGender(p) === 'M');
+      const females = confirmed.filter((p) => getGender(p) === 'F');
+      const noGender = confirmed.filter((p) => !getGender(p));
       const pairCount = Math.min(males.length, females.length);
       if (pairCount < 2) throw new Error('혼복을 위해 남녀 각 2명 이상이 필요합니다');
       sitOuts = [...males.slice(pairCount), ...females.slice(pairCount), ...noGender];
@@ -1146,20 +829,20 @@ export function generateDrawNew(input: DrawInput): DrawResult {
       break;
     }
     case 'mens_doubles': {
-      const males = confirmed.filter(p => getGender(p) === 'M');
+      const males = confirmed.filter((p) => getGender(p) === 'M');
       if (males.length < 4) throw new Error('남복을 위해 최소 4명의 남성 참가자가 필요합니다');
       const usable = males.length % 2 === 0 ? males : males.slice(0, -1);
       if (males.length % 2 !== 0) sitOuts.push(males[males.length - 1]);
-      sitOuts.push(...confirmed.filter(p => getGender(p) !== 'M'));
+      sitOuts.push(...confirmed.filter((p) => getGender(p) !== 'M'));
       teams = serpentinePair(usable);
       break;
     }
     case 'womens_doubles': {
-      const females = confirmed.filter(p => getGender(p) === 'F');
+      const females = confirmed.filter((p) => getGender(p) === 'F');
       if (females.length < 4) throw new Error('여복을 위해 최소 4명의 여성 참가자가 필요합니다');
       const usable = females.length % 2 === 0 ? females : females.slice(0, -1);
       if (females.length % 2 !== 0) sitOuts.push(females[females.length - 1]);
-      sitOuts.push(...confirmed.filter(p => getGender(p) !== 'F'));
+      sitOuts.push(...confirmed.filter((p) => getGender(p) !== 'F'));
       teams = serpentinePair(usable);
       break;
     }
@@ -1194,7 +877,7 @@ type LegacyDrawInput = {
 type LegacyDrawType = 'random' | 'ntrp_balanced' | 'mixed_gender';
 
 export function generateDraw(input: LegacyDrawInput, drawType: LegacyDrawType): GeneratedGame[] {
-  const confirmed = input.participants.filter(p => p.status === 'confirmed');
+  const confirmed = input.participants.filter((p) => p.status === 'confirmed');
 
   if (confirmed.length < 4 && input.format !== 'singles') {
     throw new Error('복식 경기를 위해 최소 4명의 참가자가 필요합니다');
@@ -1211,7 +894,7 @@ export function generateDraw(input: LegacyDrawInput, drawType: LegacyDrawType): 
   }
 
   if (input.format === 'singles') {
-    const teams: TeamPair[] = confirmed.map(p => ({ player1: p, player2: null }));
+    const teams: TeamPair[] = confirmed.map((p) => ({ player1: p, player2: null }));
     const shuffledTeams = shuffle(teams);
     const matchups: [TeamPair, TeamPair][] = [];
     for (let i = 0; i < shuffledTeams.length; i++) {
