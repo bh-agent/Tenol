@@ -4,8 +4,16 @@ import type { Metadata } from 'next';
 import { Card } from '@/components/ui/card';
 import { TopBar } from '@/components/layout/top-bar';
 import { createClient } from '@/lib/supabase/server';
+import { createServiceRoleClient } from '@/lib/supabase/service';
 import { MapPin, Users, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
 import { JoinByLinkForm } from './join-form';
+
+// 초대 링크는 공개 게이트 — 미로그인 방문자·SNS 스크래퍼도 클럽 기본 정보를 봐야
+// 미리보기 이미지가 뜬다. clubs SELECT는 authenticated 전용이라 service_role로
+// 안전한 필드만(이름·소개·로고·지역) 조회한다. 실제 가입은 유저 세션으로만 가능.
+function publicClient() {
+  return createServiceRoleClient() ?? null;
+}
 
 export async function generateMetadata({
   params,
@@ -13,7 +21,7 @@ export async function generateMetadata({
   params: Promise<{ code: string }>;
 }): Promise<Metadata> {
   const { code } = await params;
-  const supabase = await createClient();
+  const supabase = publicClient() ?? (await createClient());
 
   const { data: club } = await supabase
     .from('clubs')
@@ -58,13 +66,15 @@ export default async function JoinByLinkPage({
 }) {
   const { code } = await params;
   const supabase = await createClient();
+  // 공개 조회용(미로그인 방문자도 클럽 정보 표시): service_role, 안전한 필드만.
+  const pub = publicClient() ?? supabase;
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   // Look up club by invite code
-  const { data: club } = await supabase
+  const { data: club } = await pub
     .from('clubs')
     .select('id, name, description, region, invite_code')
     .eq('invite_code', code)
@@ -92,7 +102,7 @@ export default async function JoinByLinkPage({
   }
 
   // Get member count
-  const { count: memberCount } = await supabase
+  const { count: memberCount } = await pub
     .from('club_members')
     .select('id', { count: 'exact', head: true })
     .eq('club_id', club.id);
@@ -184,7 +194,7 @@ export default async function JoinByLinkPage({
                   </span>
                 </div>
               ) : (
-                <JoinByLinkForm inviteCode={code} profile={userProfile} />
+                <JoinByLinkForm inviteCode={code} profile={userProfile} isLoggedIn={!!user} />
               )}
             </div>
           </div>

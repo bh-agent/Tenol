@@ -40,11 +40,14 @@ export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // 공개 경로: 로그인/OAuth 콜백 + 약관·개인정보처리방침(앱스토어 심사관이 미로그인으로 접근)
+  // + 클럽 초대 링크(/clubs/join) — SNS 미리보기 스크래퍼·미로그인 방문자가 클럽 정보를
+  //   볼 수 있어야 초대 카드 이미지(클럽 로고)가 뜬다. 실제 가입은 여전히 로그인 필요.
   const isAuthRoute =
     pathname.startsWith('/login') ||
     pathname.startsWith('/auth') ||
     pathname.startsWith('/terms') ||
-    pathname.startsWith('/privacy');
+    pathname.startsWith('/privacy') ||
+    pathname.startsWith('/clubs/join');
 
   // 미인증 → 로그인 (원래 목적지를 ?next=로 보존 — 초대 링크 등 복귀용)
   if (!user && !isAuthRoute) {

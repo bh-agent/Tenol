@@ -12,6 +12,7 @@ interface JoinByLinkFormProps {
     ntrp_level: number | null;
     tennis_start_date: string | null;
   } | null;
+  isLoggedIn?: boolean;
 }
 
 function formatTennisCareer(startDate: string | null) {
@@ -26,12 +27,31 @@ function formatTennisCareer(startDate: string | null) {
   return months > 0 ? `${years}년 ${months}개월` : `${years}년`;
 }
 
-export function JoinByLinkForm({ inviteCode, profile }: JoinByLinkFormProps) {
+export function JoinByLinkForm({ inviteCode, profile, isLoggedIn = true }: JoinByLinkFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [introduction, setIntroduction] = useState('');
   const router = useRouter();
+
+  // 미로그인 방문자: 로그인 후 다시 이 초대 페이지로 돌아오게 안내
+  if (!isLoggedIn) {
+    const next = `/clubs/join/${inviteCode}`;
+    return (
+      <div className="space-y-3 pt-1 text-center">
+        <p className="text-sm text-muted-foreground">
+          이 클럽에 가입하려면 로그인이 필요합니다.
+        </p>
+        <Button
+          fullWidth
+          size="lg"
+          onClick={() => router.push(`/login?next=${encodeURIComponent(next)}`)}
+        >
+          로그인하고 가입하기
+        </Button>
+      </div>
+    );
+  }
 
   const handleJoin = async () => {
     setLoading(true);
