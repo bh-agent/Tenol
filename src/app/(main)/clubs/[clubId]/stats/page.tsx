@@ -108,11 +108,14 @@ export default async function ClubStatsPage({
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <StatCard label="승률" value={`${stats.winRate}%`} variant="primary" />
             <StatCard label="총 경기" value={stats.total} />
+          </div>
+          <div className="grid grid-cols-3 gap-2 mt-2">
             <StatCard label="승리" value={stats.wins} variant="success" />
             <StatCard label="패배" value={stats.losses} variant="destructive" />
+            <StatCard label="무승부" value={stats.draws} />
           </div>
         </section>
 

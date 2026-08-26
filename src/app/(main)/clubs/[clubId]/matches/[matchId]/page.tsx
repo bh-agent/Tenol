@@ -40,6 +40,15 @@ export default async function MatchDetailPage({
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
+  // 게스트 배지는 저장된 participant_type이 아니라 '실제 이 클럽 회원인지'로 판단한다.
+  // (게스트로 신청했다 회원이 된 사람은 participant_type이 'guest'로 남아 있어 오표시됨)
+  const { data: memberRows } = await supabase
+    .from('club_members')
+    .select('user_id')
+    .eq('club_id', clubId);
+  const memberIds = new Set((memberRows ?? []).map((m: any) => m.user_id));
+  const isGuest = (p: any) => !(p.user_id && memberIds.has(p.user_id));
+
   const confirmed = match.match_participants?.filter((p: any) => p.status === 'confirmed') || [];
   const pending = match.match_participants?.filter((p: any) => p.status === 'pending') || [];
   const waitlisted = (match.match_participants?.filter((p: any) => p.status === 'waitlisted') || [])
@@ -286,7 +295,7 @@ export default async function MatchDetailPage({
                     </div>
                   </>
                 )}
-                {p.participant_type === 'guest' && (
+                {isGuest(p) && (
                   <Badge variant="outline">게스트</Badge>
                 )}
               </div>

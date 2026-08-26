@@ -146,16 +146,14 @@ function OnboardingContent() {
   const handleNext = () => {
     setError('');
     if (step === 1) {
-      // OAuth가 이름을 제공한 경우 이름 검증을 건너뜀 (Apple 가이드라인 4 준수)
-      if (!hasProviderName) {
-        if (!displayName.trim()) {
-          setError('닉네임을 입력해주세요');
-          return;
-        }
-        if (!realName.trim()) {
-          setError('실명을 입력해주세요');
-          return;
-        }
+      // 닉네임은 OAuth가 이름을 준 경우 자동값 사용(검증 생략), 실명은 항상 필수
+      if (!hasProviderName && !displayName.trim()) {
+        setError('닉네임을 입력해주세요');
+        return;
+      }
+      if (!realName.trim()) {
+        setError('실명을 입력해주세요');
+        return;
       }
       if (!gender) {
         setError('성별을 선택해주세요');
@@ -261,42 +259,42 @@ function OnboardingContent() {
                 )}
               </h1>
               <p className="text-muted-foreground text-sm mb-8 text-center">
-                {hasProviderName ? '성별을 알려주세요' : '기본 정보를 알려주세요'}
+                {hasProviderName ? '실명과 성별을 알려주세요' : '기본 정보를 알려주세요'}
               </p>
 
               <div className="space-y-5 stagger">
-                {/* OAuth가 이름을 제공하지 않은 경우에만 이름 입력 표시
-                    Apple Guideline 4: Sign in with Apple이 제공한 이름은 다시 요구하지 않음 */}
+                {/* 닉네임: OAuth(Apple 포함)가 이름을 제공하면 자동 채움 후 숨김
+                    (Apple Guideline 4: 제공된 이름은 다시 요구하지 않음) */}
                 {!hasProviderName && (
-                  <>
-                    <Input
-                      id="display_name"
-                      name="display_name"
-                      label="닉네임"
-                      placeholder="테놀에서 사용할 이름"
-                      required
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      className="bg-surface border-border focus:border-primary"
-                    />
-
-                    <div>
-                      <Input
-                        id="real_name"
-                        name="real_name"
-                        label="실명"
-                        placeholder="대진표에 표시될 이름"
-                        required
-                        value={realName}
-                        onChange={(e) => setRealName(e.target.value)}
-                        className="bg-surface border-border focus:border-primary"
-                      />
-                      <p className="text-[11px] text-muted-foreground mt-1.5">
-                        대진표에서 실명(닉네임) 형태로 표시됩니다
-                      </p>
-                    </div>
-                  </>
+                  <Input
+                    id="display_name"
+                    name="display_name"
+                    label="닉네임"
+                    placeholder="테놀에서 사용할 이름"
+                    required
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    className="bg-surface border-border focus:border-primary"
+                  />
                 )}
+
+                {/* 실명: 항상 입력받는다 (대진표·클럽에서 본인 식별). OAuth가 준 이름을
+                    미리 채워두되, 실제 본명으로 수정할 수 있게 한다. */}
+                <div>
+                  <Input
+                    id="real_name"
+                    name="real_name"
+                    label="실명"
+                    placeholder="본명을 입력해주세요"
+                    required
+                    value={realName}
+                    onChange={(e) => setRealName(e.target.value)}
+                    className="bg-surface border-border focus:border-primary"
+                  />
+                  <p className="text-[11px] text-muted-foreground mt-1.5">
+                    클럽·대진표에서 본인 확인에 쓰입니다. 실제 이름을 입력해주세요.
+                  </p>
+                </div>
 
                 {/* Gender */}
                 <div>

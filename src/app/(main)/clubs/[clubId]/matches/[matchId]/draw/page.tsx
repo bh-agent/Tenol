@@ -1418,7 +1418,28 @@ export default function DrawPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex flex-col gap-1">
                     <p className="text-sm text-muted-foreground">
-                      {mapDrawTypeFromApi(draw.draw_type)} · {matchCourtCount}코트 · {(draw.games || []).length}경기 · {(() => {
+                      {(() => {
+                        // 저장된 draw_type(생성 모드)은 개별 게임을 수정해도 안 바뀌어
+                        // 오해를 준다. 실제 게임들의 성별 구성으로 라이브 요약을 만든다.
+                        const gs = draw.games || [];
+                        let mens = 0, womens = 0, mixed = 0, free = 0;
+                        for (const g of gs) {
+                          const ids = [g.team_a_player1_id, g.team_a_player2_id, g.team_b_player1_id, g.team_b_player2_id].filter(Boolean) as string[];
+                          const genders = ids.map((id) => participantMap[id]?.gender).filter(Boolean);
+                          const m = genders.filter((x) => x === 'M').length;
+                          const f = genders.filter((x) => x === 'F').length;
+                          if (m > 0 && f > 0) mixed++;
+                          else if (m > 0) mens++;
+                          else if (f > 0) womens++;
+                          else free++;
+                        }
+                        const parts: string[] = [];
+                        if (mens) parts.push(`남복 ${mens}`);
+                        if (womens) parts.push(`여복 ${womens}`);
+                        if (mixed) parts.push(`혼복 ${mixed}`);
+                        if (free) parts.push(`자유 ${free}`);
+                        return parts.join(' · ') || mapDrawTypeFromApi(draw.draw_type);
+                      })()} · {matchCourtCount}코트 · {(draw.games || []).length}경기 · {(() => {
                         const firstSlot = timeSlots[sortedOrders[0]];
                         const lastSlot = timeSlots[sortedOrders[sortedOrders.length - 1]];
                         return `${firstSlot?.startTime || '--:--'}~${lastSlot?.endTime || '--:--'}`;

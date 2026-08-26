@@ -81,7 +81,7 @@ export function Leaderboard({ entries, currentUserId, className }: LeaderboardPr
                     )}
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    {entry.wins}승 {entry.losses}패 ({entry.total}경기)
+                    {entry.wins}승 {entry.losses}패{entry.draws ? ` ${entry.draws}무` : ''} ({entry.total}경기)
                   </p>
                 </div>
               </Link>
