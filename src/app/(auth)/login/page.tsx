@@ -18,7 +18,7 @@ const HANDOFF_TOKEN_RE = /^[a-f0-9]{48}$/;
 /** 로그인 후 복귀 경로 검증: 내부 경로만 허용 (open redirect 방지) */
 function sanitizeNext(raw: string | null): string | null {
   if (!raw) return null;
-  if (!raw.startsWith('/') || raw.startsWith('//')) return null;
+  if (!raw.startsWith('/') || raw.startsWith('//') || raw.includes('\\')) return null;
   return raw;
 }
 

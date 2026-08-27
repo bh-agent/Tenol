@@ -109,12 +109,112 @@ export async function createMatch(formData: FormData) {
   redirect(`/clubs/${matchData.club_id}/matches/${match.id}`);
 }
 
+type SupabaseServer = Awaited<ReturnType<typeof createClient>>;
+
+/** 삭제 전, 대진표(games)에서 해당 참가자가 배정된 슬롯을 null로 정리한다.
+ *  games FK가 ON DELETE CASCADE(00046)라 이 정리 없이 participant를 지우면
+ *  그 참가자가 낀 게임 행 전체가 삭제되어 같은 게임 3명의 점수까지 유실된다. */
+async function clearParticipantFromGames(supabase: SupabaseServer, matchId: string, participantId: string) {
+  const { data: draws } = await supabase.from('draws').select('id').eq('match_id', matchId);
+  if (!draws || draws.length === 0) return;
+  const drawIds = draws.map((d) => d.id);
+  const { data: games } = await supabase
+    .from('games')
+    .select('id, team_a_player1_id, team_a_player2_id, team_b_player1_id, team_b_player2_id')
+    .in('draw_id', drawIds);
+  for (const game of games ?? []) {
+    const updates: Record<string, null> = {};
+    if (game.team_a_player1_id === participantId) updates.team_a_player1_id = null;
+    if (game.team_a_player2_id === participantId) updates.team_a_player2_id = null;
+    if (game.team_b_player1_id === participantId) updates.team_b_player1_id = null;
+    if (game.team_b_player2_id === participantId) updates.team_b_player2_id = null;
+    if (Object.keys(updates).length > 0) await supabase.from('games').update(updates).eq('id', game.id);
+  }
+}
+
+/** 대진표에서 oldId를 newId로 교체. 실패 시 에러 메시지 반환(성공 시 null). */
+async function swapParticipantInGames(
+  supabase: SupabaseServer,
+  matchId: string,
+  oldId: string,
+  newId: string,
+): Promise<string | null> {
+  const { data: draws } = await supabase.from('draws').select('id').eq('match_id', matchId);
+  if (!draws || draws.length === 0) return null;
+  const drawIds = draws.map((d) => d.id);
+  const { data: games } = await supabase
+    .from('games')
+    .select('id, team_a_player1_id, team_a_player2_id, team_b_player1_id, team_b_player2_id')
+    .in('draw_id', drawIds);
+  for (const game of games ?? []) {
+    const updates: Record<string, string> = {};
+    if (game.team_a_player1_id === oldId) updates.team_a_player1_id = newId;
+    if (game.team_a_player2_id === oldId) updates.team_a_player2_id = newId;
+    if (game.team_b_player1_id === oldId) updates.team_b_player1_id = newId;
+    if (game.team_b_player2_id === oldId) updates.team_b_player2_id = newId;
+    if (Object.keys(updates).length > 0) {
+      const { error } = await supabase.from('games').update(updates).eq('id', game.id);
+      if (error) return '대진표 선수 교체에 실패했습니다: ' + error.message;
+    }
+  }
+  return null;
+}
+
+/** 대기자 1명 승격 + 승격자에게 참가 확정 알림. */
+async function promoteAndNotify(supabase: SupabaseServer, matchId: string) {
+  const { data: promotedId } = await supabase.rpc('promote_waitlist', { p_match_id: matchId });
+  if (!promotedId) return;
+  try {
+    const { data: promoted } = await supabase
+      .from('match_participants')
+      .select('user_id')
+      .eq('id', promotedId)
+      .maybeSingle();
+    if (!promoted?.user_id) return;
+    const { data: matchInfo } = await supabase
+      .from('matches')
+      .select('title, club_id')
+      .eq('id', matchId)
+      .maybeSingle();
+    if (!matchInfo) return;
+    const { createNotification } = await import('@/lib/actions/notifications');
+    await createNotification(
+      promoted.user_id,
+      'match_invite',
+      '대기자 참가 확정',
+      `"${matchInfo.title}" 경기에 대기에서 참가가 확정되었습니다.`,
+      { match_id: matchId, club_id: matchInfo.club_id },
+    );
+  } catch (e) {
+    logWarn('match', 'Failed to notify promoted participant', { matchId, error: e });
+  }
+}
+
 export async function joinMatch(matchId: string) {
   const validMatchId = uuidSchema.parse(matchId);
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('인증이 필요합니다');
+
+  // 클럽 멤버만 '회원'으로 참가 가능 (비회원은 게스트 신청 경로 사용).
+  // 서버액션 직접 호출로 비멤버가 확정멤버가 되는 것을 막는다.
+  const { data: joinMatchInfo } = await supabase
+    .from('matches')
+    .select('club_id, status')
+    .eq('id', validMatchId)
+    .maybeSingle();
+  if (!joinMatchInfo) throw new Error('경기를 찾을 수 없습니다');
+  if (joinMatchInfo.status === 'completed' || joinMatchInfo.status === 'cancelled') {
+    throw new Error('종료되었거나 취소된 경기에는 참가할 수 없습니다');
+  }
+  const { data: joinMembership } = await supabase
+    .from('club_members')
+    .select('id')
+    .eq('club_id', joinMatchInfo.club_id)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!joinMembership) throw new Error('클럽 멤버만 참가할 수 있습니다. 게스트로 신청해주세요.');
 
   // The RPC now auto-assigns 'waitlisted' status when match is full
   const { error } = await supabase.rpc('join_match_atomically', {
@@ -270,6 +370,28 @@ export async function respondToGuest(participantId: string, matchId: string, app
     .eq('id', validParticipantId)
     .maybeSingle();
 
+  // 승인 시 경기 상태·정원 검증 (종료 경기 승인·정원 초과 방지)
+  if (approved) {
+    const { data: gm } = await supabase
+      .from('matches')
+      .select('status, max_participants')
+      .eq('id', validMatchId)
+      .maybeSingle();
+    if (gm?.status === 'completed' || gm?.status === 'cancelled') {
+      throw new Error('종료되었거나 취소된 경기에는 참가자를 승인할 수 없습니다');
+    }
+    if (gm?.max_participants) {
+      const { count } = await supabase
+        .from('match_participants')
+        .select('id', { count: 'exact', head: true })
+        .eq('match_id', validMatchId)
+        .eq('status', 'confirmed');
+      if (count && count >= gm.max_participants) {
+        throw new Error('정원이 가득 차 승인할 수 없습니다. 참가자를 조정하거나 정원을 늘려주세요.');
+      }
+    }
+  }
+
   const { error } = await supabase
     .from('match_participants')
     .update({
@@ -338,58 +460,31 @@ export async function withdrawFromMatch(matchId: string) {
   // Check if the user was a confirmed participant (to know if we should promote waitlist)
   const { data: participant } = await supabase
     .from('match_participants')
-    .select('status')
+    .select('id, status')
     .eq('match_id', validMatchId)
     .eq('user_id', user.id)
     .maybeSingle();
 
-  const wasConfirmed = participant?.status === 'confirmed';
+  if (!participant) return;
+  const wasConfirmed = participant.status === 'confirmed';
 
-  await supabase
+  // 대진표에 이미 배정돼 있으면 슬롯을 먼저 비워 CASCADE로 게임·점수가 삭제되는 것을 막는다.
+  await clearParticipantFromGames(supabase, validMatchId, participant.id);
+
+  const { error: delError } = await supabase
     .from('match_participants')
     .delete()
-    .eq('match_id', validMatchId)
-    .eq('user_id', user.id);
+    .eq('id', participant.id);
+  if (delError) {
+    logError('match', 'Failed to withdraw from match', { userId: user.id, matchId: validMatchId, error: delError });
+    throw new Error('참가 취소에 실패했습니다');
+  }
 
   logInfo('match', 'Withdrew from match', { userId: user.id, matchId: validMatchId });
 
   // If a confirmed participant withdrew, promote the next waitlisted participant
   if (wasConfirmed) {
-    const { data: promotedId } = await supabase.rpc('promote_waitlist', {
-      p_match_id: validMatchId,
-    });
-
-    // Send notification to promoted participant
-    if (promotedId) {
-      try {
-        const { data: promoted } = await supabase
-          .from('match_participants')
-          .select('user_id')
-          .eq('id', promotedId)
-          .maybeSingle();
-
-        if (promoted?.user_id) {
-          const { data: matchInfo } = await supabase
-            .from('matches')
-            .select('title, club_id')
-            .eq('id', validMatchId)
-            .maybeSingle();
-
-          if (matchInfo) {
-            const { createNotification } = await import('@/lib/actions/notifications');
-            await createNotification(
-              promoted.user_id,
-              'match_invite',
-              '대기자 참가 확정',
-              `"${matchInfo.title}" 경기에 대기에서 참가가 확정되었습니다.`,
-              { match_id: validMatchId, club_id: matchInfo.club_id }
-            );
-          }
-        }
-      } catch (e) {
-        logWarn('match', 'Failed to send waitlist promotion notification', { matchId: validMatchId, error: e });
-      }
-    }
+    await promoteAndNotify(supabase, validMatchId);
   }
 }
 
@@ -578,9 +673,9 @@ export async function removeParticipant(participantId: string, matchId: string):
 
     logInfo('match', 'Participant removed', { matchId: validMatchId, metadata: { participantId: validParticipantId } });
 
-    // Promote waitlisted participant if a confirmed one was removed
+    // Promote waitlisted participant if a confirmed one was removed (+ notify)
     if (wasConfirmed) {
-      await supabase.rpc('promote_waitlist', { p_match_id: validMatchId });
+      await promoteAndNotify(supabase, validMatchId);
     }
 
     return {};
@@ -631,41 +726,17 @@ export async function replaceParticipant(matchId: string, oldParticipantId: stri
 
     if (insertErr || !newParticipant) return { error: '대체 선수 추가에 실패했습니다: ' + (insertErr?.message || 'no data') };
 
-  // Find all games where oldParticipant is assigned and swap
-  const { data: draws } = await supabase
-    .from('draws')
-    .select('id')
-    .eq('match_id', validMatchId);
+    // 대진표에서 기존 선수를 새 선수로 교체 (실패 시 old 삭제하지 않음 → CASCADE 유실 방지)
+    const swapErr = await swapParticipantInGames(supabase, validMatchId, validOldId, newParticipant.id);
+    if (swapErr) return { error: swapErr };
 
-  if (draws && draws.length > 0) {
-    const drawIds = draws.map(d => d.id);
-    const { data: games } = await supabase
-      .from('games')
-      .select('id, team_a_player1_id, team_a_player2_id, team_b_player1_id, team_b_player2_id')
-      .in('draw_id', drawIds);
+    // Delete old participant
+    const { error: deleteErr } = await supabase
+      .from('match_participants')
+      .delete()
+      .eq('id', validOldId);
 
-    if (games) {
-      for (const game of games) {
-        const updates: Record<string, string> = {};
-        if (game.team_a_player1_id === validOldId) updates.team_a_player1_id = newParticipant.id;
-        if (game.team_a_player2_id === validOldId) updates.team_a_player2_id = newParticipant.id;
-        if (game.team_b_player1_id === validOldId) updates.team_b_player1_id = newParticipant.id;
-        if (game.team_b_player2_id === validOldId) updates.team_b_player2_id = newParticipant.id;
-
-        if (Object.keys(updates).length > 0) {
-          await supabase.from('games').update(updates).eq('id', game.id);
-        }
-      }
-    }
-  }
-
-  // Delete old participant
-  const { error: deleteErr } = await supabase
-    .from('match_participants')
-    .delete()
-    .eq('id', validOldId);
-
-  if (deleteErr) return { error: '기존 참가자 삭제에 실패했습니다: ' + deleteErr.message };
+    if (deleteErr) return { error: '기존 참가자 삭제에 실패했습니다: ' + deleteErr.message };
     return {};
   } catch (e) {
     return { error: e instanceof Error ? e.message : '대체에 실패했습니다' };
@@ -707,41 +778,16 @@ export async function replaceWithOffline(
 
     if (insertErr || !newParticipant) return { error: '대체 선수 추가에 실패했습니다: ' + (insertErr?.message || 'no data') };
 
-  // Find all games where oldParticipant is assigned and swap
-  const { data: draws } = await supabase
-    .from('draws')
-    .select('id')
-    .eq('match_id', validMatchId);
+    const swapErr = await swapParticipantInGames(supabase, validMatchId, validOldId, newParticipant.id);
+    if (swapErr) return { error: swapErr };
 
-  if (draws && draws.length > 0) {
-    const drawIds = draws.map(d => d.id);
-    const { data: games } = await supabase
-      .from('games')
-      .select('id, team_a_player1_id, team_a_player2_id, team_b_player1_id, team_b_player2_id')
-      .in('draw_id', drawIds);
+    // Delete old participant
+    const { error: deleteErr } = await supabase
+      .from('match_participants')
+      .delete()
+      .eq('id', validOldId);
 
-    if (games) {
-      for (const game of games) {
-        const updates: Record<string, string> = {};
-        if (game.team_a_player1_id === validOldId) updates.team_a_player1_id = newParticipant.id;
-        if (game.team_a_player2_id === validOldId) updates.team_a_player2_id = newParticipant.id;
-        if (game.team_b_player1_id === validOldId) updates.team_b_player1_id = newParticipant.id;
-        if (game.team_b_player2_id === validOldId) updates.team_b_player2_id = newParticipant.id;
-
-        if (Object.keys(updates).length > 0) {
-          await supabase.from('games').update(updates).eq('id', game.id);
-        }
-      }
-    }
-  }
-
-  // Delete old participant
-  const { error: deleteErr } = await supabase
-    .from('match_participants')
-    .delete()
-    .eq('id', validOldId);
-
-  if (deleteErr) return { error: '기존 참가자 삭제에 실패했습니다: ' + deleteErr.message };
+    if (deleteErr) return { error: '기존 참가자 삭제에 실패했습니다: ' + deleteErr.message };
     return {};
   } catch (e) {
     return { error: e instanceof Error ? e.message : '대체에 실패했습니다' };
@@ -765,12 +811,36 @@ export async function updateMatch(matchId: string, formData: FormData) {
   });
 
   const supabase = await createClient();
+
+  // 정원 증가 시 대기자 자동 승격을 위해 이전 정원을 먼저 확인
+  const { data: prevMatch } = await supabase
+    .from('matches')
+    .select('max_participants')
+    .eq('id', validMatchId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from('matches')
     .update({ ...validated, updated_at: new Date().toISOString() })
     .eq('id', validMatchId);
 
   if (error) throw new Error('경기 수정에 실패했습니다');
+
+  // 정원이 늘었으면 늘어난 만큼 대기자를 승격(알림 포함)
+  const oldMax = prevMatch?.max_participants ?? null;
+  const newMax = validated.max_participants ?? null;
+  if (newMax !== null && (oldMax === null || newMax > oldMax)) {
+    const seatsAdded = oldMax === null ? newMax : newMax - oldMax;
+    for (let i = 0; i < seatsAdded; i++) {
+      const { count } = await supabase
+        .from('match_participants')
+        .select('id', { count: 'exact', head: true })
+        .eq('match_id', validMatchId)
+        .eq('status', 'confirmed');
+      if (count !== null && count >= newMax) break;
+      await promoteAndNotify(supabase, validMatchId);
+    }
+  }
 
   redirect(`/clubs/${clubId}/matches/${validMatchId}`);
 }

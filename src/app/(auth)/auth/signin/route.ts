@@ -18,7 +18,7 @@ const PROVIDERS = new Set(['kakao', 'google', 'apple']);
 
 /** 내부 경로만 허용 (open redirect 방지) */
 function sanitizeNext(raw: string | null): string | null {
-  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return null;
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//') || raw.includes('\\')) return null;
   return raw;
 }
 

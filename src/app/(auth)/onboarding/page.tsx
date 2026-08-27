@@ -33,10 +33,10 @@ function OnboardingContent() {
   // 온보딩 완료 후 복귀 목적지: 쿼리 → sessionStorage(로그인 페이지가 백업) → /clubs
   const resolveDestination = (): string => {
     const fromQuery = searchParams.get('next');
-    if (fromQuery && fromQuery.startsWith('/') && !fromQuery.startsWith('//')) return fromQuery;
+    if (fromQuery && fromQuery.startsWith('/') && !fromQuery.startsWith('//') && !fromQuery.includes('\\')) return fromQuery;
     try {
       const stored = sessionStorage.getItem('tenol_next');
-      if (stored && stored.startsWith('/') && !stored.startsWith('//')) return stored;
+      if (stored && stored.startsWith('/') && !stored.startsWith('//') && !stored.includes('\\')) return stored;
     } catch {}
     return '/clubs';
   };

@@ -66,7 +66,7 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone();
     url.search = '';
     url.pathname =
-      nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//')
+      nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') && !nextParam.includes('\\')
         ? nextParam
         : '/clubs';
     return NextResponse.redirect(url);

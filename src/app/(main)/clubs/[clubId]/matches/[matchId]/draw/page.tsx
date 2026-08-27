@@ -482,6 +482,18 @@ export default function DrawPage() {
       toast.warning('복식 경기를 위해 최소 4명의 참가자가 필요합니다');
       return;
     }
+    // 이미 대진표가 있으면 재생성과 동일하게 파괴적 동작임을 경고 (기존 점수 삭제)
+    if (draws.length > 0) {
+      setConfirmAction({
+        message: '이미 대진표가 있습니다. 새로 생성하면 기존 대진표와 입력된 점수가 모두 삭제됩니다. 계속하시겠습니까?',
+        onConfirm: () => { void doGenerate(); },
+      });
+      return;
+    }
+    await doGenerate();
+  };
+
+  const doGenerate = async () => {
     setGenerating(true);
     try {
       const apiDrawType = mapDrawModeToApiType(drawMode);

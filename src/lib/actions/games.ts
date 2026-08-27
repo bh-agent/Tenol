@@ -83,8 +83,9 @@ async function getMatchStatusFromGame(supabase: any, gameId: string): Promise<st
 export async function deleteDraw(drawId: string, matchId: string) {
   const validated = deleteDrawSchema.parse({ drawId, matchId });
 
-  const { requireMatchPermission } = await import('@/lib/utils/check-permission');
-  await requireMatchPermission(validated.matchId, 'draw.manage');
+  // 종료된 대진은 회장·운영진만 삭제 가능 (개별 수정과 동일한 보호)
+  const { requireMatchDrawEdit } = await import('@/lib/utils/check-permission');
+  await requireMatchDrawEdit(validated.matchId);
 
   const supabase = await createClient();
 
@@ -213,8 +214,27 @@ export async function createManualDraw(
     team_b_player2_id: string | null;
   }[]
 ) {
-  const { requireMatchPermission } = await import('@/lib/utils/check-permission');
-  const { userId } = await requireMatchPermission(matchId, 'draw.manage');
+  // 종료된 대진은 회장·운영진만 (수동 생성도 기존 대진·점수를 덮어쓰므로 보호)
+  const { requireMatchDrawEdit } = await import('@/lib/utils/check-permission');
+  const { userId } = await requireMatchDrawEdit(matchId);
+
+  // 같은 선수를 한 경기의 두 슬롯, 또는 같은 시간대(game_order) 두 코트에 동시 배정 금지
+  for (const g of games) {
+    const ids = [g.team_a_player1_id, g.team_a_player2_id, g.team_b_player1_id, g.team_b_player2_id].filter(Boolean);
+    if (new Set(ids).size !== ids.length) {
+      throw new Error('한 경기에 같은 선수를 중복 배정할 수 없습니다');
+    }
+  }
+  const bySlot = new Map<number, Set<string>>();
+  for (const g of games) {
+    const slot = bySlot.get(g.game_order) ?? new Set<string>();
+    for (const id of [g.team_a_player1_id, g.team_a_player2_id, g.team_b_player1_id, g.team_b_player2_id]) {
+      if (!id) continue;
+      if (slot.has(id)) throw new Error('같은 시간대에 한 선수를 두 코트에 배정할 수 없습니다');
+      slot.add(id);
+    }
+    bySlot.set(g.game_order, slot);
+  }
 
   const supabase = await createClient();
 

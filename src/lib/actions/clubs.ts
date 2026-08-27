@@ -210,13 +210,13 @@ export async function updateClub(clubId: string, formData: FormData) {
 export async function removeMember(clubId: string, targetUserId: string) {
   const validClubId = uuidSchema.parse(clubId);
   const validTargetUserId = uuidSchema.parse(targetUserId);
-  const { userId } = await requirePermission(validClubId, 'member.manage');
+  const { userId, role } = await requirePermission(validClubId, 'member.manage');
 
   if (userId === validTargetUserId) throw new Error('자기 자신은 제명할 수 없습니다');
 
   const supabase = await createClient();
 
-  // 회장은 제명할 수 없음
+  // 대상 역할 확인: 회장은 제명 불가, 운영진은 다른 운영진 제명 불가(회장만 가능)
   const { data: targetMember } = await supabase
     .from('club_members')
     .select('role')
@@ -225,6 +225,9 @@ export async function removeMember(clubId: string, targetUserId: string) {
     .maybeSingle();
 
   if (targetMember?.role === 'owner') throw new Error('클럽장은 제명할 수 없습니다');
+  if (role === 'admin' && targetMember?.role === 'admin') {
+    throw new Error('운영진 제명은 클럽장만 가능합니다');
+  }
 
   await supabase
     .from('club_members')
@@ -242,14 +245,26 @@ export async function updateMemberRole(clubId: string, targetUserId: string, new
   const validRole = clubRoleSchema.parse(newRole);
   const { role } = await requirePermission(validClubId, 'member.manage');
 
-  // 운영진은 다른 운영진의 역할을 변경할 수 없음
-  if (role === 'admin' && validRole === 'admin') {
-    throw new Error('운영진 역할 변경은 클럽장만 가능합니다');
-  }
   // owner 역할 부여는 transferOwnership으로만 가능
   if (validRole === 'owner') throw new Error('클럽장 양도는 별도 기능을 사용하세요');
 
   const supabase = await createClient();
+
+  // 대상의 현재 역할을 서버에서 확인해 위계를 강제한다.
+  const { data: targetMember } = await supabase
+    .from('club_members')
+    .select('role')
+    .eq('club_id', validClubId)
+    .eq('user_id', validTargetUserId)
+    .maybeSingle();
+  if (!targetMember) throw new Error('대상 멤버를 찾을 수 없습니다');
+  // 클럽장의 역할은 누구도 변경할 수 없음(양도는 별도 기능)
+  if (targetMember.role === 'owner') throw new Error('클럽장의 역할은 변경할 수 없습니다');
+  // 운영진은 다른 운영진의 역할을 변경할 수 없음(회장만 가능)
+  if (role === 'admin' && targetMember.role === 'admin') {
+    throw new Error('운영진 역할 변경은 클럽장만 가능합니다');
+  }
+
   const { error } = await supabase
     .from('club_members')
     .update({ role: validRole })
