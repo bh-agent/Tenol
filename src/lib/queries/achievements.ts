@@ -115,14 +115,41 @@ export async function getClubAchievements(
   const supabase = await createClient();
   const achievements: Achievement[] = [];
 
-  // Fetch all game stats for the club
-  const { data: allStats } = await supabase
-    .from('player_game_stats')
-    .select(
-      'user_id, game_id, match_id, result, score_team_a, score_team_b, team, match_date'
-    )
-    .eq('club_id', clubId)
-    .not('score_team_a', 'is', null);
+  // Fetch all game stats for the club.
+  // 결정적 연승 정렬을 위해 game_order/court_number/completed_at까지 요청하되,
+  // 뷰 마이그레이션(00048) 이전 환경에서도 깨지지 않도록 컬럼 부재 시 기본 셋으로 후퇴.
+  type StatRow = {
+    user_id: string;
+    game_id: string;
+    match_id: string;
+    result: string | null;
+    score_team_a: number | null;
+    score_team_b: number | null;
+    team: string;
+    match_date: string;
+    game_order?: number | null;
+    court_number?: number | null;
+    completed_at?: string | null;
+  };
+  const BASE_COLS = 'user_id, game_id, match_id, result, score_team_a, score_team_b, team, match_date';
+  let allStats: StatRow[] | null = null;
+  {
+    const rich = await supabase
+      .from('player_game_stats')
+      .select(`${BASE_COLS}, game_order, court_number, completed_at`)
+      .eq('club_id', clubId)
+      .not('score_team_a', 'is', null);
+    if (rich.error) {
+      const base = await supabase
+        .from('player_game_stats')
+        .select(BASE_COLS)
+        .eq('club_id', clubId)
+        .not('score_team_a', 'is', null);
+      allStats = base.data as unknown as StatRow[] | null;
+    } else {
+      allStats = rich.data as unknown as StatRow[] | null;
+    }
+  }
 
   if (!allStats || allStats.length === 0) return [];
 
@@ -172,20 +199,36 @@ export async function getClubAchievements(
   }
 
   // ── win_streak ──
-  // Group games by user, sorted by match_date
-  const userGames: Record<string, { result: string; date: string }[]> = {};
+  // 유저별 게임을 시간순으로 정렬해 연승을 센다. match_date(DATE)만으로는 같은 날/
+  // 같은 경기의 게임 순서가 비결정적이라, completed_at·game_order·court_number를
+  // 보조 키로 써서 결정적으로 정렬한다.
+  const userGames: Record<
+    string,
+    { result: string; date: string; completedAt: string | null; order: number; court: number; gameId: string }[]
+  > = {};
   for (const s of allStats) {
     if (!userGames[s.user_id]) userGames[s.user_id] = [];
     userGames[s.user_id].push({
       result: s.result!,
       date: s.match_date,
+      completedAt: (s as { completed_at?: string | null }).completed_at ?? null,
+      order: (s as { game_order?: number }).game_order ?? 0,
+      court: (s as { court_number?: number }).court_number ?? 0,
+      gameId: s.game_id,
     });
   }
 
   let bestStreak = 0;
   const streakPerUser: Record<string, number> = {};
   for (const [uid, games] of Object.entries(userGames)) {
-    games.sort((a, b) => a.date.localeCompare(b.date));
+    games.sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      const ac = a.completedAt ?? '', bc = b.completedAt ?? '';
+      if (ac !== bc) return ac.localeCompare(bc);
+      if (a.order !== b.order) return a.order - b.order;
+      if (a.court !== b.court) return a.court - b.court;
+      return a.gameId.localeCompare(b.gameId);
+    });
     let currentStreak = 0;
     let maxStreak = 0;
     for (const g of games) {
