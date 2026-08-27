@@ -147,7 +147,9 @@ export function SubstitutePlayerModal({
 
       {/* Tabs */}
       <div className="flex gap-1 p-1 rounded-xl bg-muted mb-4">
-        {(['member', 'guest', 'offline'] as const).map((t) => (
+        {/* '게스트' 탭 제거: 온라인 게스트는 이미 참가중이라 중복차단, 오프라인 게스트는
+            FK 위반으로 항상 실패했음. 멤버 교체·직접 추가로 대체. */}
+        {(['member', 'offline'] as const).map((t) => (
           <button
             key={t}
             type="button"
@@ -160,7 +162,7 @@ export function SubstitutePlayerModal({
             )}
           >
             {t === 'offline' ? <UserPlus className="w-3.5 h-3.5" /> : <Users className="w-3.5 h-3.5" />}
-            {t === 'member' ? '멤버' : t === 'guest' ? '게스트' : '직접 추가'}
+            {t === 'member' ? '멤버' : '직접 추가'}
           </button>
         ))}
       </div>

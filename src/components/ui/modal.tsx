@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils/cn';
 import { X } from 'lucide-react';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 interface ModalProps {
@@ -16,6 +16,8 @@ interface ModalProps {
 export function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const prevFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -46,6 +48,29 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  // 접근성: 열릴 때 포커스를 다이얼로그로 이동·가두고, 닫힐 때 트리거로 복원
+  useEffect(() => {
+    if (!isOpen || !mounted) return;
+    prevFocusRef.current = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    requestAnimationFrame(() => dialog?.focus());
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !dialog) return;
+      const f = dialog.querySelectorAll<HTMLElement>(
+        'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])',
+      );
+      if (f.length === 0) { e.preventDefault(); dialog.focus(); return; }
+      const first = f[0], last = f[f.length - 1], active = document.activeElement;
+      if (e.shiftKey && (active === first || active === dialog)) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      prevFocusRef.current?.focus?.();
+    };
+  }, [isOpen, mounted]);
+
   if (!mounted) return null;
 
   return createPortal(
@@ -66,10 +91,12 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
         style={{ paddingBottom: 'var(--keyboard-height, 0px)' }}
       >
         <div
+          ref={dialogRef}
           role="dialog"
           aria-modal="true"
           aria-label={title}
-          style={{ maxHeight: 'calc(95vh - var(--keyboard-height, 0px))' }}
+          tabIndex={-1}
+          style={{ maxHeight: 'calc(95vh - var(--keyboard-height, 0px))', outline: 'none' }}
           className={cn(
             'pointer-events-auto relative z-50 w-full flex flex-col',
             // Glass effect

@@ -136,6 +136,11 @@ export async function getClubLeaderboard(clubId: string) {
       };
     })
     .sort((a, b) => {
+      // 최소 경기수 미달(소표본)은 하위로 — 1승0패(100%)가 20승5패 위에 오는 왜곡 방지
+      const RANK_MIN_GAMES = 3;
+      const aQual = a.total >= RANK_MIN_GAMES ? 1 : 0;
+      const bQual = b.total >= RANK_MIN_GAMES ? 1 : 0;
+      if (aQual !== bQual) return bQual - aQual;
       if (b.winRate !== a.winRate) return b.winRate - a.winRate;
       return b.total - a.total;
     });

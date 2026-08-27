@@ -464,6 +464,15 @@ export default function DrawPage() {
     setParticipants(pList);
     setParticipantMap(pMap);
     setDraws((drawsData as any) || []);
+
+    // 기존 대진표가 있으면 경기 수(=최대 game_order)를 복원한다.
+    // (games_per_court가 DB에 저장되지 않아, 재생성 시 기본값 3으로 축소되던 문제 완화)
+    const existingGames = (drawsData as any)?.[0]?.games as { game_order: number }[] | undefined;
+    if (existingGames && existingGames.length > 0) {
+      const maxOrder = Math.max(...existingGames.map((g) => g.game_order || 1));
+      if (maxOrder > 0) setGamesPerCourt(maxOrder);
+    }
+
     setLoading(false);
   }, [matchId, clubId]);
 
