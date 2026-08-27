@@ -1,10 +1,8 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { createServiceRoleClient } from '@/lib/supabase/service';
 import { revalidatePath } from 'next/cache';
 import { uuidSchema } from '@/lib/validations';
-import type { NotificationType } from '@/types';
 
 export async function markAsRead(notificationId: string) {
   const validId = uuidSchema.parse(notificationId);
@@ -40,43 +38,8 @@ export async function markAllAsRead() {
   revalidatePath('/notifications');
 }
 
-export async function createNotification(
-  userId: string,
-  type: NotificationType,
-  title: string,
-  body: string,
-  data: Record<string, string> = {}
-) {
-  const validUserId = uuidSchema.parse(userId);
-  const sanitizedTitle = title.replace(/<[^>]*>/g, '').slice(0, 200);
-  const sanitizedBody = body.replace(/<[^>]*>/g, '').slice(0, 1000);
-
-  // notifications INSERT는 RLS로 직접 삽입이 막혀 있으므로(타 사용자 위조 알림 방지)
-  // service_role로 삽입한다. createNotification은 항상 서버 액션 내부에서
-  // 호출자가 권한 검사를 끝낸 뒤에만 불리므로 안전하다.
-  // service_role 키가 없으면 사용자 클라이언트로 폴백(개발 환경 등).
-  const supabase = createServiceRoleClient() ?? (await createClient());
-
-  const { error } = await supabase
-    .from('notifications')
-    .insert({
-      user_id: validUserId,
-      type,
-      title: sanitizedTitle,
-      body: sanitizedBody,
-      data,
-    });
-
-  if (error) throw new Error('알림 생성에 실패했습니다');
-
-  // 인앱 알림 저장 후 푸시도 시도 (FCM 미설정 시 자동 no-op, 실패해도 무시)
-  try {
-    const { sendPushToUser } = await import('@/lib/actions/push');
-    await sendPushToUser(validUserId, { title: sanitizedTitle, body: sanitizedBody, data });
-  } catch {
-    // 푸시 실패는 인앱 알림에 영향 없음
-  }
-}
+// createNotification은 서버 전용 모듈로 이동함(액션 엔드포인트 노출 방지):
+// @/lib/server/notify
 
 export async function deleteOldNotifications() {
   const supabase = await createClient();

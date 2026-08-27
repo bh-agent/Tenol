@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
-import { logError, logInfo } from '@/lib/logger';
+import { logError, logInfo, logWarn } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 
 export async function POST() {
@@ -90,6 +90,14 @@ export async function POST() {
   } catch (e) {
     logError('club', 'Ownership handover during account deletion failed', { error: e, path: '/api/account/delete', userId: user.id });
     return NextResponse.json({ error: '클럽 운영권 정리 중 오류가 발생했습니다' }, { status: 500 });
+  }
+
+  // 2.5. 작성한 모집글 삭제 — created_by가 SET NULL이라 방치하면 회원모집 글이
+  //      작성자 '알 수 없음'으로 영구히 열린 채 남는다(자동 마감 대상도 아님).
+  try {
+    await adminClient.from('recruitment_posts').delete().eq('created_by', user.id);
+  } catch (e) {
+    logWarn('recruitment', '계정 삭제 시 모집글 정리 실패', { error: e, userId: user.id });
   }
 
   // 3. profiles 삭제 (CASCADE + ON DELETE SET NULL로 관련 데이터 정리)

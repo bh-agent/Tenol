@@ -35,11 +35,13 @@ export async function getPlayerStats(userId: string, clubId?: string) {
 export async function getPlayerRecentGames(userId: string, limit: number = 10, clubId?: string) {
   const supabase = await createClient();
 
+  // 점수가 입력된 경기만(무승부 포함). result=null은 무승부와 미입력 둘 다이므로
+  // score 기준으로 걸러 무승부가 요약과 어긋나지 않게 한다.
   let query = supabase
     .from('player_game_stats')
     .select('*')
     .eq('user_id', userId)
-    .not('result', 'is', null);
+    .not('score_team_a', 'is', null);
 
   if (clubId) {
     query = query.eq('club_id', clubId);
@@ -69,7 +71,7 @@ export async function getPlayerRecentGames(userId: string, limit: number = 10, c
       clubName: (match?.clubs as any)?.name || '',
       location: match?.location || '',
       matchDate: game.match_date,
-      result: game.result as 'win' | 'loss',
+      result: (game.result ?? 'draw') as 'win' | 'loss' | 'draw',
       scoreTeamA: game.score_team_a,
       scoreTeamB: game.score_team_b,
       team: game.team as 'team_a' | 'team_b',

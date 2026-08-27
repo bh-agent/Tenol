@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { generateDraw, generateDrawNew, generateDrawV2 } from '@/lib/draw-engine';
 import type { DrawType as EngineDrawType, DrawMode } from '@/lib/draw-engine';
-import { createNotification } from '@/lib/actions/notifications';
+import { createNotification } from '@/lib/server/notify';
 import { requireMatchPermission } from '@/lib/utils/check-permission';
 import { generateDrawSchema } from '@/lib/validations';
 import { NextResponse } from 'next/server';

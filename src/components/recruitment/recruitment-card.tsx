@@ -191,7 +191,11 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
                         targetType="recruitment_post"
                         targetId={post.id}
                         targetUserId={post.created_by}
-                        onDone={() => setShowMenu(false)}
+                        onDone={() => {
+                          setShowMenu(false);
+                          // 신고/차단 후 해당 글을 피드에서 즉시 제거(차단 상대 글이 그대로 남던 문제)
+                          onDelete?.(post.id);
+                        }}
                       />
                     )}
                   </div>

@@ -180,7 +180,7 @@ export async function submitScore(
 
         if (match) {
           const { data: { user } } = await supabase.auth.getUser();
-          const { createNotification } = await import('@/lib/actions/notifications');
+          const { createNotification } = await import('@/lib/server/notify');
 
           for (const p of participants) {
             if (p.user_id && p.user_id !== user?.id) {

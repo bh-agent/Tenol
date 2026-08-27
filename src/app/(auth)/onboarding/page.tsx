@@ -64,9 +64,16 @@ function OnboardingContent() {
       //    (Apple JS SDK 첫 로그인 시 login page가 profiles에 이름을 저장함)
       const { data: profile } = await supabase
         .from('profiles')
-        .select('display_name, real_name, avatar_url')
+        .select('display_name, real_name, avatar_url, is_onboarded')
         .eq('id', user.id)
         .maybeSingle();
+
+      // 이미 온보딩을 마친 유저가 /onboarding에 직접 들어온 경우:
+      // 빈 폼으로 재제출하면 지역·NTRP·자기소개가 날아가므로 즉시 목적지로 보낸다.
+      if (profile?.is_onboarded) {
+        router.replace(resolveDestination());
+        return;
+      }
 
       const meta = user.user_metadata ?? {};
       const metaName: string =

@@ -160,7 +160,7 @@ export async function joinClubByCode(inviteCode: string, introduction?: string) 
       .eq('id', user.id)
       .single();
 
-    const { createNotification } = await import('@/lib/actions/notifications');
+    const { createNotification } = await import('@/lib/server/notify');
     for (const admin of admins || []) {
       await createNotification(
         admin.user_id,
@@ -288,7 +288,7 @@ export async function updateMemberRole(clubId: string, targetUserId: string, new
   if (club) {
     const roleLabels: Record<string, string> = { owner: '클럽장', admin: '운영진', member: '멤버' };
     try {
-      const { createNotification } = await import('@/lib/actions/notifications');
+      const { createNotification } = await import('@/lib/server/notify');
       await createNotification(
         validTargetUserId,
         'role_changed',
@@ -420,7 +420,7 @@ export async function joinPublicClub(clubId: string, introduction?: string) {
       .eq('id', user.id)
       .single();
 
-    const { createNotification } = await import('@/lib/actions/notifications');
+    const { createNotification } = await import('@/lib/server/notify');
     for (const admin of admins || []) {
       await createNotification(
         admin.user_id,
@@ -503,7 +503,7 @@ export async function respondToJoinRequest(requestId: string, approved: boolean)
       .eq('id', request.club_id)
       .single();
 
-    const { createNotification } = await import('@/lib/actions/notifications');
+    const { createNotification } = await import('@/lib/server/notify');
     await createNotification(
       request.user_id,
       approved ? 'join_approved' : 'join_rejected',
@@ -670,7 +670,7 @@ export async function transferOwnership(clubId: string, targetUserId: string) {
 
   if (club) {
     try {
-      const { createNotification } = await import('@/lib/actions/notifications');
+      const { createNotification } = await import('@/lib/server/notify');
       await createNotification(
         validTargetUserId,
         'role_changed',

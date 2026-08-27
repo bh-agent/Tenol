@@ -140,6 +140,10 @@ export async function deleteTemplate(templateId: string) {
 
   if (!template) throw new Error('템플릿을 찾을 수 없습니다');
 
+  // create/update와 동일한 권한 검사 (무음 실패·권한 모델 불일치 방지)
+  const { requirePermission } = await import('@/lib/utils/check-permission');
+  await requirePermission(template.club_id, 'match.create');
+
   const { error } = await supabase
     .from('match_templates')
     .delete()

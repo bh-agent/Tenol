@@ -11,7 +11,7 @@ export interface RecentGame {
   clubName: string;
   location: string;
   matchDate: string;
-  result: 'win' | 'loss';
+  result: 'win' | 'loss' | 'draw';
   scoreTeamA: number | null;
   scoreTeamB: number | null;
   team: 'team_a' | 'team_b';
@@ -35,6 +35,7 @@ export function RecentGamesList({ games, className }: RecentGamesListProps) {
     <div className={cn('space-y-2 stagger', className)}>
       {games.map((game) => {
         const isWin = game.result === 'win';
+        const isDraw = game.result === 'draw';
         const myScore = game.team === 'team_a' ? game.scoreTeamA : game.scoreTeamB;
         const opponentScore = game.team === 'team_a' ? game.scoreTeamB : game.scoreTeamA;
 
@@ -44,12 +45,14 @@ export function RecentGamesList({ games, className }: RecentGamesListProps) {
               {/* Result icon */}
               <div
                 className={cn(
-                  'w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0',
-                  isWin ? 'bg-primary-dim' : 'bg-destructive/10'
+                  'w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold',
+                  isWin ? 'bg-primary-dim' : isDraw ? 'bg-surface-elevated text-muted-foreground' : 'bg-destructive/10'
                 )}
               >
                 {isWin ? (
                   <Trophy className="w-4 h-4 text-primary" />
+                ) : isDraw ? (
+                  <span>무</span>
                 ) : (
                   <X className="w-4 h-4 text-destructive" />
                 )}
@@ -59,8 +62,8 @@ export function RecentGamesList({ games, className }: RecentGamesListProps) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-medium text-foreground truncate">{game.matchTitle}</p>
-                  <Badge variant={isWin ? 'success' : 'destructive'} className="text-[10px]">
-                    {isWin ? '승리' : '패배'}
+                  <Badge variant={isWin ? 'success' : isDraw ? 'outline' : 'destructive'} className="text-[10px]">
+                    {isWin ? '승리' : isDraw ? '무승부' : '패배'}
                   </Badge>
                 </div>
                 <div className="flex items-center gap-2 mt-0.5">

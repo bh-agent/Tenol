@@ -89,7 +89,15 @@ export async function searchRecruitmentPosts(
   }
 
   if (searchQuery && searchQuery.trim()) {
-    query = query.ilike('title', `%${searchQuery.trim()}%`);
+    // 제목 + 클럽명으로 검색(placeholder가 '클럽명 또는 제목'). 클럽명 매칭 id를 구해 OR 필터.
+    const q = searchQuery.trim().replace(/[%,()]/g, ' ');
+    const { data: matchedClubs } = await supabase.from('clubs').select('id').ilike('name', `%${q}%`);
+    const clubIds = (matchedClubs ?? []).map((c) => c.id);
+    if (clubIds.length > 0) {
+      query = query.or(`title.ilike.%${q}%,club_id.in.(${clubIds.join(',')})`);
+    } else {
+      query = query.ilike('title', `%${q}%`);
+    }
   }
 
   if (blockedIds.length > 0) {

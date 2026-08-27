@@ -177,7 +177,7 @@ async function promoteAndNotify(supabase: SupabaseServer, matchId: string) {
       .eq('id', matchId)
       .maybeSingle();
     if (!matchInfo) return;
-    const { createNotification } = await import('@/lib/actions/notifications');
+    const { createNotification } = await import('@/lib/server/notify');
     await createNotification(
       promoted.user_id,
       'match_invite',
@@ -422,7 +422,7 @@ export async function respondToGuest(participantId: string, matchId: string, app
 
     if (match) {
       try {
-        const { createNotification } = await import('@/lib/actions/notifications');
+        const { createNotification } = await import('@/lib/server/notify');
         await createNotification(
           participant.user_id,
           approved ? 'guest_approved' : 'guest_rejected',
