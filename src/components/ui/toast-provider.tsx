@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
 import { Toast, type ToastData, type ToastVariant } from './toast';
 
 interface ToastContextValue {
@@ -27,13 +27,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     setToasts((prev) => [...prev, { id, message, variant }]);
   }, []);
 
-  const value: ToastContextValue = {
-    toast: addToast,
-    success: useCallback((msg: string) => addToast(msg, 'success'), [addToast]),
-    error: useCallback((msg: string) => addToast(msg, 'error'), [addToast]),
-    warning: useCallback((msg: string) => addToast(msg, 'warning'), [addToast]),
-    info: useCallback((msg: string) => addToast(msg, 'info'), [addToast]),
-  };
+  const success = useCallback((msg: string) => addToast(msg, 'success'), [addToast]);
+  const error = useCallback((msg: string) => addToast(msg, 'error'), [addToast]);
+  const warning = useCallback((msg: string) => addToast(msg, 'warning'), [addToast]);
+  const info = useCallback((msg: string) => addToast(msg, 'info'), [addToast]);
+  // value를 메모해 토스트가 뜰 때마다 useToast 구독 컴포넌트가 전부 리렌더되는 것 방지
+  const value = useMemo<ToastContextValue>(
+    () => ({ toast: addToast, success, error, warning, info }),
+    [addToast, success, error, warning, info],
+  );
 
   return (
     <ToastContext.Provider value={value}>

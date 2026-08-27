@@ -162,13 +162,3 @@ export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
 }
-
-/**
- * 계정 삭제 - API 라우트를 통해 auth.users까지 완전 삭제
- * 서버 액션에서는 service_role 키를 쓸 수 없으므로 API 라우트로 위임
- */
-export async function deleteAccount() {
-  // 이 함수는 더 이상 직접 삭제하지 않음
-  // 클라이언트에서 /api/account/delete를 직접 호출해야 함
-  throw new Error('클라이언트에서 API를 직접 호출하세요');
-}

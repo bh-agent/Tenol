@@ -9,6 +9,7 @@ import { createClubAction, joinClubByCode } from '@/lib/actions/clubs';
 import { cn } from '@/lib/utils/cn';
 import { Plus, Link as LinkIcon } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useToast } from '@/components/ui/toast-provider';
 import { Suspense, useActionState, useState } from 'react';
 
 function NewClubContent() {
@@ -21,6 +22,7 @@ function NewClubContent() {
   const [loading, setLoading] = useState(false);
   const [region, setRegion] = useState('');
   const router = useRouter();
+  const toast = useToast();
   // 클럽 만들기 폼 — 예상 가능한 에러는 상태로 받아 인라인으로 보여줘요
   const [createState, createFormAction, createPending] = useActionState(
     createClubAction,
@@ -52,7 +54,8 @@ function NewClubContent() {
     setError('');
     try {
       await joinClubByCode(code);
-      // Success - show feedback and navigate
+      // joinClubByCode는 즉시 가입이 아니라 승인 대기 신청 → 명확히 안내
+      toast.success('가입 신청이 접수되었습니다. 관리자 승인 후 이용할 수 있어요.');
       router.push('/clubs');
     } catch (e) {
       setError(e instanceof Error ? e.message : '오류가 발생했습니다');

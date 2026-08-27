@@ -13,6 +13,7 @@ interface AvatarProps {
   active?: boolean;
 }
 
+const sizePx = { sm: 32, md: 40, lg: 56, xl: 80 } as const;
 const sizeClasses = {
   sm: 'w-8 h-8 text-xs',
   md: 'w-10 h-10 text-sm',
@@ -57,7 +58,7 @@ export function Avatar({
           src={src}
           alt={alt}
           fill
-          sizes="80px"
+          sizes={`${sizePx[size]}px`}
           className={cn(
             'object-cover transition-opacity duration-300',
             loaded ? 'opacity-100' : 'opacity-0'

@@ -15,7 +15,6 @@ import {
   Users,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useTransition } from 'react';
 
 const typeConfig: Record<string, { icon: typeof Bell; color: string }> = {
   match_invite: { icon: Calendar, color: 'text-primary bg-primary-dim' },
@@ -48,34 +47,28 @@ interface NotificationItemProps {
 
 export function NotificationItem({ notification }: NotificationItemProps) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
 
   const config = typeConfig[notification.type] || { icon: Bell, color: 'text-muted-foreground bg-surface-elevated' };
   const Icon = config.icon;
   const href = getNotificationHref(notification);
 
   const handleClick = () => {
-    startTransition(async () => {
-      if (!notification.is_read) {
-        await markAsRead(notification.id);
-      }
-      if (href) {
-        router.push(href);
-      }
-    });
+    // 화면 전환을 먼저 시작해 느린 네트워크에서도 즉시 반응. 읽음 처리는 백그라운드.
+    if (href) router.push(href);
+    if (!notification.is_read) {
+      void markAsRead(notification.id);
+    }
   };
 
   return (
     <button
       onClick={handleClick}
-      disabled={isPending}
       className={cn(
         'w-full text-left px-4 py-3 flex items-start gap-3 transition-colors',
         notification.is_read
           ? 'bg-transparent'
           : 'bg-primary-dim',
-        href && 'hover:bg-surface-elevated active:bg-surface-hover',
-        isPending && 'opacity-60'
+        href && 'hover:bg-surface-elevated active:bg-surface-hover'
       )}
     >
       <div className={cn('w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5', config.color)}>

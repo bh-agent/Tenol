@@ -218,4 +218,10 @@ export const createRecruitmentSchema = z.object({
   any_slots: z.number().int().min(0).max(100).optional(),
   ntrp_min: z.number().min(1.0).max(7.0).optional(),
   ntrp_max: z.number().min(1.0).max(7.0).optional(),
-});
+}).refine(
+  (v) => v.ntrp_min == null || v.ntrp_max == null || v.ntrp_min <= v.ntrp_max,
+  { message: 'NTRP 최소값은 최대값보다 클 수 없습니다', path: ['ntrp_min'] },
+).refine(
+  (v) => (v.needed_count ?? 0) + (v.male_slots ?? 0) + (v.female_slots ?? 0) + (v.any_slots ?? 0) > 0,
+  { message: '모집 인원을 1명 이상 지정해주세요', path: ['any_slots'] },
+);
