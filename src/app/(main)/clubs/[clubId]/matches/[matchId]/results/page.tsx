@@ -193,21 +193,25 @@ export default function ResultsPage() {
           wins: a.wins,
           avgScore: a.gamesPlayed > 0 ? Math.round((a.totalScore / a.gamesPlayed) * 10) / 10 : 0,
         }))
-        // 승수 우선 정렬 — 같으면 평균 득점 → 총득점으로 '표시 순서'만 정한다(등수는 승수로).
+        // 승리 우선, 같으면 득점(총득점) 우선. 평균 득점은 최종 표시 순서용.
         .sort((a, b) => {
           if (b.wins !== a.wins) return b.wins - a.wins;
-          if (b.avgScore !== a.avgScore) return b.avgScore - a.avgScore;
-          return b.totalScore - a.totalScore;
+          if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+          return b.avgScore - a.avgScore;
         });
 
-      // 승수 기준 공동 순위(경쟁 순위 1,1,3…). 승수가 같으면 동점 → 같은 등수·같은 메달.
-      const rankCount: Record<number, number> = {};
-      const sorted: MvpEntry[] = ranked.map((e) => {
-        const rank = 1 + ranked.filter((o) => o.wins > e.wins).length;
-        rankCount[rank] = (rankCount[rank] || 0) + 1;
-        return { ...e, rank, tied: false };
+      // 공동 순위(경쟁 순위 1,1,3…) — (승수, 총득점)이 모두 같아야 동점.
+      const keyCount: Record<string, number> = {};
+      ranked.forEach((e) => {
+        const k = `${e.wins}|${e.totalScore}`;
+        keyCount[k] = (keyCount[k] || 0) + 1;
       });
-      sorted.forEach((e) => { e.tied = rankCount[e.rank] > 1; });
+      const sorted: MvpEntry[] = ranked.map((e) => {
+        const rank = 1 + ranked.filter(
+          (o) => o.wins > e.wins || (o.wins === e.wins && o.totalScore > e.totalScore)
+        ).length;
+        return { ...e, rank, tied: keyCount[`${e.wins}|${e.totalScore}`] > 1 };
+      });
 
       setMvpTop3(sorted.slice(0, 3));
 
