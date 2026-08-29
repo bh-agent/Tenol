@@ -304,6 +304,25 @@ export default function ResultsPage() {
 
   const getName = (id: string | null) => id ? participants[id] || '???' : '-';
 
+  // 아바타 URL을 data URL로 변환 — html2canvas가 외부 이미지로 캔버스를 오염(taint)시켜
+  // toBlob이 통째로 실패하는 것을 방지. 실패 시 null → 공유 이미지에서 이니셜 폴백.
+  const toDataUrl = async (url: string | null): Promise<string | null> => {
+    if (!url) return null;
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise<string | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  };
+
   // ── Image share (2-step: generate → share from fresh user gesture) ──
   const handleGenerateImage = async () => {
     setSharing(true);
@@ -316,14 +335,29 @@ export default function ResultsPage() {
       const gameResults = completed.map((g) => ({
         gameOrder: g.game_order,
         courtNumber: g.court_number,
-        teamANames: [g.team_a_player1_id, g.team_a_player2_id].filter(Boolean).map((id) => getName(id)).join(', '),
-        teamBNames: [g.team_b_player1_id, g.team_b_player2_id].filter(Boolean).map((id) => getName(id)).join(', '),
+        teamAPlayer1: getName(g.team_a_player1_id),
+        teamAPlayer2: g.team_a_player2_id ? getName(g.team_a_player2_id) : null,
+        teamBPlayer1: getName(g.team_b_player1_id),
+        teamBPlayer2: g.team_b_player2_id ? getName(g.team_b_player2_id) : null,
         scoreA: g.score_team_a ?? 0,
         scoreB: g.score_team_b ?? 0,
         winner: g.winner,
       }));
 
-      const props: ResultsShareImageProps = { matchTitle, matchDate, mvpTop3, highlights, funStats, gameResults };
+      // MVP 아바타를 data URL로 선변환(앱 화면과 동일하게 사진 표시)
+      const mvpForImage = await Promise.all(
+        mvpTop3.map(async (m) => ({
+          displayName: m.displayName,
+          avatarDataUrl: await toDataUrl(m.avatarUrl),
+          ntrpLevel: m.ntrpLevel,
+          avgScore: m.avgScore,
+          wins: m.wins,
+          totalScore: m.totalScore,
+          gamesPlayed: m.gamesPlayed,
+        }))
+      );
+
+      const props: ResultsShareImageProps = { matchTitle, matchDate, mvpTop3: mvpForImage, highlights, funStats, gameResults };
 
       const tempContainer = document.createElement('div');
       tempContainer.style.cssText = 'position:absolute;left:-2000px;top:0;pointer-events:none;';
@@ -339,7 +373,7 @@ export default function ResultsPage() {
         const target = tempContainer.firstElementChild as HTMLElement;
         if (!target) { toast.error('이미지를 생성할 수 없습니다'); return; }
 
-        const canvas = await html2canvas(target, { backgroundColor: '#0F0F0F', scale: 2, useCORS: true, logging: false, windowWidth: 1200 });
+        const canvas = await html2canvas(target, { backgroundColor: '#0A0A0A', scale: 2, useCORS: true, logging: false, windowWidth: 1200 });
         const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
         if (!blob) { toast.error('이미지 변환에 실패했습니다'); return; }
 
