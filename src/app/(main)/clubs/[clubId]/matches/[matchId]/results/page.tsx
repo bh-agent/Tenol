@@ -86,6 +86,8 @@ export default function ResultsPage() {
   const [funStats, setFunStats] = useState<FunStat[]>([]);
   const [matchTitle, setMatchTitle] = useState('');
   const [matchDate, setMatchDate] = useState('');
+  const [clubName, setClubName] = useState('');
+  const [clubLogoUrl, setClubLogoUrl] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   const [shareBlob, setShareBlob] = useState<Blob | null>(null);
 
@@ -115,6 +117,17 @@ export default function ResultsPage() {
     if (matchData) {
       setMatchTitle(matchData.title || '');
       setMatchDate(matchData.match_date || '');
+    }
+
+    // 공유 이미지 브랜딩용 클럽 정보
+    const { data: clubData } = await supabase
+      .from('clubs')
+      .select('name, logo_url')
+      .eq('id', clubId)
+      .maybeSingle();
+    if (clubData) {
+      setClubName(clubData.name || '');
+      setClubLogoUrl(clubData.logo_url || null);
     }
 
     const { data: draws } = await supabase
@@ -376,7 +389,9 @@ export default function ResultsPage() {
         }))
       );
 
-      const props: ResultsShareImageProps = { matchTitle, matchDate, mvpTop3: mvpForImage, highlights, funStats, gameResults };
+      const clubLogoDataUrl = await toDataUrl(clubLogoUrl);
+
+      const props: ResultsShareImageProps = { clubName, clubLogoDataUrl, matchTitle, matchDate, mvpTop3: mvpForImage, highlights, funStats, gameResults };
 
       const tempContainer = document.createElement('div');
       tempContainer.style.cssText = 'position:absolute;left:-2000px;top:0;pointer-events:none;';

@@ -43,6 +43,8 @@ type GameResult = {
 };
 
 export interface ResultsShareImageProps {
+  clubName: string;
+  clubLogoDataUrl: string | null;
   matchTitle: string;
   matchDate: string;
   mvpTop3: MvpEntry[];
@@ -144,6 +146,34 @@ function RingAvatar({
   );
 }
 
+// 클럽 로고(둥근 사각형). 없으면 클럽명 이니셜.
+function ClubLogo({ src, name }: { src: string | null; name: string }) {
+  const size = 56;
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: 14,
+        overflow: 'hidden',
+        background: 'rgba(0,230,118,0.15)',
+        border: `1px solid ${BORDER}`,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+      }}
+    >
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt={name} width={size} height={size} style={{ width: size, height: size, objectFit: 'cover' }} />
+      ) : (
+        <span style={{ color: GREEN_LIGHT, fontWeight: 800, fontSize: 24 }}>{initialOf(name || 'T')}</span>
+      )}
+    </div>
+  );
+}
+
 function NtrpBadge({ level, color }: { level: number; color: string }) {
   return (
     <span
@@ -187,7 +217,7 @@ function PlayerNames({
 }
 
 export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImageProps>(
-  function ResultsShareImage({ matchTitle, matchDate, mvpTop3, highlights, funStats, gameResults }, ref) {
+  function ResultsShareImage({ clubName, clubLogoDataUrl, matchTitle, matchDate, mvpTop3, highlights, funStats, gameResults }, ref) {
     const first = mvpTop3[0];
     const rest = mvpTop3.slice(1, 3);
 
@@ -219,10 +249,13 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
           boxSizing: 'border-box',
         }}
       >
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-          <span style={{ fontSize: 22, fontWeight: 800, color: GREEN, letterSpacing: '-0.5px' }}>TENOL</span>
-          <span style={{ fontSize: 14, color: SUBTLE }}>경기 결과</span>
+        {/* Header — 클럽 로고 + 클럽명 브랜딩 */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
+          <ClubLogo src={clubLogoDataUrl} name={clubName} />
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 24, fontWeight: 800, color: '#FFFFFF', lineHeight: 1.15 }}>{clubName || '테놀'}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.3px', color: GREEN, marginTop: 3 }}>TENOL · 경기 결과</div>
+          </div>
         </div>
         <div style={{ fontSize: 38, fontWeight: 800, color: '#FFFFFF', marginBottom: 6 }}>{matchTitle}</div>
         <div style={{ fontSize: 17, color: MUTED, marginBottom: 32 }}>{formatDate(matchDate)}</div>
