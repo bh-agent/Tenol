@@ -614,7 +614,6 @@ export default function ResultsPage() {
                       {mvpTop3[0].tied ? '공동 ' : ''}{mvpTop3[0].rank}위
                     </span>
                     <p className="text-lg font-bold text-foreground">{mvpTop3[0].displayName}</p>
-                    {mvpTop3[0].ntrpLevel && <Badge variant="warning">NTRP {mvpTop3[0].ntrpLevel}</Badge>}
                   </div>
                   <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-[#FFD740]/10">
                     <div className="text-center">
@@ -649,11 +648,6 @@ export default function ResultsPage() {
                               {mvp.tied ? '공동 ' : ''}{mvp.rank}위
                             </span>
                             <p className="text-sm font-semibold text-foreground mt-1">{mvp.displayName}</p>
-                            {mvp.ntrpLevel && (
-                              <Badge variant="outline" className="text-[10px]" style={{ borderColor: `${medal.accent}40`, color: medal.accent }}>
-                                NTRP {mvp.ntrpLevel}
-                              </Badge>
-                            )}
                           </div>
                           <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/[0.06]">
                             <div className="text-center">
@@ -818,7 +812,7 @@ export default function ResultsPage() {
                                   {getName(game.team_a_player1_id)}
                                 </p>
                                 {game.team_a_player2_id && (
-                                  <p className={cn('text-xs', game.winner === 'team_a' ? 'text-foreground/70' : 'text-muted-foreground')}>
+                                  <p className={cn('text-sm mt-0.5', game.winner === 'team_a' ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
                                     {getName(game.team_a_player2_id)}
                                   </p>
                                 )}
@@ -841,7 +835,7 @@ export default function ResultsPage() {
                                   {getName(game.team_b_player1_id)}
                                 </p>
                                 {game.team_b_player2_id && (
-                                  <p className={cn('text-xs', game.winner === 'team_b' ? 'text-foreground/70' : 'text-muted-foreground')}>
+                                  <p className={cn('text-sm mt-0.5', game.winner === 'team_b' ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
                                     {getName(game.team_b_player2_id)}
                                   </p>
                                 )}

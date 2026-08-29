@@ -174,25 +174,6 @@ function ClubLogo({ src, name }: { src: string | null; name: string }) {
   );
 }
 
-function NtrpBadge({ level, color }: { level: number; color: string }) {
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        fontSize: 13,
-        fontWeight: 700,
-        color,
-        border: `1px solid ${color}66`,
-        borderRadius: 9999,
-        padding: '3px 10px',
-        marginTop: 8,
-      }}
-    >
-      NTRP {level}
-    </span>
-  );
-}
-
 function PlayerNames({
   p1,
   p2,
@@ -208,7 +189,7 @@ function PlayerNames({
     <div style={{ flex: 1, textAlign: align }}>
       <div style={{ fontSize: 20, fontWeight: win ? 700 : 400, color: win ? '#F5F5F5' : MUTED }}>{p1}</div>
       {p2 && (
-        <div style={{ fontSize: 17, fontWeight: win ? 600 : 400, color: win ? 'rgba(245,245,245,0.7)' : MUTED, marginTop: 2 }}>
+        <div style={{ fontSize: 20, fontWeight: win ? 700 : 400, color: win ? '#F5F5F5' : MUTED, marginTop: 3 }}>
           {p2}
         </div>
       )}
@@ -287,7 +268,6 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
                 <RingAvatar src={first.avatarDataUrl} name={first.displayName} size={96} ring={`${GOLD}80`} />
                 <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '0.5px', color: GOLD, marginTop: 10 }}>{rankLabel(first)}</div>
                 <div style={{ fontSize: 26, fontWeight: 800, color: '#FFFFFF', marginTop: 4 }}>{first.displayName}</div>
-                {first.ntrpLevel ? <NtrpBadge level={first.ntrpLevel} color={GOLD} /> : null}
               </div>
               <div style={{ display: 'flex', marginTop: 24, paddingTop: 24, borderTop: `1px solid ${GOLD}1A` }}>
                 <div style={{ flex: 1, textAlign: 'center' }}>
@@ -329,7 +309,6 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
                         <RingAvatar src={mvp.avatarDataUrl} name={mvp.displayName} size={72} ring={`${m.accent}80`} />
                         <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.5px', color: m.accent, marginTop: 8 }}>{rankLabel(mvp)}</div>
                         <div style={{ fontSize: 20, fontWeight: 700, color: '#F5F5F5', marginTop: 3 }}>{mvp.displayName}</div>
-                        {mvp.ntrpLevel ? <NtrpBadge level={mvp.ntrpLevel} color={m.accent} /> : null}
                       </div>
                       <div style={{ display: 'flex', marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                         <div style={{ flex: 1, textAlign: 'center' }}>
