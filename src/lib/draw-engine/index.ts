@@ -188,18 +188,18 @@ function combinedSpread(pools: { seats: number; n: number }[]): number {
 }
 
 /**
- * Stage 1 — capacity + game-type allocation.
+ * Stage 1 — capacity + game-type allocation (EVENT-TOTAL model).
  *
- * For gendered/mixed modes we search over a single per-slot composition
- * (a men's, b women's, c mixed games) repeated across every slot. Constraints:
- *   4a + 2c <= M,  4b + 2c <= F,  a + b + c <= C,  plus mode restrictions.
- * We pick the composition that MAXIMIZES games per slot (people came to play),
- * then MINIMIZES the resulting game-count spread. Repeating one feasible
- * composition every slot guarantees a feasible packing, and per-gender counts
- * come out floor/ceil-even (spread <= 1 within each pool by Stage 3).
+ * `slotGames` = the most games one time slot can feasibly host (fills courts).
+ * The event therefore has Gcap = slotGames * T game-slots to fill. Instead of
+ * fixing ONE per-slot composition and repeating it (which strands a single court
+ * on a single gender), we choose the TOTAL count of each game type across the
+ * whole event so per-player counts come out as even as possible, then require
+ * those totals to be packable into T feasible slots. Letting the composition
+ * vary slot-to-slot is exactly what lets one court alternate 남복/여복.
  *
- * M/F = male/female headcount (known gender), nTotal = confirmed count
- * (includes unknown gender — only used by `free`). C courts, T time slots.
+ * M/F = male/female headcount, nTotal = confirmed count (free only). C courts,
+ * T time slots.
  */
 function computeAllocation(
   mode: DrawMode,
@@ -225,11 +225,11 @@ function computeAllocation(
   const allowWomens = mode === 'gendered_only' || mode === 'mixed_all';
   const allowMixed = mode === 'mixed_only' || mode === 'mixed_all';
 
+  // Slot capacity: the most games a single slot can feasibly host.
   const maxA = allowMens ? Math.floor(M / 4) : 0;
   const maxB = allowWomens ? Math.floor(F / 4) : 0;
   const maxC = allowMixed ? Math.min(Math.floor(M / 2), Math.floor(F / 2)) : 0;
-
-  let best: { a: number; b: number; c: number; g: number; spread: number } | null = null;
+  let slotGames = 0;
   for (let a = 0; a <= maxA; a++) {
     for (let b = 0; b <= maxB; b++) {
       for (let c = 0; c <= maxC; c++) {
@@ -237,31 +237,59 @@ function computeAllocation(
         if (g === 0 || g > C) continue;
         if (4 * a + 2 * c > M) continue;
         if (4 * b + 2 * c > F) continue;
-        const maleSeats = (4 * a + 2 * c) * T;
-        const femaleSeats = (4 * b + 2 * c) * T;
-        const spread = combinedSpread([
-          { seats: maleSeats, n: M },
-          { seats: femaleSeats, n: F },
-        ]);
-        // Maximize games per slot, then minimize spread.
-        if (!best || g > best.g || (g === best.g && spread < best.spread)) {
-          best = { a, b, c, g, spread };
-        }
+        if (g > slotGames) slotGames = g;
       }
     }
   }
-
-  if (!best) {
+  if (slotGames === 0) {
     if (mode === 'mixed_only') throw new Error('혼복을 진행하려면 남성과 여성이 각각 2명 이상 필요합니다');
     if (mode === 'gendered_only') throw new Error('남복 또는 여복을 진행할 수 있는 충분한 참가자가 없습니다');
     throw new Error('경기를 진행할 수 있는 충분한 참가자가 없습니다');
   }
 
+  const Gcap = slotGames * T;
+  const capMens = allowMens && M >= 4 ? Gcap : 0;
+  const capWomens = allowWomens && F >= 4 ? Gcap : 0;
+  const capMixed = allowMixed && M >= 2 && F >= 2 ? Gcap : 0;
+
+  // Choose event-total type counts (A mens, B womens, Cx mixed) that fill Gcap
+  // and MINIMIZE cross-pool game-count spread, preferring packable ones.
+  type Cand = { mens: number; womens: number; mixed: number; spread: number; pref: number };
+  const cands: Cand[] = [];
+  for (let A = 0; A <= capMens; A++) {
+    for (let B = 0; A + B <= Gcap && B <= capWomens; B++) {
+      const Cx = Gcap - A - B;
+      if (Cx < 0 || Cx > capMixed) continue;
+      const maleSeats = 4 * A + 2 * Cx;
+      const femaleSeats = 4 * B + 2 * Cx;
+      const spread = combinedSpread([
+        { seats: maleSeats, n: M },
+        { seats: femaleSeats, n: F },
+      ]);
+      // Secondary (never overrides fairness): mixed_all favors more 혼복 games.
+      const pref = mode === 'mixed_all' ? Gcap - Cx : 0;
+      cands.push({ mens: A, womens: B, mixed: Cx, spread, pref });
+    }
+  }
+  if (cands.length === 0) {
+    throw new Error('선택한 모드로 진행할 수 있는 경기가 없습니다. 참가자 구성이나 모드를 확인해주세요.');
+  }
+  cands.sort((x, y) => x.spread - y.spread || x.pref - y.pref);
+
+  // Pick the lowest-spread allocation that actually packs into T feasible slots.
+  let chosen: Cand | undefined;
+  for (const cand of cands) {
+    if (slotGames === 1) { chosen = cand; break; } // one game per slot always packs
+    const counts: GameTypeCounts = { mens: cand.mens, womens: cand.womens, mixed: cand.mixed, free: 0 };
+    if (canPackTotals(counts, slotGames, T, M, F)) { chosen = cand; break; }
+  }
+  if (!chosen) chosen = cands[0];
+
   return {
-    slotGames: best.g,
-    gEff: best.g * T,
-    counts: { mens: best.a * T, womens: best.b * T, mixed: best.c * T, free: 0 },
-    structuralMinSpread: best.spread,
+    slotGames,
+    gEff: Gcap,
+    counts: { mens: chosen.mens, womens: chosen.womens, mixed: chosen.mixed, free: 0 },
+    structuralMinSpread: chosen.spread,
     poolMode: 'gendered',
   };
 }
@@ -281,39 +309,6 @@ export function structuralMinSpread(
   const F = confirmed.filter((p) => getGender(p) === 'F').length;
   const alloc = computeAllocation(mode, M, F, confirmed.length, courts, gamesPerCourt);
   return alloc.structuralMinSpread;
-}
-
-/**
- * Create an interleaved list of game types for even distribution across time slots.
- */
-function interleaveTypes(mensGames: number, womensGames: number, mixedGames: number): GameType[] {
-  const types: GameType[] = [];
-  let mnR = mensGames;
-  let wmR = womensGames;
-  let mxR = mixedGames;
-  const total = mnR + wmR + mxR;
-
-  for (let i = 0; i < total; i++) {
-    const candidates: { type: GameType; remain: number; orig: number }[] = [];
-    if (mxR > 0) candidates.push({ type: 'mixed', remain: mxR, orig: mixedGames || 1 });
-    if (mnR > 0) candidates.push({ type: 'mens', remain: mnR, orig: mensGames || 1 });
-    if (wmR > 0) candidates.push({ type: 'womens', remain: wmR, orig: womensGames || 1 });
-
-    candidates.sort((a, b) => {
-      const ratioA = a.remain / a.orig;
-      const ratioB = b.remain / b.orig;
-      if (Math.abs(ratioA - ratioB) < 0.001) return b.remain - a.remain;
-      return ratioB - ratioA;
-    });
-
-    const chosen = candidates[0].type;
-    types.push(chosen);
-    if (chosen === 'mixed') mxR--;
-    else if (chosen === 'mens') mnR--;
-    else wmR--;
-  }
-
-  return types;
 }
 
 /**
@@ -375,15 +370,42 @@ function pickLowestK(
 const seatsM = (t: GameType): number => (t === 'mens' ? 4 : t === 'mixed' ? 2 : 0);
 const seatsF = (t: GameType): number => (t === 'womens' ? 4 : t === 'mixed' ? 2 : 0);
 
+/** Feasible per-slot compositions: multisets of exactly `slotGames` game types. */
+function feasibleCompositions(
+  slotGames: number,
+  M: number,
+  F: number,
+  poolMode: 'single' | 'gendered',
+): GameType[][] {
+  const allowed: GameType[] = poolMode === 'single' ? ['free'] : ['mens', 'womens', 'mixed'];
+  const comps: GameType[][] = [];
+  const cur: GameType[] = [];
+  (function gen(start: number, male: number, female: number) {
+    if (cur.length === slotGames) {
+      comps.push([...cur]);
+      return;
+    }
+    for (let i = start; i < allowed.length; i++) {
+      const t = allowed[i];
+      const nm = male + seatsM(t);
+      const nf = female + seatsF(t);
+      if (poolMode === 'gendered' && (nm > M || nf > F)) continue;
+      cur.push(t);
+      gen(i, nm, nf); // i (not i+1): repeats allowed; non-decreasing = canonical (no perms)
+      cur.pop();
+    }
+  })(0, 0, 0);
+  return comps;
+}
+
 /**
- * Stage 2 — pack the allocated games into T time slots so that EACH slot is
- * feasible: male seats <= M, female seats <= F, and exactly slotGames games.
- * Complete backtracking search (sizes are small; games are capped for a real
- * event), so it finds a feasible layout whenever one exists — which is what
- * makes k <= poolSize hold per slot and the lift-smallest-k fairness exact.
- * Returns null only when no feasible layout exists (caller retries/other seed).
+ * Stage 2 — pack the event-TOTAL type counts into T time slots. Each slot gets
+ * one feasible composition of `slotGames` games; compositions are chosen greedily
+ * to INTERLEAVE types over time (so one court alternates 남복/여복 instead of
+ * clustering them), while consuming the totals exactly. Complete backtracking,
+ * so it finds a layout whenever one exists. Returns null if unpackable.
  */
-function packSlots(
+function packComposition(
   counts: GameTypeCounts,
   slotGames: number,
   T: number,
@@ -392,43 +414,66 @@ function packSlots(
   poolMode: 'single' | 'gendered',
   rng: () => number,
 ): GameType[][] | null {
-  const rem: Record<GameType, number> = {
+  const comps = feasibleCompositions(slotGames, M, F, poolMode);
+  if (comps.length === 0) return null;
+
+  const target: Record<GameType, number> = {
     mens: counts.mens,
     womens: counts.womens,
     mixed: counts.mixed,
     free: counts.free,
   };
-  // Type order shuffled per seed so different seeds can find different layouts.
-  const typeList = shuffleWith<GameType>(['mens', 'womens', 'mixed', 'free'], rng);
+  const rem: Record<GameType, number> = { ...target };
   const result: GameType[][] = [];
   let nodes = 0;
   const NODE_CAP = 200000;
 
-  function solve(slot: number, cur: GameType[], male: number, female: number, minIdx: number): boolean {
+  const compCount = (comp: GameType[]): Record<GameType, number> => {
+    const c: Record<GameType, number> = { mens: 0, womens: 0, mixed: 0, free: 0 };
+    for (const t of comp) c[t]++;
+    return c;
+  };
+
+  function solve(slot: number): boolean {
     if (++nodes > NODE_CAP) return false;
-
-    if (cur.length === slotGames) {
-      result[slot] = [...cur];
-      if (slot + 1 === T) {
-        return rem.mens === 0 && rem.womens === 0 && rem.mixed === 0 && rem.free === 0;
-      }
-      return solve(slot + 1, [], 0, 0, 0);
+    if (slot === T) {
+      return rem.mens === 0 && rem.womens === 0 && rem.mixed === 0 && rem.free === 0;
     }
+    // Rank feasible compositions by how much they use the "most behind" types,
+    // so each type is spread evenly across the T slots (time interleaving). A
+    // small bonus for differing from the previous slot prefers strict alternation
+    // (남복,여복,남복,… rather than 남복,남복,여복,여복). Slot ORDER never changes
+    // per-player counts (totals are fixed), so this is fairness-safe.
+    const prevSig = slot > 0 ? [...result[slot - 1]].sort().join(',') : '';
+    const ranked = comps
+      .map((comp) => {
+        const c = compCount(comp);
+        if (c.mens > rem.mens || c.womens > rem.womens || c.mixed > rem.mixed || c.free > rem.free) {
+          return null;
+        }
+        let score = 0;
+        for (const t of comp) score += rem[t] / (target[t] || 1);
+        if ([...comp].sort().join(',') !== prevSig) score += 0.05;
+        return { comp, c, score: score + (rng() - 0.5) * 1e-3 };
+      })
+      .filter((x): x is { comp: GameType[]; c: Record<GameType, number>; score: number } => x !== null)
+      .sort((a, b) => b.score - a.score);
 
-    for (let ti = minIdx; ti < typeList.length; ti++) {
-      const t = typeList[ti];
-      if (rem[t] <= 0) continue;
-      if (poolMode === 'gendered' && (male + seatsM(t) > M || female + seatsF(t) > F)) continue;
-      rem[t]--;
-      // minIdx = ti keeps a slot's types non-decreasing → no permutation blowup.
-      if (solve(slot, [...cur, t], male + seatsM(t), female + seatsF(t), ti)) return true;
-      rem[t]++;
+    for (const { comp, c } of ranked) {
+      rem.mens -= c.mens; rem.womens -= c.womens; rem.mixed -= c.mixed; rem.free -= c.free;
+      result[slot] = comp;
+      if (solve(slot + 1)) return true;
+      rem.mens += c.mens; rem.womens += c.womens; rem.mixed += c.mixed; rem.free += c.free;
     }
     return false;
   }
 
-  if (!solve(0, [], 0, 0, 0)) return null;
-  return result;
+  return solve(0) ? result : null;
+}
+
+/** Existence check used by Stage 1 to only keep packable allocations. */
+function canPackTotals(counts: GameTypeCounts, slotGames: number, T: number, M: number, F: number): boolean {
+  return packComposition(counts, slotGames, T, M, F, 'gendered', mulberry32(0x9e3779b9)) !== null;
 }
 
 /**
@@ -480,8 +525,8 @@ function buildAttempt(
   const rng = mulberry32(seed);
   const { slotGames, counts, poolMode } = alloc;
 
-  // Stage 2: feasibility-aware packing of games into T slots.
-  const slotTypes = packSlots(counts, slotGames, T, males.length, females.length, poolMode, rng);
+  // Stage 2: interleaved, feasibility-aware packing of the totals into T slots.
+  const slotTypes = packComposition(counts, slotGames, T, males.length, females.length, poolMode, rng);
   if (!slotTypes) return null;
 
   const gameCount = new Map<string, number>();

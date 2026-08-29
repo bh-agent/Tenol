@@ -265,6 +265,45 @@ describe('generateDrawV2 — fairness guarantee', () => {
     expect(spreadOver(gameCounts(res, roster), roster)).toBe(0);
   });
 
+  it('gendered_only on ONE court (4M+4F) plays BOTH genders, evenly, interleaved', () => {
+    const roster = makeRoster(4, 4);
+    const males = roster.filter((p) => genderOf(p) === 'M');
+    const females = roster.filter((p) => genderOf(p) === 'F');
+    for (let s = 0; s < 20; s++) {
+      const res = generateDrawV2({ ...baseInput(roster, 'gendered_only', 1, 8), seed: s });
+      const mens = res.games.filter((g) => g.gameType === 'mens').length;
+      const womens = res.games.filter((g) => g.gameType === 'womens').length;
+      // Both genders actually appear — never stranded on one (the reported bug).
+      expect(mens).toBeGreaterThan(0);
+      expect(womens).toBeGreaterThan(0);
+      expect(Math.abs(mens - womens)).toBeLessThanOrEqual(1); // 8 games → 4 + 4
+      // Everyone plays the same number of games (8 slots ÷ 2 genders = 4 each).
+      expect(spreadOver(gameCounts(res, roster), [...males, ...females])).toBe(0);
+      // Not clumped: types should alternate across time, not run 남복×4 then 여복×4.
+      const byTime = [...res.games].sort((a, b) => a.timeSlotIndex - b.timeSlotIndex).map((g) => g.gameType);
+      let maxRun = 1, run = 1;
+      for (let i = 1; i < byTime.length; i++) {
+        run = byTime[i] === byTime[i - 1] ? run + 1 : 1;
+        maxRun = Math.max(maxRun, run);
+      }
+      expect(maxRun).toBeLessThanOrEqual(2);
+    }
+  });
+
+  it('gendered_only single court never strands one gender (various rosters/seeds)', () => {
+    const shapes: [number, number][] = [[4, 4], [6, 6], [8, 4], [4, 8], [8, 8], [6, 4]];
+    for (const [M, F] of shapes) {
+      const roster = makeRoster(M, F);
+      for (let s = 0; s < 10; s++) {
+        const res = generateDrawV2({ ...baseInput(roster, 'gendered_only', 1, 6), seed: s });
+        const mens = res.games.filter((g) => g.gameType === 'mens').length;
+        const womens = res.games.filter((g) => g.gameType === 'womens').length;
+        expect(mens).toBeGreaterThan(0); // ≥4 of each gender ⇒ both must be scheduled
+        expect(womens).toBeGreaterThan(0);
+      }
+    }
+  });
+
   it('is deterministic for a fixed seed', () => {
     const roster = makeRoster(6, 4);
     const a = generateDrawV2({ ...baseInput(roster, 'mixed_all', 2, 3), seed: 42 });
