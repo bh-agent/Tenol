@@ -10,7 +10,13 @@ type MvpEntry = {
   wins: number;
   totalScore: number;
   gamesPlayed: number;
+  rank: number;
+  tied: boolean;
 };
+
+function rankLabel(e: { rank: number; tied: boolean }): string {
+  return `${e.tied ? '공동 ' : ''}${e.rank}위`;
+}
 
 type Highlight = {
   icon: string;
@@ -244,9 +250,10 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
             >
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, ${GOLD}, #FFA000, ${GOLD})` }} />
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: 40, marginBottom: 6 }}>{MEDAL[0].emoji}</span>
+                <span style={{ fontSize: 40, marginBottom: 6 }}>{MEDAL[Math.min(first.rank - 1, 2)].emoji}</span>
                 <RingAvatar src={first.avatarDataUrl} name={first.displayName} size={96} ring={`${GOLD}80`} />
-                <div style={{ fontSize: 26, fontWeight: 800, color: '#FFFFFF', marginTop: 12 }}>{first.displayName}</div>
+                <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '0.5px', color: GOLD, marginTop: 10 }}>{rankLabel(first)}</div>
+                <div style={{ fontSize: 26, fontWeight: 800, color: '#FFFFFF', marginTop: 4 }}>{first.displayName}</div>
                 {first.ntrpLevel ? <NtrpBadge level={first.ntrpLevel} color={GOLD} /> : null}
               </div>
               <div style={{ display: 'flex', marginTop: 24, paddingTop: 24, borderTop: `1px solid ${GOLD}1A` }}>
@@ -269,7 +276,7 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
             {rest.length > 0 && (
               <div style={{ display: 'flex', gap: 16 }}>
                 {rest.map((mvp, i) => {
-                  const m = MEDAL[i + 1];
+                  const m = MEDAL[Math.min(mvp.rank - 1, 2)];
                   return (
                     <div
                       key={i}
@@ -287,7 +294,8 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <span style={{ fontSize: 26, marginBottom: 4 }}>{m.emoji}</span>
                         <RingAvatar src={mvp.avatarDataUrl} name={mvp.displayName} size={72} ring={`${m.accent}80`} />
-                        <div style={{ fontSize: 20, fontWeight: 700, color: '#F5F5F5', marginTop: 10 }}>{mvp.displayName}</div>
+                        <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.5px', color: m.accent, marginTop: 8 }}>{rankLabel(mvp)}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: '#F5F5F5', marginTop: 3 }}>{mvp.displayName}</div>
                         {mvp.ntrpLevel ? <NtrpBadge level={mvp.ntrpLevel} color={m.accent} /> : null}
                       </div>
                       <div style={{ display: 'flex', marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>

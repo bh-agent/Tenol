@@ -46,6 +46,8 @@ type MvpEntry = {
   gamesPlayed: number;
   wins: number;
   avgScore: number;
+  rank: number;
+  tied: boolean;
 };
 
 type Highlight = {
@@ -179,7 +181,7 @@ export default function ResultsPage() {
         }
       }
 
-      const sorted = Object.entries(agg)
+      const ranked = Object.entries(agg)
         .map(([pid, a]) => ({
           participantId: pid,
           userId: userIdMap[pid] || null,
@@ -191,25 +193,36 @@ export default function ResultsPage() {
           wins: a.wins,
           avgScore: a.gamesPlayed > 0 ? Math.round((a.totalScore / a.gamesPlayed) * 10) / 10 : 0,
         }))
+        // 승수 우선 정렬 — 같으면 평균 득점 → 총득점으로 '표시 순서'만 정한다(등수는 승수로).
         .sort((a, b) => {
+          if (b.wins !== a.wins) return b.wins - a.wins;
           if (b.avgScore !== a.avgScore) return b.avgScore - a.avgScore;
-          if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
-          return b.wins - a.wins;
+          return b.totalScore - a.totalScore;
         });
+
+      // 승수 기준 공동 순위(경쟁 순위 1,1,3…). 승수가 같으면 동점 → 같은 등수·같은 메달.
+      const rankCount: Record<number, number> = {};
+      const sorted: MvpEntry[] = ranked.map((e) => {
+        const rank = 1 + ranked.filter((o) => o.wins > e.wins).length;
+        rankCount[rank] = (rankCount[rank] || 0) + 1;
+        return { ...e, rank, tied: false };
+      });
+      sorted.forEach((e) => { e.tied = rankCount[e.rank] > 1; });
 
       setMvpTop3(sorted.slice(0, 3));
 
       // ── Compute Highlights ──
       const hl: Highlight[] = [];
 
-      // 최다 득점자
-      if (sorted.length > 0) {
-        hl.push({ icon: '🔥', label: '최다 득점', description: `${sorted[0].displayName} (${sorted[0].totalScore}점)` });
+      // 최다 득점자 (총득점 기준 — 정렬 순서와 무관하게 명시적으로 계산)
+      const topScorer = [...sorted].sort((a, b) => b.totalScore - a.totalScore || b.avgScore - a.avgScore)[0];
+      if (topScorer) {
+        hl.push({ icon: '🔥', label: '최다 득점', description: `${topScorer.displayName} (${topScorer.totalScore}점)` });
       }
 
-      // 다승왕 (most wins)
+      // 다승왕 (최다 승수) — 최다 득점자와 다를 때만 별도 표시
       const mostWins = [...sorted].sort((a, b) => b.wins - a.wins)[0];
-      if (mostWins && mostWins.wins > 0 && mostWins.participantId !== sorted[0]?.participantId) {
+      if (mostWins && mostWins.wins > 0 && mostWins.participantId !== topScorer?.participantId) {
         hl.push({ icon: '🏆', label: '다승왕', description: `${mostWins.displayName} (${mostWins.wins}승)` });
       }
 
@@ -354,6 +367,8 @@ export default function ResultsPage() {
           wins: m.wins,
           totalScore: m.totalScore,
           gamesPlayed: m.gamesPlayed,
+          rank: m.rank,
+          tied: m.tied,
         }))
       );
 
@@ -576,6 +591,9 @@ export default function ResultsPage() {
                     <div className={cn('ring-2 ring-offset-2 ring-offset-background rounded-full', medalColors[0].ring)}>
                       <Avatar src={mvpTop3[0].avatarUrl} alt={mvpTop3[0].displayName} fallback={mvpTop3[0].displayName} size="xl" />
                     </div>
+                    <span className="text-xs font-extrabold tracking-wide" style={{ color: '#FFD740' }}>
+                      {mvpTop3[0].tied ? '공동 ' : ''}{mvpTop3[0].rank}위
+                    </span>
                     <p className="text-lg font-bold text-foreground">{mvpTop3[0].displayName}</p>
                     {mvpTop3[0].ntrpLevel && <Badge variant="warning">NTRP {mvpTop3[0].ntrpLevel}</Badge>}
                   </div>
@@ -598,8 +616,8 @@ export default function ResultsPage() {
                 {/* 2nd & 3rd */}
                 {mvpTop3.length >= 2 && (
                   <div className="grid grid-cols-2 gap-3">
-                    {mvpTop3.slice(1, 3).map((mvp, i) => {
-                      const medal = medalColors[i + 1];
+                    {mvpTop3.slice(1, 3).map((mvp) => {
+                      const medal = medalColors[Math.min(mvp.rank - 1, 2)];
                       return (
                         <Card key={mvp.participantId} variant="glass" padding="md" className={cn('relative overflow-hidden', medal.border)}>
                           <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent to-transparent" style={{ background: `linear-gradient(to right, transparent, ${medal.accent}, transparent)` }} />
@@ -608,6 +626,9 @@ export default function ResultsPage() {
                             <div className={cn('ring-2 ring-offset-1 ring-offset-background rounded-full', medal.ring)}>
                               <Avatar src={mvp.avatarUrl} alt={mvp.displayName} fallback={mvp.displayName} size="lg" />
                             </div>
+                            <span className="text-[11px] font-bold tracking-wide" style={{ color: medal.accent }}>
+                              {mvp.tied ? '공동 ' : ''}{mvp.rank}위
+                            </span>
                             <p className="text-sm font-semibold text-foreground mt-1">{mvp.displayName}</p>
                             {mvp.ntrpLevel && (
                               <Badge variant="outline" className="text-[10px]" style={{ borderColor: `${medal.accent}40`, color: medal.accent }}>
