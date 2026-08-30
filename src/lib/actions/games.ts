@@ -5,6 +5,8 @@ import {
   submitScoreSchema,
   updateGamePlayersSchema,
   deleteDrawSchema,
+  addGameSchema,
+  deleteGameSchema,
 } from '@/lib/validations';
 
 // 권한은 RLS + 프론트에서 체크하되, 서버에서도 game의 match -> club 경로로 검증
@@ -277,6 +279,65 @@ export async function createManualDraw(
   if (gamesError) throw new Error('게임 저장에 실패했습니다');
 
   return { drawId: draw.id, gameCount: games.length };
+}
+
+// draw.manage 권한 필요 - 대진표에 개별 경기 추가 (빈 경기 → 이후 선수 배정)
+// 지정 시간대(game_order)의 다음 코트 번호로 빈 경기를 하나 추가한다.
+export async function addGame(matchId: string, drawId: string, gameOrder: number) {
+  const validated = addGameSchema.parse({ matchId, drawId, gameOrder });
+
+  const { requireMatchDrawEdit } = await import('@/lib/utils/check-permission');
+  await requireMatchDrawEdit(validated.matchId);
+
+  const supabase = await createClient();
+
+  // 대진표가 이 매치의 것인지 확인
+  const { data: draw } = await supabase
+    .from('draws')
+    .select('id, match_id')
+    .eq('id', validated.drawId)
+    .maybeSingle();
+  if (!draw || draw.match_id !== validated.matchId) {
+    throw new Error('대진표를 찾을 수 없습니다');
+  }
+
+  // 해당 시간대의 다음 코트 번호 계산 (경쟁 조건 방지 위해 서버에서 산출)
+  const { data: existing } = await supabase
+    .from('games')
+    .select('court_number')
+    .eq('draw_id', validated.drawId)
+    .eq('game_order', validated.gameOrder);
+  const nextCourt =
+    existing && existing.length > 0
+      ? Math.max(...existing.map((g) => g.court_number || 0)) + 1
+      : 1;
+
+  const { data: game, error } = await supabase
+    .from('games')
+    .insert({
+      draw_id: validated.drawId,
+      court_number: nextCourt,
+      game_order: validated.gameOrder,
+    })
+    .select('id')
+    .single();
+
+  if (error) throw new Error('경기 추가에 실패했습니다');
+  return { gameId: game.id, courtNumber: nextCourt, gameOrder: validated.gameOrder };
+}
+
+// draw.manage 권한 필요 - 개별 경기 삭제
+export async function deleteGame(gameId: string) {
+  const validated = deleteGameSchema.parse({ gameId });
+
+  const { requireMatchDrawEdit } = await import('@/lib/utils/check-permission');
+  const matchId = await getMatchIdFromGame(validated.gameId);
+  await requireMatchDrawEdit(matchId);
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('games').delete().eq('id', validated.gameId);
+
+  if (error) throw new Error('경기 삭제에 실패했습니다');
 }
 
 // draw.manage 권한 필요 (회장, 운영진, 멤버)

@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils/cn';
-import { Check, Clock, Pencil } from 'lucide-react';
+import { Check, Clock, Pencil, Trash2, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { InlineScoreInput } from './inline-score-input';
 
@@ -46,6 +46,8 @@ interface GameRoundCardProps {
   canInputScore: boolean;
   sitOutNames?: string[];
   onEditGame?: (game: GameData) => void;
+  onDeleteGame?: (game: GameData) => void;
+  onAddGame?: () => void;
   onScoreSaved?: () => void;
 }
 
@@ -89,6 +91,8 @@ export function GameRoundCard({
   canInputScore,
   sitOutNames,
   onEditGame,
+  onDeleteGame,
+  onAddGame,
   onScoreSaved,
 }: GameRoundCardProps) {
   const [expandedGameId, setExpandedGameId] = useState<string | null>(null);
@@ -208,6 +212,18 @@ export function GameRoundCard({
                         <Pencil className="w-3 h-3 text-muted-foreground" />
                       </button>
                     )}
+                    {canManage && onDeleteGame && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteGame(game);
+                        }}
+                        className="p-1 rounded-md hover:bg-destructive/10 transition-colors cursor-pointer"
+                        title="경기 삭제"
+                      >
+                        <Trash2 className="w-3 h-3 text-destructive/70" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -294,6 +310,17 @@ export function GameRoundCard({
             </div>
           );
         })}
+
+        {/* 이 시간대에 경기 추가 */}
+        {canManage && onAddGame && (
+          <button
+            onClick={onAddGame}
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-border text-xs text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {timeSlotIndex}경기에 코트 추가
+          </button>
+        )}
       </div>
 
       {/* Sit-out for this time slot */}

@@ -197,6 +197,16 @@ export const deleteDrawSchema = z.object({
   matchId: uuidSchema,
 });
 
+export const addGameSchema = z.object({
+  matchId: uuidSchema,
+  drawId: uuidSchema,
+  gameOrder: z.number().int().min(1).max(50),
+});
+
+export const deleteGameSchema = z.object({
+  gameId: uuidSchema,
+});
+
 // ============================================================
 // Recruitment Schemas
 // ============================================================

@@ -12,7 +12,7 @@ import { NTRP_LEVELS } from '@/lib/constants';
 import { PlayerGameSummary } from '@/components/match/player-game-summary';
 import { GameRoundCard } from '@/components/match/game-round-card';
 import { addOfflineParticipant, addMemberParticipant, removeParticipant, replaceParticipant, replaceWithOffline } from '@/lib/actions/matches';
-import { deleteDraw, updateGamePlayers, createManualDraw } from '@/lib/actions/games';
+import { deleteDraw, updateGamePlayers, createManualDraw, addGame, deleteGame } from '@/lib/actions/games';
 import { acquireDrawLock, releaseDrawLock, checkDrawLock, type DrawLockResult } from '@/lib/actions/draw-lock';
 import { createClient } from '@/lib/supabase/client';
 import { hasPermission } from '@/lib/utils/permissions';
@@ -39,6 +39,7 @@ import {
   Loader2,
   Lock,
   Search,
+  Plus,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, createElement } from 'react';
@@ -713,6 +714,47 @@ export default function DrawPage() {
       team_a_player2_id: game.team_a_player2_id || '',
       team_b_player1_id: game.team_b_player1_id || '',
       team_b_player2_id: game.team_b_player2_id || '',
+    });
+  };
+
+  // 대진표에 경기 추가 → 빈 경기 생성 후 선수 배정 모달을 바로 연다
+  const handleAddGame = async (drawId: string, gameOrder: number) => {
+    try {
+      const res = await addGame(matchId, drawId, gameOrder);
+      await loadData();
+      handleEditGame({
+        id: res.gameId,
+        court_number: res.courtNumber,
+        game_order: res.gameOrder,
+        team_a_player1_id: null,
+        team_a_player2_id: null,
+        team_b_player1_id: null,
+        team_b_player2_id: null,
+        score_team_a: null,
+        score_team_b: null,
+        winner: null,
+        status: 'scheduled',
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : '경기 추가에 실패했습니다');
+    }
+  };
+
+  // 개별 경기 삭제 (점수가 있으면 경고)
+  const handleDeleteGame = (game: GameData) => {
+    const hasScore = game.score_team_a !== null || game.score_team_b !== null;
+    setConfirmAction({
+      message: hasScore
+        ? '이 경기에는 입력된 점수가 있습니다. 삭제하면 점수 기록도 함께 사라집니다. 삭제하시겠습니까?'
+        : '이 경기를 삭제하시겠습니까?',
+      onConfirm: async () => {
+        try {
+          await deleteGame(game.id);
+          await loadData();
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : '경기 삭제에 실패했습니다');
+        }
+      },
     });
   };
 
@@ -1541,10 +1583,23 @@ export default function DrawPage() {
                         canInputScore={canInputScore}
                         sitOutNames={sitOutNames.length > 0 ? sitOutNames : undefined}
                         onEditGame={handleEditGame}
+                        onDeleteGame={handleDeleteGame}
+                        onAddGame={() => handleAddGame(draw.id, order)}
                         onScoreSaved={loadData}
                       />
                     );
                   })}
+
+                  {/* 새 시간대(경기) 추가 */}
+                  {canEditGames && !isEditBlocked && (
+                    <button
+                      onClick={() => handleAddGame(draw.id, (sortedOrders[sortedOrders.length - 1] || 0) + 1)}
+                      className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      새 시간대 경기 추가
+                    </button>
+                  )}
                 </div>
 
                 {/* Player Game Summary */}
@@ -1840,6 +1895,14 @@ export default function DrawPage() {
                 {savingEdit ? '저장 중...' : '저장'}
               </Button>
             </div>
+
+            <button
+              onClick={() => { const g = editGame; setEditGame(null); if (g) handleDeleteGame(g); }}
+              className="w-full flex items-center justify-center gap-1.5 text-xs text-destructive/80 hover:text-destructive py-1 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              이 경기 삭제
+            </button>
           </div>
         )}
       </Modal>
