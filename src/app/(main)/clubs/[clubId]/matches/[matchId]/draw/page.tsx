@@ -624,11 +624,13 @@ export default function DrawPage() {
   const handleDeleteDraw = async (drawId: string) => {
     setDeleting(true);
     try {
-      await deleteDraw(drawId, matchId);
+      const res = await deleteDraw(drawId, matchId);
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
       setShowDeleteModal(null);
       await loadData();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '대진표 삭제에 실패했습니다');
     } finally {
       setDeleting(false);
     }
@@ -719,25 +721,25 @@ export default function DrawPage() {
 
   // 대진표에 경기 추가 → 빈 경기 생성 후 선수 배정 모달을 바로 연다
   const handleAddGame = async (drawId: string, gameOrder: number) => {
-    try {
-      const res = await addGame(matchId, drawId, gameOrder);
-      await loadData();
-      handleEditGame({
-        id: res.gameId,
-        court_number: res.courtNumber,
-        game_order: res.gameOrder,
-        team_a_player1_id: null,
-        team_a_player2_id: null,
-        team_b_player1_id: null,
-        team_b_player2_id: null,
-        score_team_a: null,
-        score_team_b: null,
-        winner: null,
-        status: 'scheduled',
-      });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '경기 추가에 실패했습니다');
+    const res = await addGame(matchId, drawId, gameOrder);
+    if ('error' in res) {
+      toast.error(res.error);
+      return;
     }
+    await loadData();
+    handleEditGame({
+      id: res.gameId,
+      court_number: res.courtNumber,
+      game_order: res.gameOrder,
+      team_a_player1_id: null,
+      team_a_player2_id: null,
+      team_b_player1_id: null,
+      team_b_player2_id: null,
+      score_team_a: null,
+      score_team_b: null,
+      winner: null,
+      status: 'scheduled',
+    });
   };
 
   // 개별 경기 삭제 (점수가 있으면 경고)
@@ -748,12 +750,12 @@ export default function DrawPage() {
         ? '이 경기에는 입력된 점수가 있습니다. 삭제하면 점수 기록도 함께 사라집니다. 삭제하시겠습니까?'
         : '이 경기를 삭제하시겠습니까?',
       onConfirm: async () => {
-        try {
-          await deleteGame(game.id);
-          await loadData();
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : '경기 삭제에 실패했습니다');
+        const res = await deleteGame(game.id);
+        if (res?.error) {
+          toast.error(res.error);
+          return;
         }
+        await loadData();
       },
     });
   };
@@ -762,16 +764,18 @@ export default function DrawPage() {
     if (!editGame) return;
     setSavingEdit(true);
     try {
-      await updateGamePlayers(editGame.id, {
+      const res = await updateGamePlayers(editGame.id, {
         team_a_player1_id: editPlayers.team_a_player1_id || null,
         team_a_player2_id: editPlayers.team_a_player2_id || null,
         team_b_player1_id: editPlayers.team_b_player1_id || null,
         team_b_player2_id: editPlayers.team_b_player2_id || null,
       });
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
       setEditGame(null);
       await loadData();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '선수 배정 수정에 실패했습니다');
     } finally {
       setSavingEdit(false);
     }
@@ -828,11 +832,13 @@ export default function DrawPage() {
 
     setSavingManual(true);
     try {
-      await createManualDraw(matchId, 'free', gameInserts);
+      const res = await createManualDraw(matchId, 'free', gameInserts);
+      if (res && 'error' in res) {
+        toast.error(res.error);
+        return;
+      }
       setManualMode(false);
       await loadData();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '대진표 저장에 실패했습니다');
     } finally {
       setSavingManual(false);
     }

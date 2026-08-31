@@ -36,10 +36,12 @@ export function InlineScoreInput({
     setSaving(true);
     setError(null);
     try {
-      await submitScore(game.id, scoreA, scoreB);
+      const res = await submitScore(game.id, scoreA, scoreB);
+      if (res?.error) {
+        setError(res.error);
+        return;
+      }
       onSaved();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '점수 저장에 실패했습니다');
     } finally {
       setSaving(false);
     }

@@ -480,7 +480,11 @@ export default function ResultsPage() {
   const handleSave = async (gameId: string) => {
     setSaving(true);
     try {
-      await submitScore(gameId, scoreA, scoreB);
+      const res = await submitScore(gameId, scoreA, scoreB);
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
       // 저장 성공 → 표시 순서상 다음 미입력 경기로 자동 이동 (없으면 편집 종료)
       const ordered = [...games].sort(
         (a, b) => a.game_order - b.game_order || a.court_number - b.court_number
