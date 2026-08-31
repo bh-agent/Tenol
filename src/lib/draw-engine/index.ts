@@ -266,8 +266,11 @@ function computeAllocation(
         { seats: maleSeats, n: M },
         { seats: femaleSeats, n: F },
       ]);
-      // Secondary (never overrides fairness): mixed_all favors more 혼복 games.
-      const pref = mode === 'mixed_all' ? Gcap - Cx : 0;
+      // Secondary (never overrides fairness): mixed_all spreads the three types
+      // EVENLY (혼복·남복·여복 골고루) instead of collapsing to all-혼복. Minimizing
+      // the sum of squares of the type counts pulls them toward an even split; for
+      // an asymmetric roster fairness still shapes the mix (male-heavy → more 남복).
+      const pref = mode === 'mixed_all' ? A * A + B * B + Cx * Cx : 0;
       cands.push({ mens: A, womens: B, mixed: Cx, spread, pref });
     }
   }
