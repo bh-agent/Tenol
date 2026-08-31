@@ -97,12 +97,11 @@ export function ExploreClubList({
     setJoiningId(clubId);
     startTransition(async () => {
       try {
-        await joinPublicClub(clubId, joinIntroduction || undefined);
+        const res = await joinPublicClub(clubId, joinIntroduction || undefined);
+        if (res?.error) { toast.error(res.error); return; }
         setRequestedIds((prev) => new Set(prev).add(clubId));
         setJoinModalClubId(null);
         setJoinIntroduction('');
-      } catch (error: any) {
-        toast.error(error.message || '가입 신청에 실패했습니다');
       } finally {
         setJoiningId(null);
       }
@@ -113,10 +112,9 @@ export function ExploreClubList({
     setCancellingId(clubId);
     startTransition(async () => {
       try {
-        await cancelJoinRequest(requestId);
+        const res = await cancelJoinRequest(requestId);
+        if (res?.error) { toast.error(res.error); return; }
         setCancelledIds((prev) => new Set(prev).add(clubId));
-      } catch (error: any) {
-        toast.error(error.message || '신청 취소에 실패했습니다');
       } finally {
         setCancellingId(null);
       }

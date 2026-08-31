@@ -62,10 +62,9 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
       onConfirm: async () => {
         setLoading(true);
         try {
-          await removeMember(clubId, targetUserId);
+          const res = await removeMember(clubId, targetUserId);
+          if (res?.error) { toast.error(res.error); return; }
           router.refresh();
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
         } finally {
           setLoading(false);
           setShowMenu(false);
@@ -77,10 +76,9 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
   const handleTransferOwnership = async () => {
     setLoading(true);
     try {
-      await transferOwnership(clubId, targetUserId);
+      const res = await transferOwnership(clubId, targetUserId);
+      if (res?.error) { toast.error(res.error); return; }
       router.refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
     } finally {
       setLoading(false);
       setShowTransferConfirm(false);
@@ -94,10 +92,9 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
       onConfirm: async () => {
         setLoading(true);
         try {
-          await updateMemberRole(clubId, targetUserId, newRole);
+          const res = await updateMemberRole(clubId, targetUserId, newRole);
+          if (res?.error) { toast.error(res.error); return; }
           router.refresh();
-        } catch (e) {
-          toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
         } finally {
           setLoading(false);
           setShowMenu(false);
@@ -129,11 +126,10 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
         defaultSet.size === editSet.size &&
         [...defaultSet].every((p) => editSet.has(p));
 
-      await updateMemberPermissions(clubId, targetUserId, isSameAsDefault ? null : editPerms);
+      const res = await updateMemberPermissions(clubId, targetUserId, isSameAsDefault ? null : editPerms);
+      if (res?.error) { toast.error(res.error); return; }
       setHasChanges(false);
       router.refresh();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
     } finally {
       setPermSaving(false);
     }

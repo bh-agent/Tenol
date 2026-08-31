@@ -95,7 +95,8 @@ export default function ClubSettingsPage() {
         .from('club-media')
         .getPublicUrl(path);
 
-      await updateClubLogo(clubId, publicUrl);
+      const res = await updateClubLogo(clubId, publicUrl);
+      if (res?.error) { toast.error(res.error); return; }
       setLogoUrl(publicUrl);
     } catch {
       toast.error('로고 업로드에 실패했습니다');

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission, requireMatchPermission, requireMatchDrawEdit } from '@/lib/utils/check-permission';
+import { actionError } from '@/lib/utils/action-error';
 import { logError, logInfo, logWarn } from '@/lib/logger';
 import { redirect } from 'next/navigation';
 import {
@@ -190,7 +191,16 @@ async function promoteAndNotify(supabase: SupabaseServer, matchId: string) {
   }
 }
 
-export async function joinMatch(matchId: string) {
+export async function joinMatch(matchId: string): Promise<{ error?: string }> {
+  try {
+    await joinMatchImpl(matchId);
+    return {};
+  } catch (e) {
+    return actionError(e, '참가 신청에 실패했습니다');
+  }
+}
+
+async function joinMatchImpl(matchId: string) {
   const validMatchId = uuidSchema.parse(matchId);
 
   const supabase = await createClient();
@@ -271,7 +281,16 @@ export async function joinMatch(matchId: string) {
   logInfo('match', 'Joined match', { userId: user.id, matchId: validMatchId });
 }
 
-export async function applyAsGuest(matchId: string, name: string, phone?: string | null, introduction?: string | null) {
+export async function applyAsGuest(matchId: string, name: string, phone?: string | null, introduction?: string | null): Promise<{ error?: string }> {
+  try {
+    await applyAsGuestImpl(matchId, name, phone, introduction);
+    return {};
+  } catch (e) {
+    return actionError(e, '게스트 신청에 실패했습니다');
+  }
+}
+
+async function applyAsGuestImpl(matchId: string, name: string, phone?: string | null, introduction?: string | null) {
   const validMatchId = uuidSchema.parse(matchId);
   const validated = guestApplySchema.parse({ name, phone: phone ?? undefined });
 
@@ -327,7 +346,15 @@ export async function applyAsGuest(matchId: string, name: string, phone?: string
 }
 
 // 모집 마감/재오픈
-export async function toggleRegistration(matchId: string) {
+export async function toggleRegistration(matchId: string): Promise<{ closed: boolean } | { error: string }> {
+  try {
+    return await toggleRegistrationImpl(matchId);
+  } catch (e) {
+    return actionError(e, '모집 상태 변경에 실패했습니다');
+  }
+}
+
+async function toggleRegistrationImpl(matchId: string) {
   const validMatchId = uuidSchema.parse(matchId);
   await requireMatchPermission(validMatchId, 'match.create');
 
@@ -354,7 +381,16 @@ export async function toggleRegistration(matchId: string) {
 }
 
 // member.manage 권한 필요 (회장, 운영진)
-export async function respondToGuest(participantId: string, matchId: string, approved: boolean) {
+export async function respondToGuest(participantId: string, matchId: string, approved: boolean): Promise<{ error?: string }> {
+  try {
+    await respondToGuestImpl(participantId, matchId, approved);
+    return {};
+  } catch (e) {
+    return actionError(e, '게스트 응답 처리에 실패했습니다');
+  }
+}
+
+async function respondToGuestImpl(participantId: string, matchId: string, approved: boolean) {
   const validParticipantId = uuidSchema.parse(participantId);
   const validMatchId = uuidSchema.parse(matchId);
   await requireMatchPermission(validMatchId, 'member.manage');
@@ -439,7 +475,16 @@ export async function respondToGuest(participantId: string, matchId: string, app
   }
 }
 
-export async function withdrawFromMatch(matchId: string) {
+export async function withdrawFromMatch(matchId: string): Promise<{ error?: string }> {
+  try {
+    await withdrawFromMatchImpl(matchId);
+    return {};
+  } catch (e) {
+    return actionError(e, '참가 취소에 실패했습니다');
+  }
+}
+
+async function withdrawFromMatchImpl(matchId: string) {
   const validMatchId = uuidSchema.parse(matchId);
 
   const supabase = await createClient();
@@ -488,7 +533,16 @@ export async function withdrawFromMatch(matchId: string) {
   }
 }
 
-export async function leaveWaitlist(matchId: string) {
+export async function leaveWaitlist(matchId: string): Promise<{ error?: string }> {
+  try {
+    await leaveWaitlistImpl(matchId);
+    return {};
+  } catch (e) {
+    return actionError(e, '대기 취소에 실패했습니다');
+  }
+}
+
+async function leaveWaitlistImpl(matchId: string) {
   const validMatchId = uuidSchema.parse(matchId);
 
   const supabase = await createClient();
@@ -515,7 +569,16 @@ export async function leaveWaitlist(matchId: string) {
 /**
  * 비회원(앱 미가입자) 참가자 직접 추가
  */
-export async function addOfflineParticipant(matchId: string, name: string, gender: 'M' | 'F', ntrpLevel?: number) {
+export async function addOfflineParticipant(matchId: string, name: string, gender: 'M' | 'F', ntrpLevel?: number): Promise<{ error?: string }> {
+  try {
+    await addOfflineParticipantImpl(matchId, name, gender, ntrpLevel);
+    return {};
+  } catch (e) {
+    return actionError(e, '오프라인 참가자 추가에 실패했습니다');
+  }
+}
+
+async function addOfflineParticipantImpl(matchId: string, name: string, gender: 'M' | 'F', ntrpLevel?: number) {
   const validMatchId = uuidSchema.parse(matchId);
   const validated = offlineParticipantSchema.parse({ name, gender, ntrpLevel });
   await requireMatchPermission(validMatchId, 'match.create');
@@ -557,7 +620,16 @@ export async function addOfflineParticipant(matchId: string, name: string, gende
 /**
  * 클럽 멤버를 경기 참가자로 추가 (운영진 전용)
  */
-export async function addMemberParticipant(matchId: string, userId: string) {
+export async function addMemberParticipant(matchId: string, userId: string): Promise<{ error?: string }> {
+  try {
+    await addMemberParticipantImpl(matchId, userId);
+    return {};
+  } catch (e) {
+    return actionError(e, '멤버 추가에 실패했습니다');
+  }
+}
+
+async function addMemberParticipantImpl(matchId: string, userId: string) {
   const validMatchId = uuidSchema.parse(matchId);
   const validUserId = uuidSchema.parse(userId);
   await requireMatchPermission(validMatchId, 'match.create');
@@ -881,7 +953,16 @@ const VALID_STATUS_TRANSITIONS: Record<string, string[]> = {
   cancelled: ['upcoming'], // can reopen a cancelled match
 };
 
-export async function updateMatchStatus(matchId: string, status: string) {
+export async function updateMatchStatus(matchId: string, status: string): Promise<{ error?: string }> {
+  try {
+    await updateMatchStatusImpl(matchId, status);
+    return {};
+  } catch (e) {
+    return actionError(e, '경기 상태 변경에 실패했습니다');
+  }
+}
+
+async function updateMatchStatusImpl(matchId: string, status: string) {
   const validMatchId = uuidSchema.parse(matchId);
   const validStatus = matchStatusSchema.parse(status);
   await requireMatchPermission(validMatchId, 'match.create');

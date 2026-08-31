@@ -550,7 +550,8 @@ export default function DrawPage() {
     if (!addGender) { toast.warning('성별을 선택해주세요'); return; }
     setAdding(true);
     try {
-      await addOfflineParticipant(matchId, addName.trim(), addGender as 'M' | 'F', addNtrp ? Number(addNtrp) : undefined);
+      const res = await addOfflineParticipant(matchId, addName.trim(), addGender as 'M' | 'F', addNtrp ? Number(addNtrp) : undefined);
+      if (res?.error) { toast.error(res.error); return; }
       setAddName('');
       setAddGender('');
       setAddNtrp('');
@@ -566,7 +567,8 @@ export default function DrawPage() {
   const handleAddMember = async (userId: string) => {
     setAdding(true);
     try {
-      await addMemberParticipant(matchId, userId);
+      const res = await addMemberParticipant(matchId, userId);
+      if (res?.error) { toast.error(res.error); return; }
       setShowAddModal(false);
       setMemberSearch('');
       await loadData();

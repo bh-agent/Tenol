@@ -23,7 +23,8 @@ export function MatchActions({ matchId, canManage, status }: MatchActionsProps) 
   const handleStatusChange = async (newStatus: string) => {
     setLoading(true);
     try {
-      await updateMatchStatus(matchId, newStatus);
+      const res = await updateMatchStatus(matchId, newStatus);
+      if (res?.error) { toast.error(res.error); return; }
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');

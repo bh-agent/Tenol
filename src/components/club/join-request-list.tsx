@@ -46,12 +46,9 @@ export function JoinRequestList({ requests, clubId }: JoinRequestListProps) {
 
   async function handleRespond(requestId: string, approved: boolean) {
     startTransition(async () => {
-      try {
-        await respondToJoinRequest(requestId, approved);
-        setProcessedIds((prev) => new Set(prev).add(requestId));
-      } catch (error: any) {
-        toast.error(error.message || '처리에 실패했습니다');
-      }
+      const res = await respondToJoinRequest(requestId, approved);
+      if (res?.error) { toast.error(res.error); return; }
+      setProcessedIds((prev) => new Set(prev).add(requestId));
     });
   }
 

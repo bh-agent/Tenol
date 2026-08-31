@@ -19,7 +19,8 @@ export function GuestActions({ participantId, matchId }: { participantId: string
   const doRespond = async (approved: boolean) => {
     setState('loading');
     try {
-      await respondToGuest(participantId, matchId, approved);
+      const res = await respondToGuest(participantId, matchId, approved);
+      if (res?.error) { setState('idle'); toast.error(res.error); return; }
       setState(approved ? 'approved' : 'rejected');
       setTimeout(() => {
         router.refresh();

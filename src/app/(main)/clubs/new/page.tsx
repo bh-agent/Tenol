@@ -53,12 +53,11 @@ function NewClubContent() {
     setLoading(true);
     setError('');
     try {
-      await joinClubByCode(code);
+      const res = await joinClubByCode(code);
+      if (res?.error) { setError(res.error); return; }
       // joinClubByCode는 즉시 가입이 아니라 승인 대기 신청 → 명확히 안내
       toast.success('가입 신청이 접수되었습니다. 관리자 승인 후 이용할 수 있어요.');
       router.push('/clubs');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '오류가 발생했습니다');
     } finally {
       setLoading(false);
     }

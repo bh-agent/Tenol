@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { requirePermission } from '@/lib/utils/check-permission';
+import { actionError } from '@/lib/utils/action-error';
 import { logError, logInfo, logWarn } from '@/lib/logger';
 import { redirect, unstable_rethrow } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -90,7 +91,8 @@ export async function createClubAction(
   }
 }
 
-export async function joinClubByCode(inviteCode: string, introduction?: string) {
+export async function joinClubByCode(inviteCode: string, introduction?: string): Promise<{ error?: string }> {
+ try {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('인증이 필요합니다');
@@ -173,6 +175,10 @@ export async function joinClubByCode(inviteCode: string, introduction?: string) 
   } catch (e) {
     logWarn('club', 'Failed to send join request notification to admins', { clubId: club.id, error: e });
   }
+  return {};
+ } catch (err) {
+  return actionError(err, '가입 신청에 실패했습니다');
+ }
 }
 
 // club.edit 권한 필요 (회장만)
@@ -207,7 +213,8 @@ export async function updateClub(clubId: string, formData: FormData) {
 }
 
 // member.manage 권한 필요 (회장, 운영진)
-export async function removeMember(clubId: string, targetUserId: string) {
+export async function removeMember(clubId: string, targetUserId: string): Promise<{ error?: string }> {
+ try {
   const validClubId = uuidSchema.parse(clubId);
   const validTargetUserId = uuidSchema.parse(targetUserId);
   const { userId, role } = await requirePermission(validClubId, 'member.manage');
@@ -236,10 +243,15 @@ export async function removeMember(clubId: string, targetUserId: string) {
     .eq('user_id', validTargetUserId);
 
   logInfo('club', 'Member removed', { userId, clubId: validClubId, metadata: { targetUserId: validTargetUserId } });
+  return {};
+ } catch (err) {
+  return actionError(err, '멤버 제명에 실패했습니다');
+ }
 }
 
 // member.manage 권한 필요 (회장, 운영진)
-export async function updateMemberRole(clubId: string, targetUserId: string, newRole: string) {
+export async function updateMemberRole(clubId: string, targetUserId: string, newRole: string): Promise<{ error?: string }> {
+ try {
   const validClubId = uuidSchema.parse(clubId);
   const validTargetUserId = uuidSchema.parse(targetUserId);
   const validRole = clubRoleSchema.parse(newRole);
@@ -300,13 +312,18 @@ export async function updateMemberRole(clubId: string, targetUserId: string, new
       logWarn('club', 'Failed to send role change notification', { clubId: validClubId, error: e });
     }
   }
+  return {};
+ } catch (err) {
+  return actionError(err, '역할 변경에 실패했습니다');
+ }
 }
 
 export async function updateMemberPermissions(
   clubId: string,
   targetUserId: string,
   permissions: string[] | null
-) {
+): Promise<{ error?: string }> {
+ try {
   const validClubId = uuidSchema.parse(clubId);
   const validTargetUserId = uuidSchema.parse(targetUserId);
   const { role } = await requirePermission(validClubId, 'member.manage');
@@ -335,9 +352,14 @@ export async function updateMemberPermissions(
   if (error) throw new Error('권한 변경에 실패했습니다');
 
   revalidatePath(`/clubs/${validClubId}/members`);
+  return {};
+ } catch (err) {
+  return actionError(err, '권한 변경에 실패했습니다');
+ }
 }
 
-export async function updateClubLogo(clubId: string, logoUrl: string) {
+export async function updateClubLogo(clubId: string, logoUrl: string): Promise<{ error?: string }> {
+ try {
   const validClubId = uuidSchema.parse(clubId);
   await requirePermission(validClubId, 'club.edit');
 
@@ -348,9 +370,14 @@ export async function updateClubLogo(clubId: string, logoUrl: string) {
     .eq('id', validClubId);
 
   if (error) throw new Error('클럽 로고 수정에 실패했습니다');
+  return {};
+ } catch (err) {
+  return actionError(err, '클럽 로고 수정에 실패했습니다');
+ }
 }
 
-export async function joinPublicClub(clubId: string, introduction?: string) {
+export async function joinPublicClub(clubId: string, introduction?: string): Promise<{ error?: string }> {
+ try {
   const validClubId = uuidSchema.parse(clubId);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -433,10 +460,15 @@ export async function joinPublicClub(clubId: string, introduction?: string) {
   } catch (e) {
     logWarn('club', 'Failed to send public join request notification to admins', { clubId: validClubId, error: e });
   }
+  return {};
+ } catch (err) {
+  return actionError(err, '가입 신청에 실패했습니다');
+ }
 }
 
 // member.manage 권한 필요 - 가입 신청 승인/거절
-export async function respondToJoinRequest(requestId: string, approved: boolean) {
+export async function respondToJoinRequest(requestId: string, approved: boolean): Promise<{ error?: string }> {
+ try {
   const validRequestId = uuidSchema.parse(requestId);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -516,10 +548,15 @@ export async function respondToJoinRequest(requestId: string, approved: boolean)
   } catch (e) {
     logWarn('club', 'Failed to send join request response notification', { clubId: request.club_id, error: e });
   }
+  return {};
+ } catch (err) {
+  return actionError(err, '신청 처리에 실패했습니다');
+ }
 }
 
 // 사용자가 자신의 가입 신청 취소
-export async function cancelJoinRequest(requestId: string) {
+export async function cancelJoinRequest(requestId: string): Promise<{ error?: string }> {
+ try {
   const validRequestId = uuidSchema.parse(requestId);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -541,6 +578,10 @@ export async function cancelJoinRequest(requestId: string) {
     .eq('id', validRequestId);
 
   if (error) throw new Error('신청 취소에 실패했습니다');
+  return {};
+ } catch (err) {
+  return actionError(err, '신청 취소에 실패했습니다');
+ }
 }
 
 // club.edit 권한 필요 (회장만) - 클럽 삭제
@@ -597,7 +638,8 @@ export async function deleteClub(clubId: string): Promise<{ error: string } | un
 }
 
 // 클럽장 양도 - owner만 가능
-export async function transferOwnership(clubId: string, targetUserId: string) {
+export async function transferOwnership(clubId: string, targetUserId: string): Promise<{ error?: string }> {
+ try {
   const validClubId = uuidSchema.parse(clubId);
   const validTargetUserId = uuidSchema.parse(targetUserId);
 
@@ -684,6 +726,10 @@ export async function transferOwnership(clubId: string, targetUserId: string) {
   }
 
   revalidatePath(`/clubs/${validClubId}`);
+  return {};
+ } catch (err) {
+  return actionError(err, '클럽장 양도에 실패했습니다');
+ }
 }
 
 export async function leaveClub(clubId: string) {

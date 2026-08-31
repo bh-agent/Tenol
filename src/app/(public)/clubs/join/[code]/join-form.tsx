@@ -57,10 +57,9 @@ export function JoinByLinkForm({ inviteCode, profile, isLoggedIn = true }: JoinB
     setLoading(true);
     setError('');
     try {
-      await joinClubByCode(inviteCode, introduction || undefined);
+      const res = await joinClubByCode(inviteCode, introduction || undefined);
+      if (res?.error) { setError(res.error); return; }
       setSuccess(true);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : '오류가 발생했습니다');
     } finally {
       setLoading(false);
     }

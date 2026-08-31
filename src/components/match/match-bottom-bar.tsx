@@ -67,7 +67,8 @@ export function MatchBottomBar({
   const handleJoin = async () => {
     setLoading(true);
     try {
-      await joinMatch(matchId);
+      const res = await joinMatch(matchId);
+      if (res?.error) { toast.error(res.error); return; }
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
@@ -80,7 +81,8 @@ export function MatchBottomBar({
     if (!userProfile) return;
     setLoading(true);
     try {
-      await applyAsGuest(matchId, userProfile.display_name, null, introduction || null);
+      const res = await applyAsGuest(matchId, userProfile.display_name, null, introduction || null);
+      if (res?.error) { toast.error(res.error); return; }
       setShowGuestModal(false);
       setIntroduction('');
       router.refresh();
@@ -94,7 +96,8 @@ export function MatchBottomBar({
   const handleJoinWaitlist = async () => {
     setLoading(true);
     try {
-      await joinMatch(matchId);
+      const res = await joinMatch(matchId);
+      if (res?.error) { toast.error(res.error); return; }
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
@@ -109,7 +112,8 @@ export function MatchBottomBar({
       onConfirm: async () => {
         setLoading(true);
         try {
-          await leaveWaitlist(matchId);
+          const res = await leaveWaitlist(matchId);
+          if (res?.error) { toast.error(res.error); return; }
           router.refresh();
         } catch (e) {
           toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
@@ -126,7 +130,8 @@ export function MatchBottomBar({
       onConfirm: async () => {
         setLoading(true);
         try {
-          await withdrawFromMatch(matchId);
+          const res = await withdrawFromMatch(matchId);
+          if (res?.error) { toast.error(res.error); return; }
           router.refresh();
         } catch (e) {
           toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
@@ -140,7 +145,8 @@ export function MatchBottomBar({
   const handleToggleRegistration = async () => {
     setLoading(true);
     try {
-      await toggleRegistration(matchId);
+      const res = await toggleRegistration(matchId);
+      if ('error' in res) { toast.error(res.error); return; }
       router.refresh();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : '오류가 발생했습니다');
