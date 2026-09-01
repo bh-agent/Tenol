@@ -146,30 +146,37 @@ function RingAvatar({
   );
 }
 
-// 클럽 로고(둥근 사각형). 없으면 클럽명 이니셜. 인스타 스토리에서 잘 보이게 크게.
+// 클럽 로고 — 그린 그라디언트 링으로 어두운 로고도 검은 배경에서 분리, 크게.
 function ClubLogo({ src, name }: { src: string | null; name: string }) {
-  const size = 110;
+  const size = 140;
   return (
     <div
       style={{
-        width: size,
-        height: size,
-        borderRadius: 24,
-        overflow: 'hidden',
-        background: 'rgba(0,230,118,0.15)',
-        border: `1px solid ${BORDER}`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        padding: 5,
+        borderRadius: 36,
+        background: 'linear-gradient(135deg, #00E676 0%, #69F0AE 50%, #00A857 100%)',
         flexShrink: 0,
       }}
     >
-      {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={name} width={size} height={size} style={{ width: size, height: size, objectFit: 'cover' }} />
-      ) : (
-        <span style={{ color: GREEN_LIGHT, fontWeight: 800, fontSize: 46 }}>{initialOf(name || 'T')}</span>
-      )}
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: 31,
+          overflow: 'hidden',
+          background: 'rgba(0,230,118,0.15)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt={name} width={size} height={size} style={{ width: size, height: size, objectFit: 'cover' }} />
+        ) : (
+          <span style={{ color: GREEN_LIGHT, fontWeight: 800, fontSize: 58 }}>{initialOf(name || 'T')}</span>
+        )}
+      </div>
     </div>
   );
 }

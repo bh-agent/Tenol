@@ -174,36 +174,43 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
             </div>
           </div>
 
-          {/* 클럽 로고 — 오른쪽 위 크게 (인스타 스토리 프로필에 안 가리는 영역) */}
+          {/* 클럽 로고 — 오른쪽 위, 그린 그라디언트 링으로 어두운 로고도 배경에서 분리 */}
           {(clubName || clubLogoDataUrl) && (
             <div
               style={{
-                width: 110,
-                height: 110,
-                borderRadius: 24,
-                overflow: 'hidden',
+                padding: 5,
+                borderRadius: 36,
+                background: 'linear-gradient(135deg, #00E676 0%, #69F0AE 50%, #00A857 100%)',
                 flexShrink: 0,
-                background: 'rgba(0,230,118,0.15)',
-                border: '1px solid #2A2A2A',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
               }}
             >
-              {clubLogoDataUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={clubLogoDataUrl}
-                  alt={clubName || 'club'}
-                  width={110}
-                  height={110}
-                  style={{ width: 110, height: 110, objectFit: 'cover' }}
-                />
-              ) : (
-                <span style={{ color: '#69F0AE', fontWeight: 800, fontSize: 46 }}>
-                  {initialOf(clubName || '')}
-                </span>
-              )}
+              <div
+                style={{
+                  width: 140,
+                  height: 140,
+                  borderRadius: 31,
+                  overflow: 'hidden',
+                  background: 'rgba(0,230,118,0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {clubLogoDataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={clubLogoDataUrl}
+                    alt={clubName || 'club'}
+                    width={140}
+                    height={140}
+                    style={{ width: 140, height: 140, objectFit: 'cover' }}
+                  />
+                ) : (
+                  <span style={{ color: '#69F0AE', fontWeight: 800, fontSize: 58 }}>
+                    {initialOf(clubName || '')}
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>
