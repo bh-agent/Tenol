@@ -115,6 +115,10 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
     const getPlayerName = (id: string | null) =>
       id ? participantMap[id]?.drawName || participantMap[id]?.name || '???' : '-';
 
+    // 한눈에 읽히도록 큼직하게. 코트가 많을수록 카드가 좁아지므로 이름 크기만 動적.
+    const nameSize = courtCount >= 3 ? 20 : 24;
+    const scoreSize = courtCount >= 3 ? 28 : 34;
+
     return (
       <div
         ref={ref}
@@ -136,90 +140,75 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
             alignItems: 'flex-start',
             justifyContent: 'space-between',
             gap: 20,
-            marginBottom: 14,
+            marginBottom: 6,
           }}
         >
-          <div
-            style={{
-              fontSize: 20,
-              fontWeight: 800,
-              color: '#00E676',
-              letterSpacing: '-0.5px',
-              paddingTop: 8,
-            }}
-          >
-            TENOL
+          <div style={{ paddingTop: 4 }}>
+            <div
+              style={{
+                fontSize: 24,
+                fontWeight: 800,
+                color: '#00E676',
+                letterSpacing: '-0.5px',
+                marginBottom: 14,
+              }}
+            >
+              TENOL
+            </div>
+            {/* Title */}
+            <div
+              style={{
+                fontSize: 44,
+                fontWeight: 800,
+                color: '#FFFFFF',
+                letterSpacing: '-1px',
+                lineHeight: 1.2,
+                marginBottom: 8,
+              }}
+            >
+              {matchTitle}
+            </div>
+            {/* Date & time & type */}
+            <div style={{ fontSize: 21, color: '#999999' }}>
+              {formatDate(matchDate)} &middot; {startTime} 시작 &middot; {drawType} &middot; {courtCount}코트
+            </div>
           </div>
-          {/* 클럽 브랜딩 — 오른쪽 위 (인스타 스토리에서 프로필에 가려지지 않는 영역) */}
+
+          {/* 클럽 로고 — 오른쪽 위 크게 (인스타 스토리 프로필에 안 가리는 영역) */}
           {(clubName || clubLogoDataUrl) && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, maxWidth: 460 }}>
-              <div
-                style={{
-                  fontSize: 20,
-                  fontWeight: 800,
-                  color: '#FFFFFF',
-                  textAlign: 'right',
-                  lineHeight: '1.3',
-                }}
-              >
-                {clubName}
-              </div>
-              <div
-                style={{
-                  width: 56,
-                  height: 56,
-                  borderRadius: 14,
-                  overflow: 'hidden',
-                  flexShrink: 0,
-                  background: 'rgba(0,230,118,0.15)',
-                  border: '1px solid #2A2A2A',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {clubLogoDataUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={clubLogoDataUrl}
-                    alt={clubName || 'club'}
-                    width={56}
-                    height={56}
-                    style={{ width: 56, height: 56, objectFit: 'cover' }}
-                  />
-                ) : (
-                  <span style={{ color: '#69F0AE', fontWeight: 800, fontSize: 24 }}>
-                    {initialOf(clubName || '')}
-                  </span>
-                )}
-              </div>
+            <div
+              style={{
+                width: 110,
+                height: 110,
+                borderRadius: 24,
+                overflow: 'hidden',
+                flexShrink: 0,
+                background: 'rgba(0,230,118,0.15)',
+                border: '1px solid #2A2A2A',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {clubLogoDataUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={clubLogoDataUrl}
+                  alt={clubName || 'club'}
+                  width={110}
+                  height={110}
+                  style={{ width: 110, height: 110, objectFit: 'cover' }}
+                />
+              ) : (
+                <span style={{ color: '#69F0AE', fontWeight: 800, fontSize: 46 }}>
+                  {initialOf(clubName || '')}
+                </span>
+              )}
             </div>
           )}
         </div>
 
-        {/* Title */}
-        <div
-          style={{
-            fontSize: 32,
-            fontWeight: 800,
-            color: '#FFFFFF',
-            letterSpacing: '-0.5px',
-            marginBottom: 6,
-          }}
-        >
-          {matchTitle}
-        </div>
-
-        {/* Date & time & type */}
-        <div
-          style={{
-            fontSize: 16,
-            color: '#888888',
-            marginBottom: 36,
-          }}
-        >
-          {formatDate(matchDate)} &middot; {startTime} 시작 &middot; {drawType} &middot; {courtCount}코트
-        </div>
+        <div style={{ marginBottom: 34 }} />
 
         {/* Divider */}
         <div
@@ -244,14 +233,14 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
               <div style={{ marginBottom: 16 }}>
                 <span
                   style={{
-                    fontSize: 15,
+                    fontSize: 24,
                     fontWeight: 800,
                     color: '#00E676',
                   }}
                 >
                   {order}경기
                 </span>
-                <span style={{ fontSize: 14, color: '#777777', marginLeft: 12 }}>
+                <span style={{ fontSize: 19, color: '#888888', marginLeft: 14 }}>
                   {slot?.startTime || '--:--'} ~ {slot?.endTime || '--:--'}
                 </span>
               </div>
@@ -278,7 +267,7 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                         background: '#1A1A1A',
                         border: '1px solid #2A2A2A',
                         borderRadius: 16,
-                        padding: '16px 20px',
+                        padding: '20px 22px',
                         boxSizing: 'border-box',
                       }}
                     >
@@ -286,7 +275,7 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                       <div style={{ marginBottom: 16 }}>
                         <span
                           style={{
-                            fontSize: 14,
+                            fontSize: 19,
                             fontWeight: 700,
                             color: '#DDDDDD',
                           }}
@@ -295,7 +284,7 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                         </span>
                         <span
                           style={{
-                            fontSize: 12,
+                            fontSize: 17,
                             fontWeight: 700,
                             color: typeStyle.text,
                             marginLeft: 10,
@@ -317,8 +306,8 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                         <div style={{ flex: 1, textAlign: 'center' }}>
                           <div
                             style={{
-                              fontSize: 16,
-                              fontWeight: 600,
+                              fontSize: nameSize,
+                              fontWeight: 700,
                               color: '#EEEEEE',
                               lineHeight: '1.6',
                             }}
@@ -328,8 +317,8 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                           {game.team_a_player2_id && (
                             <div
                               style={{
-                                fontSize: 16,
-                                fontWeight: 600,
+                                fontSize: nameSize,
+                                fontWeight: 700,
                                 color: '#EEEEEE',
                                 lineHeight: '1.6',
                               }}
@@ -348,7 +337,7 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                           }}
                         >
                           {hasScore ? (
-                            <div style={{ fontSize: 24, fontWeight: 800 }}>
+                            <div style={{ fontSize: scoreSize, fontWeight: 800 }}>
                               <span
                                 style={{
                                   color:
@@ -370,7 +359,7 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                           ) : (
                             <span
                               style={{
-                                fontSize: 14,
+                                fontSize: 19,
                                 fontWeight: 800,
                                 color: '#00E676',
                                 letterSpacing: '2px',
@@ -385,8 +374,8 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                         <div style={{ flex: 1, textAlign: 'center' }}>
                           <div
                             style={{
-                              fontSize: 16,
-                              fontWeight: 600,
+                              fontSize: nameSize,
+                              fontWeight: 700,
                               color: '#EEEEEE',
                               lineHeight: '1.6',
                             }}
@@ -396,8 +385,8 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                           {game.team_b_player2_id && (
                             <div
                               style={{
-                                fontSize: 16,
-                                fontWeight: 600,
+                                fontSize: nameSize,
+                                fontWeight: 700,
                                 color: '#EEEEEE',
                                 lineHeight: '1.6',
                               }}
@@ -416,9 +405,9 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
               {sitOuts.length > 0 && (
                 <div
                   style={{
-                    fontSize: 13,
-                    color: '#777777',
-                    marginTop: 10,
+                    fontSize: 17,
+                    color: '#888888',
+                    marginTop: 12,
                     paddingLeft: 4,
                   }}
                 >
@@ -440,10 +429,10 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
             justifyContent: 'space-between',
           }}
         >
-          <div style={{ fontSize: 13, color: '#555555' }}>
+          <div style={{ fontSize: 16, color: '#666666' }}>
             테놀 - 테니스 치며 놀자
           </div>
-          <div style={{ fontSize: 12, color: '#444444' }}>
+          <div style={{ fontSize: 15, color: '#555555' }}>
             tenol.app
           </div>
         </div>

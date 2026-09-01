@@ -146,15 +146,15 @@ function RingAvatar({
   );
 }
 
-// 클럽 로고(둥근 사각형). 없으면 클럽명 이니셜.
+// 클럽 로고(둥근 사각형). 없으면 클럽명 이니셜. 인스타 스토리에서 잘 보이게 크게.
 function ClubLogo({ src, name }: { src: string | null; name: string }) {
-  const size = 56;
+  const size = 110;
   return (
     <div
       style={{
         width: size,
         height: size,
-        borderRadius: 14,
+        borderRadius: 24,
         overflow: 'hidden',
         background: 'rgba(0,230,118,0.15)',
         border: `1px solid ${BORDER}`,
@@ -168,7 +168,7 @@ function ClubLogo({ src, name }: { src: string | null; name: string }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={src} alt={name} width={size} height={size} style={{ width: size, height: size, objectFit: 'cover' }} />
       ) : (
-        <span style={{ color: GREEN_LIGHT, fontWeight: 800, fontSize: 24 }}>{initialOf(name || 'T')}</span>
+        <span style={{ color: GREEN_LIGHT, fontWeight: 800, fontSize: 46 }}>{initialOf(name || 'T')}</span>
       )}
     </div>
   );
@@ -230,16 +230,15 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
           boxSizing: 'border-box',
         }}
       >
-        {/* Header — 클럽 로고 + 클럽명 브랜딩 */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 22 }}>
-          <ClubLogo src={clubLogoDataUrl} name={clubName} />
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 24, fontWeight: 800, color: '#FFFFFF', lineHeight: 1.15 }}>{clubName || '테놀'}</div>
-            <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: '0.3px', color: GREEN, marginTop: 3 }}>TENOL · 경기 결과</div>
+        {/* Header — 왼쪽 텍스트 + 오른쪽 위 큰 클럽 로고 (인스타 스토리 프로필에 안 가림) */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, marginBottom: 32 }}>
+          <div style={{ paddingTop: 4 }}>
+            <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.3px', color: GREEN, marginBottom: 14 }}>TENOL · 경기 결과</div>
+            <div style={{ fontSize: 42, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-1px', lineHeight: 1.2, marginBottom: 8 }}>{matchTitle}</div>
+            <div style={{ fontSize: 19, color: MUTED }}>{formatDate(matchDate)}</div>
           </div>
+          <ClubLogo src={clubLogoDataUrl} name={clubName} />
         </div>
-        <div style={{ fontSize: 38, fontWeight: 800, color: '#FFFFFF', marginBottom: 6 }}>{matchTitle}</div>
-        <div style={{ fontSize: 17, color: MUTED, marginBottom: 32 }}>{formatDate(matchDate)}</div>
         <div style={{ height: 2, background: 'linear-gradient(90deg, #00E676 0%, rgba(0,230,118,0) 100%)', marginBottom: 40 }} />
 
         {/* ═══ MVP Top 3 ═══ */}
