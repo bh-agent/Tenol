@@ -118,6 +118,17 @@ export default async function ClubDetailPage({
                   {club.main_court}
                 </span>
               )}
+              {/* 오픈채팅 바로가기 — 가입자는 단톡방, 미가입자는 문의 창구 */}
+              {club.open_chat_url && (
+                <a
+                  href={club.open_chat_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-elevated border border-border hover:border-primary/40 hover:text-foreground transition-colors"
+                >
+                  💬 오픈채팅
+                </a>
+              )}
             </div>
 
             {/* Invite link for all members */}
