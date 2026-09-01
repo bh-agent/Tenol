@@ -25,6 +25,12 @@ export default async function MatchDetailPage({
   params: Promise<{ clubId: string; matchId: string }>;
 }) {
   const { clubId, matchId } = await params;
+
+  // 시간 기반 자동 상태 전환 — 페이지를 열 때 DB(KST 기준)가 검증·전환한다.
+  // (시작시간 경과 → 진행중, 종료시간/날짜 경과 → 종료. 수동 시작/종료 버튼 대체)
+  const supabaseSync = await createClient();
+  await supabaseSync.rpc('sync_match_status', { p_match_id: matchId });
+
   const [match, myRole] = await Promise.all([
     getMatch(matchId),
     getMyRole(clubId),

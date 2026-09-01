@@ -390,6 +390,9 @@ export default function DrawPage() {
     setLoading(true);
     const supabase = createClient();
 
+    // 시간 기반 자동 상태 전환 (시작시간 경과→진행중, 종료시간 경과→종료)
+    await supabase.rpc('sync_match_status', { p_match_id: matchId });
+
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data: membership } = await supabase

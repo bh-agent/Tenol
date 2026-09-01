@@ -38,39 +38,8 @@ export function MatchActions({ matchId, canManage, status }: MatchActionsProps) 
 
   return (
     <>
+      {/* 시작·종료는 시간 기반 자동 전환(sync_match_status)으로 대체 — 취소만 수동 */}
       <div className="flex gap-2">
-        {status === 'upcoming' && (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setConfirmAction({
-                message: '경기를 시작하시겠습니까?',
-                onConfirm: () => handleStatusChange('in_progress'),
-              });
-            }}
-            disabled={loading}
-            fullWidth
-          >
-            경기 시작
-          </Button>
-        )}
-
-        {status === 'in_progress' && (
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setConfirmAction({
-                message: '경기를 종료하시겠습니까?',
-                onConfirm: () => handleStatusChange('completed'),
-              });
-            }}
-            disabled={loading}
-            fullWidth
-          >
-            경기 종료
-          </Button>
-        )}
-
         {(status === 'upcoming' || status === 'in_progress') && (
           <Button
             variant="outline"
@@ -81,8 +50,9 @@ export function MatchActions({ matchId, canManage, status }: MatchActionsProps) 
               });
             }}
             disabled={loading}
+            fullWidth
           >
-            취소
+            경기 취소
           </Button>
         )}
       </div>
