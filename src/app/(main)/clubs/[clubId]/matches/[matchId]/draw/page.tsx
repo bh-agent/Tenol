@@ -11,7 +11,7 @@ import { TopBar } from '@/components/layout/top-bar';
 import { NTRP_LEVELS } from '@/lib/constants';
 import { PlayerGameSummary } from '@/components/match/player-game-summary';
 import { GameRoundCard } from '@/components/match/game-round-card';
-import { addOfflineParticipant, addMemberParticipant, removeParticipant, replaceParticipant, replaceWithOffline } from '@/lib/actions/matches';
+import { addOfflineParticipant, addMemberParticipant, removeParticipant, replaceParticipant, replaceWithOffline, updateCourtNames } from '@/lib/actions/matches';
 import { deleteDraw, updateGamePlayers, createManualDraw, addGame, deleteGame } from '@/lib/actions/games';
 import { acquireDrawLock, releaseDrawLock, checkDrawLock, type DrawLockResult } from '@/lib/actions/draw-lock';
 import { createClient } from '@/lib/supabase/client';
@@ -40,6 +40,7 @@ import {
   Lock,
   Search,
   Plus,
+  LayoutGrid,
 } from 'lucide-react';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, createElement } from 'react';
@@ -232,6 +233,9 @@ export default function DrawPage() {
   const [gamesPerCourt, setGamesPerCourt] = useState(3);
   const [courtNames, setCourtNames] = useState<Record<number, string>>({});
   const [showCourtNames, setShowCourtNames] = useState(false);
+  // 대진 생성 후 코트 이름 편집 모달
+  const [editCourtNames, setEditCourtNames] = useState<Record<number, string> | null>(null);
+  const [savingCourtNames, setSavingCourtNames] = useState(false);
   const [generating, setGenerating] = useState(false);
 
   // Add participant modal
@@ -398,7 +402,7 @@ export default function DrawPage() {
     // Get match info for court_count, start_time, title, date
     const { data: matchData } = await supabase
       .from('matches')
-      .select('court_count, start_time, title, match_date, status')
+      .select('court_count, start_time, title, match_date, status, court_names')
       .eq('id', matchId)
       .maybeSingle();
     if (matchData?.start_time) {
@@ -410,21 +414,13 @@ export default function DrawPage() {
     if (matchData?.status) setMatchStatus(matchData.status);
     if (matchData?.court_count) {
       setMatchCourtCount(matchData.court_count);
-      // Init court names
+      // 기본 코트 이름("N코트") 위에 DB에 저장된 이름을 덮어쓴다.
+      const saved = (matchData.court_names as Record<string, string> | null) || {};
       const names: Record<number, string> = {};
       for (let i = 1; i <= matchData.court_count; i++) {
-        names[i] = `${i}코트`;
+        names[i] = (saved[String(i)] || '').trim() || `${i}코트`;
       }
-      setCourtNames((prev) => {
-        const merged = { ...names };
-        Object.keys(prev).forEach((k) => {
-          const num = Number(k);
-          if (num <= matchData.court_count && prev[num]) {
-            merged[num] = prev[num];
-          }
-        });
-        return merged;
-      });
+      setCourtNames(names);
     }
 
     const { data: drawsData } = await supabase
@@ -532,6 +528,8 @@ export default function DrawPage() {
         const detail = result.details ? `\n${JSON.stringify(result.details)}` : '';
         throw new Error((result.error || '대진표 생성에 실패했습니다') + detail);
       }
+      // 생성 폼에서 지정한 코트 이름을 저장 (기본값 "N코트"는 제외)
+      await persistCourtNames();
       await loadData();
       toast.success('대진표가 생성되었습니다');
       // 생성된 대진표로 자동 스크롤 (DOM 렌더링 이후 실행)
@@ -721,6 +719,48 @@ export default function DrawPage() {
     });
   };
 
+  // 현재 courtNames 중 기본값("N코트")이 아닌 것만 DB에 저장 (생성/수동생성 후 호출)
+  const persistCourtNames = async () => {
+    const custom: Record<string, string> = {};
+    Object.entries(courtNames).forEach(([k, v]) => {
+      const name = (v || '').trim();
+      if (name && name !== `${k}코트`) custom[k] = name;
+    });
+    if (Object.keys(custom).length > 0) {
+      await updateCourtNames(matchId, custom).catch(() => {});
+    }
+  };
+
+  // 코트 이름 편집 모달 열기 (현재 이름으로 초기화)
+  const openCourtNameEditor = () => {
+    const init: Record<number, string> = {};
+    for (let i = 1; i <= matchCourtCount; i++) {
+      const cur = courtNames[i] || '';
+      // 기본값("N코트")은 빈칸으로 보여 사용자가 원하는 이름만 입력하게 한다.
+      init[i] = cur === `${i}코트` ? '' : cur;
+    }
+    setEditCourtNames(init);
+  };
+
+  const handleSaveCourtNames = async () => {
+    if (!editCourtNames) return;
+    setSavingCourtNames(true);
+    try {
+      const payload: Record<string, string> = {};
+      Object.entries(editCourtNames).forEach(([k, v]) => { payload[k] = (v || '').trim(); });
+      const res = await updateCourtNames(matchId, payload);
+      if (res?.error) {
+        toast.error(res.error);
+        return;
+      }
+      setEditCourtNames(null);
+      await loadData();
+      toast.success('코트 이름이 저장되었습니다');
+    } finally {
+      setSavingCourtNames(false);
+    }
+  };
+
   // 대진표에 경기 추가 → 빈 경기 생성 후 선수 배정 모달을 바로 연다
   const handleAddGame = async (drawId: string, gameOrder: number) => {
     const res = await addGame(matchId, drawId, gameOrder);
@@ -839,6 +879,7 @@ export default function DrawPage() {
         toast.error(res.error);
         return;
       }
+      await persistCourtNames();
       setManualMode(false);
       await loadData();
     } finally {
@@ -1539,6 +1580,15 @@ export default function DrawPage() {
                       <Download className="w-3.5 h-3.5" />
                       저장
                     </button>
+                    {canEditGames && !isEditBlocked && (
+                      <button
+                        onClick={openCourtNameEditor}
+                        className="flex items-center gap-1 text-xs text-foreground font-medium px-2.5 py-1.5 rounded-lg hover:bg-surface-elevated transition-colors cursor-pointer"
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                        코트명
+                      </button>
+                    )}
                     {canManageDraw && !isEditBlocked && (
                       <>
                         <button
@@ -1831,6 +1881,39 @@ export default function DrawPage() {
         onAddOffline={handleSubstituteOffline}
         loading={substituting}
       />
+
+      {/* ── 코트 이름 편집 모달 ── */}
+      <Modal isOpen={!!editCourtNames} onClose={() => setEditCourtNames(null)} title="코트 이름">
+        {editCourtNames && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              각 코트의 이름을 정해주세요. 비워두면 <span className="text-foreground font-medium">기본값(1코트, 2코트…)</span>으로 표시됩니다.
+            </p>
+            <div className="space-y-2">
+              {Array.from({ length: matchCourtCount }, (_, i) => i + 1).map((num) => (
+                <Input
+                  key={num}
+                  id={`edit-court-${num}`}
+                  label={`${num}번 코트`}
+                  placeholder={`${num}코트`}
+                  value={editCourtNames[num] ?? ''}
+                  onChange={(e) =>
+                    setEditCourtNames((prev) => ({ ...(prev || {}), [num]: e.target.value }))
+                  }
+                />
+              ))}
+            </div>
+            <div className="flex gap-3">
+              <Button variant="secondary" onClick={() => setEditCourtNames(null)} fullWidth>
+                취소
+              </Button>
+              <Button onClick={handleSaveCourtNames} disabled={savingCourtNames} loading={savingCourtNames} fullWidth>
+                {savingCourtNames ? '저장 중...' : '저장'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* ── Edit game modal ── */}
       <Modal isOpen={!!editGame} onClose={() => setEditGame(null)} title="경기 수정">

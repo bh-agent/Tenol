@@ -345,6 +345,35 @@ async function applyAsGuestImpl(matchId: string, name: string, phone?: string | 
   }
 }
 
+// 코트 이름 저장 (대진 생성 후에도 변경 가능). match.create 권한 필요.
+export async function updateCourtNames(
+  matchId: string,
+  courtNames: Record<string, string>,
+): Promise<{ error?: string }> {
+  try {
+    const validMatchId = uuidSchema.parse(matchId);
+    await requireMatchPermission(validMatchId, 'match.create');
+
+    // 빈 문자열/공백은 저장하지 않고(기본값 "N코트" 사용) 정리
+    const cleaned: Record<string, string> = {};
+    for (const [k, v] of Object.entries(courtNames)) {
+      const name = typeof v === 'string' ? v.trim() : '';
+      if (name) cleaned[k] = name.slice(0, 30); // 과도한 길이 방지
+    }
+
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from('matches')
+      .update({ court_names: Object.keys(cleaned).length > 0 ? cleaned : null })
+      .eq('id', validMatchId);
+
+    if (error) return { error: '코트 이름 저장에 실패했습니다' };
+    return {};
+  } catch (e) {
+    return actionError(e, '코트 이름 저장에 실패했습니다');
+  }
+}
+
 // 모집 마감/재오픈
 export async function toggleRegistration(matchId: string): Promise<{ closed: boolean } | { error: string }> {
   try {
