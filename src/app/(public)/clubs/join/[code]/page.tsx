@@ -76,7 +76,7 @@ export default async function JoinByLinkPage({
   // Look up club by invite code
   const { data: club } = await pub
     .from('clubs')
-    .select('id, name, description, region, invite_code')
+    .select('id, name, description, region, invite_code, open_chat_url')
     .eq('invite_code', code)
     .maybeSingle();
 
@@ -197,6 +197,18 @@ export default async function JoinByLinkPage({
                 <JoinByLinkForm inviteCode={code} profile={userProfile} isLoggedIn={!!user} />
               )}
             </div>
+
+            {/* 미가입자 문의 — 오픈채팅 */}
+            {!isMember && club.open_chat_url && (
+              <a
+                href={club.open_chat_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+              >
+                💬 궁금한 점은 오픈채팅으로 문의하세요
+              </a>
+            )}
           </div>
         </Card>
       </div>

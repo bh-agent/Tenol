@@ -104,7 +104,7 @@ export async function searchPublicClubs(query?: string, region?: string) {
   let q = supabase
     .from('clubs')
     .select(`
-      id, name, description, logo_url, region, main_court, is_public, created_at
+      id, name, description, logo_url, region, main_court, is_public, created_at, open_chat_url
     `)
     .eq('is_public', true);
 

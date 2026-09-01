@@ -51,6 +51,16 @@ export const updateClubSchema = z.object({
   description: sanitizedText.pipe(z.string().max(500)).nullable(),
   region: sanitizedText.pipe(z.string().max(100)).nullable(),
   main_court: sanitizedText.pipe(z.string().max(200)).nullable(),
+  // 미가입자 문의용 오픈채팅 링크 — https만 허용 (javascript: 등 차단)
+  open_chat_url: z.preprocess(
+    (v) => (typeof v === 'string' && v.trim() ? v.trim() : null),
+    z
+      .string()
+      .max(300, '링크가 너무 깁니다')
+      .url('올바른 링크 형식이 아닙니다')
+      .startsWith('https://', 'https:// 로 시작하는 링크만 사용할 수 있습니다')
+      .nullable()
+  ),
 });
 
 export const inviteCodeSchema = z.string().min(1).max(20).regex(/^[a-zA-Z0-9]+$/);

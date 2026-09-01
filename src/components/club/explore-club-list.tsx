@@ -286,8 +286,19 @@ export function ExploreClubList({
                       {club.member_count}명
                     </span>
                   </div>
-                  <div className="pt-1">
+                  <div className="pt-1 flex items-center gap-2 flex-wrap">
                     {renderJoinButton(club)}
+                    {/* 미가입자 문의 — 오픈채팅 (가입한 클럽엔 불필요) */}
+                    {club.open_chat_url && !memberClubIds.includes(club.id) && (
+                      <a
+                        href={club.open_chat_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary px-2.5 py-1.5 rounded-lg border border-border hover:border-primary/40 transition-colors"
+                      >
+                        💬 문의하기
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>

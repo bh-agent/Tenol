@@ -26,6 +26,7 @@ export default function ClubSettingsPage() {
   const [clubDescription, setClubDescription] = useState('');
   const [clubRegion, setClubRegion] = useState('');
   const [clubMainCourt, setClubMainCourt] = useState('');
+  const [clubOpenChatUrl, setClubOpenChatUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -41,7 +42,7 @@ export default function ClubSettingsPage() {
       const supabase = createClient();
       const { data: club } = await supabase
         .from('clubs')
-        .select('name, description, region, main_court, logo_url')
+        .select('name, description, region, main_court, logo_url, open_chat_url')
         .eq('id', clubId)
         .maybeSingle();
 
@@ -50,6 +51,7 @@ export default function ClubSettingsPage() {
         setClubDescription(club.description || '');
         setClubRegion(club.region || '');
         setClubMainCourt(club.main_court || '');
+        setClubOpenChatUrl(club.open_chat_url || '');
         setLogoUrl(club.logo_url || null);
       } else {
         setLoadFailed(true);
@@ -253,6 +255,19 @@ export default function ClubSettingsPage() {
               defaultValue={clubMainCourt}
               key={`court-${clubMainCourt}`}
             />
+            <div>
+              <Input
+                id="open_chat_url"
+                name="open_chat_url"
+                label="오픈채팅 링크 (선택)"
+                placeholder="https://open.kakao.com/o/..."
+                defaultValue={clubOpenChatUrl}
+                key={`chat-${clubOpenChatUrl}`}
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                미가입자가 문의할 수 있는 채팅방 링크예요. 클럽 초대·탐색 화면에 문의 버튼으로 표시됩니다.
+              </p>
+            </div>
             {saveError && (
               <p className="text-sm text-destructive">{saveError}</p>
             )}
