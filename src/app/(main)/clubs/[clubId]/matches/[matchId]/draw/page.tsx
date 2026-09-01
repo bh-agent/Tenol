@@ -221,6 +221,8 @@ export default function DrawPage() {
   const [matchStatus, setMatchStatus] = useState<string>('upcoming');
   const [matchTitle, setMatchTitle] = useState('');
   const [matchDate, setMatchDate] = useState('');
+  const [clubName, setClubName] = useState('');
+  const [clubLogoUrl, setClubLogoUrl] = useState<string | null>(null);
 
   // Image export
   const [exportingImage, setExportingImage] = useState(false);
@@ -397,6 +399,17 @@ export default function DrawPage() {
         .eq('user_id', user.id)
         .maybeSingle();
       setMyRole((membership?.role as ClubRole) || null);
+    }
+
+    // 공유 이미지 브랜딩용 클럽 정보 (로고·이름)
+    const { data: clubData } = await supabase
+      .from('clubs')
+      .select('name, logo_url')
+      .eq('id', clubId)
+      .maybeSingle();
+    if (clubData) {
+      setClubName(clubData.name || '');
+      setClubLogoUrl(clubData.logo_url || null);
     }
 
     // Get match info for court_count, start_time, title, date
@@ -889,6 +902,25 @@ export default function DrawPage() {
 
   // ── Image export ──
 
+  // 이미지 URL을 data URL로 변환 — html2canvas가 외부 이미지로 캔버스를 오염시켜
+  // toBlob이 실패하는 것을 방지. 실패 시 null → 공유 이미지에서 이니셜 폴백.
+  const toDataUrl = async (url: string | null): Promise<string | null> => {
+    if (!url) return null;
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return await new Promise<string | null>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch {
+      return null;
+    }
+  };
+
   const getDrawImageProps = (draw: DrawData): DrawShareImageProps | null => {
     const gamesByOrder = getGamesByOrder(draw.games || []);
     const sortedOrders = Object.keys(gamesByOrder)
@@ -930,11 +962,14 @@ export default function DrawPage() {
     }
     const html2canvas = html2canvasModule.default;
 
-    const props = getDrawImageProps(draw);
-    if (!props) {
+    const baseProps = getDrawImageProps(draw);
+    if (!baseProps) {
       toast.error('대진표 데이터를 가져올 수 없습니다.');
       return null;
     }
+    // 클럽 로고를 data URL로 선변환(캔버스 오염 방지). 실패 시 이니셜 폴백.
+    const clubLogoDataUrl = await toDataUrl(clubLogoUrl);
+    const props: DrawShareImageProps = { ...baseProps, clubName, clubLogoDataUrl };
 
     // Create a temporary VISIBLE container (html2canvas needs it in layout)
     const tempContainer = document.createElement('div');

@@ -42,6 +42,12 @@ export interface DrawShareImageProps {
   participantMap: Record<string, Participant>;
   courtNames: Record<number, string>;
   sitOutsBySlot: Record<number, string[]>;
+  clubName?: string;
+  clubLogoDataUrl?: string | null;
+}
+
+function initialOf(name: string): string {
+  return name?.trim()?.[0]?.toUpperCase() || 'T';
 }
 
 // ── Helpers ──
@@ -101,6 +107,8 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
       participantMap,
       courtNames,
       sitOutsBySlot,
+      clubName,
+      clubLogoDataUrl,
     },
     ref
   ) {
@@ -125,9 +133,10 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
         <div
           style={{
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'space-between',
-            marginBottom: 12,
+            gap: 20,
+            marginBottom: 14,
           }}
         >
           <div
@@ -136,18 +145,56 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
               fontWeight: 800,
               color: '#00E676',
               letterSpacing: '-0.5px',
+              paddingTop: 8,
             }}
           >
             TENOL
           </div>
-          <div
-            style={{
-              fontSize: 13,
-              color: '#666666',
-            }}
-          >
-            {drawType} &middot; {courtCount}코트
-          </div>
+          {/* 클럽 브랜딩 — 오른쪽 위 (인스타 스토리에서 프로필에 가려지지 않는 영역) */}
+          {(clubName || clubLogoDataUrl) && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, maxWidth: 460 }}>
+              <div
+                style={{
+                  fontSize: 20,
+                  fontWeight: 800,
+                  color: '#FFFFFF',
+                  textAlign: 'right',
+                  lineHeight: '1.3',
+                }}
+              >
+                {clubName}
+              </div>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 14,
+                  overflow: 'hidden',
+                  flexShrink: 0,
+                  background: 'rgba(0,230,118,0.15)',
+                  border: '1px solid #2A2A2A',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                {clubLogoDataUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={clubLogoDataUrl}
+                    alt={clubName || 'club'}
+                    width={56}
+                    height={56}
+                    style={{ width: 56, height: 56, objectFit: 'cover' }}
+                  />
+                ) : (
+                  <span style={{ color: '#69F0AE', fontWeight: 800, fontSize: 24 }}>
+                    {initialOf(clubName || '')}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Title */}
@@ -163,7 +210,7 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
           {matchTitle}
         </div>
 
-        {/* Date & time */}
+        {/* Date & time & type */}
         <div
           style={{
             fontSize: 16,
@@ -171,7 +218,7 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
             marginBottom: 36,
           }}
         >
-          {formatDate(matchDate)} &middot; {startTime} 시작
+          {formatDate(matchDate)} &middot; {startTime} 시작 &middot; {drawType} &middot; {courtCount}코트
         </div>
 
         {/* Divider */}
