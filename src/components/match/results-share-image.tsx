@@ -187,9 +187,9 @@ function PlayerNames({
 }) {
   return (
     <div style={{ flex: 1, textAlign: align }}>
-      <div style={{ fontSize: 20, fontWeight: win ? 700 : 400, color: win ? '#F5F5F5' : MUTED }}>{p1}</div>
+      <div style={{ fontSize: 24, fontWeight: win ? 700 : 500, color: win ? '#F5F5F5' : MUTED }}>{p1}</div>
       {p2 && (
-        <div style={{ fontSize: 20, fontWeight: win ? 700 : 400, color: win ? '#F5F5F5' : MUTED, marginTop: 3 }}>
+        <div style={{ fontSize: 24, fontWeight: win ? 700 : 500, color: win ? '#F5F5F5' : MUTED, marginTop: 4 }}>
           {p2}
         </div>
       )}
@@ -211,10 +211,10 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
     const slotOrders = Object.keys(gamesByOrder).map(Number).sort((a, b) => a - b);
 
     const sectionTitle: React.CSSProperties = {
-      fontSize: 26,
+      fontSize: 30,
       fontWeight: 800,
       color: '#FFFFFF',
-      marginBottom: 18,
+      marginBottom: 20,
     };
 
     return (
@@ -244,9 +244,9 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
         {/* ═══ MVP Top 3 ═══ */}
         {first && (
           <div style={{ marginBottom: 44 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
-              <span style={{ fontSize: 30 }}>🏆</span>
-              <span style={{ fontSize: 28, fontWeight: 800, color: '#FFFFFF' }}>오늘의 MVP</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
+              <span style={{ fontSize: 34 }}>🏆</span>
+              <span style={{ fontSize: 32, fontWeight: 800, color: '#FFFFFF' }}>오늘의 MVP</span>
             </div>
 
             {/* 1st place */}
@@ -263,23 +263,23 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
             >
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, ${GOLD}, #FFA000, ${GOLD})` }} />
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: 40, marginBottom: 6 }}>{MEDAL[Math.min(first.rank - 1, 2)].emoji}</span>
-                <RingAvatar src={first.avatarDataUrl} name={first.displayName} size={96} ring={`${GOLD}80`} />
-                <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: '0.5px', color: GOLD, marginTop: 10 }}>{rankLabel(first)}</div>
-                <div style={{ fontSize: 26, fontWeight: 800, color: '#FFFFFF', marginTop: 4 }}>{first.displayName}</div>
+                <span style={{ fontSize: 46, marginBottom: 6 }}>{MEDAL[Math.min(first.rank - 1, 2)].emoji}</span>
+                <RingAvatar src={first.avatarDataUrl} name={first.displayName} size={110} ring={`${GOLD}80`} />
+                <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '0.5px', color: GOLD, marginTop: 12 }}>{rankLabel(first)}</div>
+                <div style={{ fontSize: 32, fontWeight: 800, color: '#FFFFFF', marginTop: 4 }}>{first.displayName}</div>
               </div>
-              <div style={{ display: 'flex', marginTop: 24, paddingTop: 24, borderTop: `1px solid ${GOLD}1A` }}>
+              <div style={{ display: 'flex', marginTop: 26, paddingTop: 26, borderTop: `1px solid ${GOLD}1A` }}>
                 <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: 13, color: MUTED, marginBottom: 4 }}>평균 득점</div>
-                  <div style={{ fontSize: 30, fontWeight: 800, color: GOLD }}>{first.avgScore}</div>
+                  <div style={{ fontSize: 16, color: MUTED, marginBottom: 6 }}>평균 득점</div>
+                  <div style={{ fontSize: 36, fontWeight: 800, color: GOLD }}>{first.avgScore}</div>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: 13, color: MUTED, marginBottom: 4 }}>승수</div>
-                  <div style={{ fontSize: 30, fontWeight: 800, color: GREEN }}>{first.wins}승</div>
+                  <div style={{ fontSize: 16, color: MUTED, marginBottom: 6 }}>승수</div>
+                  <div style={{ fontSize: 36, fontWeight: 800, color: GREEN }}>{first.wins}승</div>
                 </div>
                 <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: 13, color: MUTED, marginBottom: 4 }}>총 득점</div>
-                  <div style={{ fontSize: 30, fontWeight: 800, color: '#F5F5F5' }}>{first.totalScore}</div>
+                  <div style={{ fontSize: 16, color: MUTED, marginBottom: 6 }}>총 득점</div>
+                  <div style={{ fontSize: 36, fontWeight: 800, color: '#F5F5F5' }}>{first.totalScore}</div>
                 </div>
               </div>
             </div>
@@ -304,19 +304,19 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
                     >
                       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, rgba(0,0,0,0), ${m.accent}, rgba(0,0,0,0))` }} />
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <span style={{ fontSize: 26, marginBottom: 4 }}>{m.emoji}</span>
-                        <RingAvatar src={mvp.avatarDataUrl} name={mvp.displayName} size={72} ring={`${m.accent}80`} />
-                        <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: '0.5px', color: m.accent, marginTop: 8 }}>{rankLabel(mvp)}</div>
-                        <div style={{ fontSize: 20, fontWeight: 700, color: '#F5F5F5', marginTop: 3 }}>{mvp.displayName}</div>
+                        <span style={{ fontSize: 30, marginBottom: 4 }}>{m.emoji}</span>
+                        <RingAvatar src={mvp.avatarDataUrl} name={mvp.displayName} size={84} ring={`${m.accent}80`} />
+                        <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '0.5px', color: m.accent, marginTop: 10 }}>{rankLabel(mvp)}</div>
+                        <div style={{ fontSize: 24, fontWeight: 700, color: '#F5F5F5', marginTop: 4 }}>{mvp.displayName}</div>
                       </div>
-                      <div style={{ display: 'flex', marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div style={{ display: 'flex', marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                         <div style={{ flex: 1, textAlign: 'center' }}>
-                          <div style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>평균</div>
-                          <div style={{ fontSize: 22, fontWeight: 800, color: m.accent }}>{mvp.avgScore}</div>
+                          <div style={{ fontSize: 15, color: MUTED, marginBottom: 5 }}>평균</div>
+                          <div style={{ fontSize: 27, fontWeight: 800, color: m.accent }}>{mvp.avgScore}</div>
                         </div>
                         <div style={{ flex: 1, textAlign: 'center' }}>
-                          <div style={{ fontSize: 12, color: MUTED, marginBottom: 4 }}>승수</div>
-                          <div style={{ fontSize: 22, fontWeight: 800, color: GREEN }}>{mvp.wins}승</div>
+                          <div style={{ fontSize: 15, color: MUTED, marginBottom: 5 }}>승수</div>
+                          <div style={{ fontSize: 27, fontWeight: 800, color: GREEN }}>{mvp.wins}승</div>
                         </div>
                       </div>
                     </div>
@@ -343,10 +343,10 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
                     borderBottom: i < highlights.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
                   }}
                 >
-                  <div style={{ width: 44, height: 44, borderRadius: 9999, background: CHIP_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, flexShrink: 0 }}>
+                  <div style={{ width: 52, height: 52, borderRadius: 9999, background: CHIP_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
                     {h.icon}
                   </div>
-                  <div style={{ fontSize: 18, flex: 1 }}>
+                  <div style={{ fontSize: 21, flex: 1 }}>
                     <span style={{ color: MUTED }}>{h.label}: </span>
                     <span style={{ fontWeight: 700, color: '#F5F5F5' }}>{h.description}</span>
                   </div>
@@ -376,9 +376,9 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
                       textAlign: 'center',
                     }}
                   >
-                    <div style={{ fontSize: 13, color: MUTED, marginBottom: 6 }}>{s.label}</div>
-                    <div style={{ fontSize: 28, fontWeight: 800, color: isFirst ? GREEN : '#F5F5F5' }}>{s.value}</div>
-                    {s.sub && <div style={{ fontSize: 12, color: SUBTLE, marginTop: 4 }}>{s.sub}</div>}
+                    <div style={{ fontSize: 16, color: MUTED, marginBottom: 8 }}>{s.label}</div>
+                    <div style={{ fontSize: 34, fontWeight: 800, color: isFirst ? GREEN : '#F5F5F5' }}>{s.value}</div>
+                    {s.sub && <div style={{ fontSize: 15, color: SUBTLE, marginTop: 5 }}>{s.sub}</div>}
                   </div>
                 );
               })}
@@ -394,9 +394,9 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
               const slotGames = gamesByOrder[order].sort((a, b) => a.courtNumber - b.courtNumber);
               return (
                 <div key={order} style={{ marginBottom: 24 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: 9999, background: GREEN }} />
-                    <span style={{ fontSize: 15, fontWeight: 600, color: MUTED }}>{order}경기</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                    <div style={{ width: 9, height: 9, borderRadius: 9999, background: GREEN }} />
+                    <span style={{ fontSize: 20, fontWeight: 700, color: '#DDDDDD' }}>{order}경기</span>
                     <div style={{ flex: 1, height: 1, background: BORDER }} />
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -404,19 +404,19 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
                       const aWin = game.winner === 'team_a';
                       const bWin = game.winner === 'team_b';
                       return (
-                        <div key={i} style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '14px 18px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                            <span style={{ fontSize: 12, fontWeight: 600, color: MUTED, border: `1px solid ${BORDER}`, borderRadius: 8, padding: '2px 8px' }}>
+                        <div key={i} style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '18px 22px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                            <span style={{ fontSize: 16, fontWeight: 700, color: '#CCCCCC', border: `1px solid ${BORDER}`, borderRadius: 9, padding: '3px 11px' }}>
                               {game.courtNumber}코트
                             </span>
-                            {game.winner ? <span style={{ fontSize: 15 }}>🏆</span> : <span />}
+                            {game.winner ? <span style={{ fontSize: 19 }}>🏆</span> : <span />}
                           </div>
                           <div style={{ display: 'flex', alignItems: 'center' }}>
                             <PlayerNames p1={game.teamAPlayer1} p2={game.teamAPlayer2} win={aWin} align="right" />
-                            <div style={{ minWidth: 96, textAlign: 'center', padding: '0 12px' }}>
-                              <span style={{ fontSize: 26, fontWeight: 800 }}>
+                            <div style={{ minWidth: 116, textAlign: 'center', padding: '0 14px' }}>
+                              <span style={{ fontSize: 33, fontWeight: 800 }}>
                                 <span style={{ color: aWin ? GREEN : MUTED }}>{game.scoreA}</span>
-                                <span style={{ color: SUBTLE, margin: '0 8px' }}>:</span>
+                                <span style={{ color: SUBTLE, margin: '0 9px' }}>:</span>
                                 <span style={{ color: bWin ? GREEN : MUTED }}>{game.scoreB}</span>
                               </span>
                             </div>
@@ -434,8 +434,8 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
 
         {/* Footer */}
         <div style={{ marginTop: 44, paddingTop: 24, borderTop: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 15, color: SUBTLE }}>테놀 - 테니스 치며 놀자</span>
-          <span style={{ fontSize: 14, color: '#555555' }}>tenol.app</span>
+          <span style={{ fontSize: 16, color: SUBTLE }}>테놀 - 테니스 치며 놀자</span>
+          <span style={{ fontSize: 15, color: '#555555' }}>tenol.app</span>
         </div>
       </div>
     );
