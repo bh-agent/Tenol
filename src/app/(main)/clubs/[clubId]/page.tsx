@@ -8,7 +8,7 @@ import { getClubMatches, getPendingGuestCount, getPendingGuestCountByMatch } fro
 import { formatRole } from '@/lib/utils/format';
 import { hasPermission } from '@/lib/utils/permissions';
 import { RefreshButton } from '@/components/ui/refresh-button';
-import { Settings, MapPin, Users, Trophy, BarChart3, Calendar, Swords, Megaphone, ClipboardList, Repeat, Instagram } from 'lucide-react';
+import { Settings, MapPin, Users, Trophy, BarChart3, Calendar, Swords, Megaphone, ClipboardList, Repeat, Instagram, MessageCircle } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ClubInviteLink } from '@/components/club/club-invite-link';
@@ -126,7 +126,8 @@ export default async function ClubDetailPage({
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-elevated border border-border hover:border-primary/40 hover:text-foreground transition-colors"
                 >
-                  💬 오픈채팅
+                  <MessageCircle className="w-3.5 h-3.5 text-primary/70" />
+                  오픈채팅
                 </a>
               )}
               {club.instagram_url && (

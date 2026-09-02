@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { TopBar } from '@/components/layout/top-bar';
 import { createClient } from '@/lib/supabase/server';
 import { createServiceRoleClient } from '@/lib/supabase/service';
-import { MapPin, Users, AlertCircle, CheckCircle2, Clock, Instagram } from 'lucide-react';
+import { MapPin, Users, AlertCircle, CheckCircle2, Clock, Instagram, MessageCircle } from 'lucide-react';
 import { JoinByLinkForm } from './join-form';
 
 // 초대 링크는 공개 게이트 — 미로그인 방문자·SNS 스크래퍼도 클럽 기본 정보를 봐야
@@ -206,7 +206,8 @@ export default async function JoinByLinkPage({
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
               >
-                💬 궁금한 점은 오픈채팅으로 문의하세요
+                <MessageCircle className="w-4 h-4 text-primary/70" />
+                궁금한 점은 오픈채팅으로 문의하세요
               </a>
             )}
             {club.instagram_url && (
@@ -216,7 +217,7 @@ export default async function JoinByLinkPage({
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
               >
-                <Instagram className="w-4 h-4" />
+                <Instagram className="w-4 h-4 text-primary/70" />
                 인스타그램에서 클럽 둘러보기
               </a>
             )}
