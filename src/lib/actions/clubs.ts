@@ -192,6 +192,7 @@ export async function updateClub(clubId: string, formData: FormData) {
     region: formData.get('region') as string || null,
     main_court: formData.get('main_court') as string || null,
     open_chat_url: formData.get('open_chat_url') as string || null,
+    instagram_url: formData.get('instagram_url') as string || null,
   });
 
   const supabase = await createClient();

@@ -76,7 +76,7 @@ export default async function JoinByLinkPage({
   // Look up club by invite code
   const { data: club } = await pub
     .from('clubs')
-    .select('id, name, description, region, invite_code, open_chat_url')
+    .select('id, name, description, region, invite_code, open_chat_url, instagram_url')
     .eq('invite_code', code)
     .maybeSingle();
 
@@ -207,6 +207,16 @@ export default async function JoinByLinkPage({
                 className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
               >
                 💬 궁금한 점은 오픈채팅으로 문의하세요
+              </a>
+            )}
+            {club.instagram_url && (
+              <a
+                href={club.instagram_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+              >
+                📷 인스타그램에서 클럽 둘러보기
               </a>
             )}
           </div>

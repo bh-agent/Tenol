@@ -129,6 +129,16 @@ export default async function ClubDetailPage({
                   💬 오픈채팅
                 </a>
               )}
+              {club.instagram_url && (
+                <a
+                  href={club.instagram_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-elevated border border-border hover:border-primary/40 hover:text-foreground transition-colors"
+                >
+                  📷 인스타그램
+                </a>
+              )}
             </div>
 
             {/* Invite link for all members */}

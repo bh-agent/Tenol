@@ -61,6 +61,26 @@ export const updateClubSchema = z.object({
       .startsWith('https://', 'https:// 로 시작하는 링크만 사용할 수 있습니다')
       .nullable()
   ),
+  // 클럽 인스타그램 — @아이디만 입력해도 URL로 변환
+  instagram_url: z.preprocess(
+    (v) => {
+      if (typeof v !== 'string') return null;
+      const raw = v.trim();
+      if (!raw) return null;
+      // "@tenol" / "tenol" → https://instagram.com/tenol
+      if (!/^https?:\/\//i.test(raw)) {
+        const handle = raw.replace(/^@/, '').replace(/\/+$/, '');
+        return /^[A-Za-z0-9._]{1,30}$/.test(handle) ? `https://instagram.com/${handle}` : raw;
+      }
+      return raw;
+    },
+    z
+      .string()
+      .max(300, '링크가 너무 깁니다')
+      .url('올바른 링크 형식이 아닙니다')
+      .startsWith('https://', 'https:// 로 시작하는 링크만 사용할 수 있습니다')
+      .nullable()
+  ),
 });
 
 export const inviteCodeSchema = z.string().min(1).max(20).regex(/^[a-zA-Z0-9]+$/);

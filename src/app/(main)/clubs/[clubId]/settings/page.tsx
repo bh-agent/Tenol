@@ -27,6 +27,7 @@ export default function ClubSettingsPage() {
   const [clubRegion, setClubRegion] = useState('');
   const [clubMainCourt, setClubMainCourt] = useState('');
   const [clubOpenChatUrl, setClubOpenChatUrl] = useState('');
+  const [clubInstagramUrl, setClubInstagramUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -42,7 +43,7 @@ export default function ClubSettingsPage() {
       const supabase = createClient();
       const { data: club } = await supabase
         .from('clubs')
-        .select('name, description, region, main_court, logo_url, open_chat_url')
+        .select('name, description, region, main_court, logo_url, open_chat_url, instagram_url')
         .eq('id', clubId)
         .maybeSingle();
 
@@ -52,6 +53,7 @@ export default function ClubSettingsPage() {
         setClubRegion(club.region || '');
         setClubMainCourt(club.main_court || '');
         setClubOpenChatUrl(club.open_chat_url || '');
+        setClubInstagramUrl(club.instagram_url || '');
         setLogoUrl(club.logo_url || null);
       } else {
         setLoadFailed(true);
@@ -266,6 +268,19 @@ export default function ClubSettingsPage() {
               />
               <p className="text-xs text-muted-foreground mt-1.5">
                 미가입자가 문의할 수 있는 채팅방 링크예요. 클럽 초대·탐색 화면에 문의 버튼으로 표시됩니다.
+              </p>
+            </div>
+            <div>
+              <Input
+                id="instagram_url"
+                name="instagram_url"
+                label="인스타그램 (선택)"
+                placeholder="@클럽아이디 또는 https://instagram.com/..."
+                defaultValue={clubInstagramUrl}
+                key={`insta-${clubInstagramUrl}`}
+              />
+              <p className="text-xs text-muted-foreground mt-1.5">
+                아이디만 입력해도 됩니다. 클럽 홈·초대·탐색 화면에 링크로 표시됩니다.
               </p>
             </div>
             {saveError && (

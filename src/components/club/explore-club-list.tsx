@@ -299,6 +299,16 @@ export function ExploreClubList({
                         💬 문의하기
                       </a>
                     )}
+                    {club.instagram_url && (
+                      <a
+                        href={club.instagram_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary px-2.5 py-1.5 rounded-lg border border-border hover:border-primary/40 transition-colors"
+                      >
+                        📷 인스타
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
