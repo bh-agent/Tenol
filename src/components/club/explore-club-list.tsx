@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { SearchInput } from '@/components/search/search-input';
 import { SearchEmpty } from '@/components/search/search-empty';
 import { REGIONS, getSigunguList } from '@/lib/constants/regions';
-import { MapPin, Users, Clock, X } from 'lucide-react';
+import { MapPin, Users, Clock, X, Instagram } from 'lucide-react';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import { Modal } from '@/components/ui/modal';
 import { useToast } from '@/components/ui/toast-provider';
@@ -306,7 +306,8 @@ export function ExploreClubList({
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary px-2.5 py-1.5 rounded-lg border border-border hover:border-primary/40 transition-colors"
                       >
-                        📷 인스타
+                        <Instagram className="w-3.5 h-3.5" />
+                        인스타
                       </a>
                     )}
                   </div>
