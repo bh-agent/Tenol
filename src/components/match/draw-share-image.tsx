@@ -84,44 +84,65 @@ function inferGameType(
 
 type NameParts = { main: string; sub: string | null };
 
+// ⚠️ html2canvas는 overflow:hidden + text-overflow:ellipsis를 정확히 못 그려서
+// 글자 아래쪽이 잘린다(클립 박스를 글리프보다 낮게 계산). 그래서 CSS 말줄임 대신
+// JS로 미리 폭에 맞게 잘라 넘침 자체를 없앤다. 한글≈1, 영문/숫자≈0.55 단위.
+function textUnits(s: string): number {
+  let u = 0;
+  for (const ch of s) u += ch.charCodeAt(0) > 0x2e7f ? 1 : 0.55;
+  return u;
+}
+function fitText(s: string, maxUnits: number): string {
+  if (textUnits(s) <= maxUnits) return s;
+  let out = '';
+  let u = 0;
+  for (const ch of s) {
+    const w = ch.charCodeAt(0) > 0x2e7f ? 1 : 0.55;
+    if (u + w > maxUnits - 1) break;
+    out += ch;
+    u += w;
+  }
+  return out + '…';
+}
+
 /**
  * 팀 이름 칸 — 실명(크게) + 닉네임(작게·회색) 2단 표기.
- * 모든 경기 카드 크기가 같도록: 폭은 정확히 절반(flex 1 1 0 + minWidth 0),
- * 각 선수는 항상 2줄(닉네임 없어도 자리 유지), 모든 줄은 nowrap+ellipsis로 고정.
+ * html2canvas가 CSS 말줄임을 못 그리므로 fitText로 미리 잘라 넘침을 원천 차단.
+ * 각 선수는 항상 2줄(닉네임 없어도 자리 유지)이라 모든 카드 높이가 같다.
  */
 function TeamNames({
   a,
   b,
   nameSize,
   subSize,
+  mainMax,
+  subMax,
 }: {
   a: NameParts | null;
   b: NameParts | null;
   nameSize: number;
   subSize: number;
+  mainMax: number;
+  subMax: number;
 }) {
   const mainLine: React.CSSProperties = {
     fontSize: nameSize,
     fontWeight: 700,
     color: '#EEEEEE',
-    lineHeight: 1.35,
+    lineHeight: 1.45,
     whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
   };
   const subLine: React.CSSProperties = {
     fontSize: subSize,
     fontWeight: 500,
     color: '#8F8F8F',
-    lineHeight: 1.4,
+    lineHeight: 1.45,
     whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
   };
   const renderPlayer = (p: NameParts | null, key: string) => (
     <div key={key} style={{ minWidth: 0 }}>
-      <div style={mainLine}>{p?.main ?? ' '}</div>
-      <div style={subLine}>{p?.sub ?? ' '}</div>
+      <div style={mainLine}>{p ? fitText(p.main, mainMax) : ' '}</div>
+      <div style={subLine}>{p?.sub ? fitText(p.sub, subMax) : ' '}</div>
     </div>
   );
   return (
@@ -181,6 +202,9 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
     const nameSize = courtCount >= 3 ? 19 : 22;
     const subSize = courtCount >= 3 ? 12 : 14;
     const scoreSize = courtCount >= 3 ? 28 : 34;
+    // 팀 칸 폭 기반 글자 예산(한글 1단위 기준). 2코트: 칸≈175px/22px, 3코트+: ≈92px/19px
+    const mainMax = courtCount >= 3 ? 4.5 : 7.5;
+    const subMax = courtCount >= 3 ? 7 : 12;
 
     return (
       <div
@@ -221,19 +245,19 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
             >
               TENOL
             </div>
-            {/* Title */}
+            {/* Title — overflow:hidden 금지(html2canvas가 글자 하단을 잘라냄).
+                넘침은 fitText로 사전 차단, 길면 자연 줄바꿈. */}
             <div
               style={{
                 fontSize: 44,
                 fontWeight: 800,
                 color: '#FFFFFF',
                 letterSpacing: '-1px',
-                lineHeight: 1.2,
+                lineHeight: 1.3,
                 marginBottom: 8,
-                overflow: 'hidden',
               }}
             >
-              {matchTitle}
+              {fitText(matchTitle, 34)}
             </div>
             {/* Date & time & type */}
             <div style={{ fontSize: 21, color: '#999999' }}>
@@ -386,6 +410,8 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                           b={getPlayerParts(game.team_a_player2_id)}
                           nameSize={nameSize}
                           subSize={subSize}
+                          mainMax={mainMax}
+                          subMax={subMax}
                         />
 
                         {/* Score / VS */}
@@ -437,6 +463,8 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                           b={getPlayerParts(game.team_b_player2_id)}
                           nameSize={nameSize}
                           subSize={subSize}
+                          mainMax={mainMax}
+                          subMax={subMax}
                         />
                       </div>
                     </div>
