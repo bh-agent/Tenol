@@ -455,17 +455,17 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
                   {offlineParticipants.map((p, i) => (
                     <span
                       key={i}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-elevated border border-border text-sm text-foreground"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-elevated border border-border text-sm text-foreground max-w-full"
                     >
                       <span
                         className={cn(
-                          'text-[10px] font-bold',
+                          'text-[10px] font-bold shrink-0',
                           p.gender === 'M' ? 'text-blue-400' : 'text-pink-400'
                         )}
                       >
                         {p.gender === 'M' ? '남' : '여'}
                       </span>
-                      {p.name}
+                      <span className="min-w-0 truncate">{p.name}</span>
                       {p.ntrp && (
                         <span className="text-xs text-primary">{p.ntrp}</span>
                       )}

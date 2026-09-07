@@ -136,7 +136,7 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
               {isMemberRecruit ? '회원 모집' : '게스트 모집'}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground truncate">
             {creatorName} · {formatRelativeTime(post.created_at)}
           </p>
         </div>
@@ -209,7 +209,7 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
 
       {/* Title */}
       <div className="px-4 pb-2">
-        <h3 className="text-base font-bold text-foreground leading-snug">{post.title}</h3>
+        <h3 className="text-base font-bold text-foreground leading-snug line-clamp-2 break-all">{post.title}</h3>
       </div>
 
       {/* Guest-specific info */}

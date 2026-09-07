@@ -188,11 +188,13 @@ export function PlayerGameSummary({ games, participantMap, courtNames }: PlayerG
                   )}
                 >
                   <td className="py-2.5 px-2">
+                    {/* block+truncate: 긴 '실명(닉네임)'이 테이블을 가로 스크롤로 밀지 않게 */}
                     <span
                       className={cn(
-                        'font-medium',
+                        'font-medium block max-w-[7rem] truncate',
                         s.gender === 'M' ? 'text-info' : s.gender === 'F' ? 'text-pink-400' : 'text-foreground'
                       )}
+                      title={s.name}
                     >
                       {s.name}
                     </span>

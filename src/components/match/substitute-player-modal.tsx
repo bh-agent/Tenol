@@ -212,8 +212,8 @@ export function SubstitutePlayerModal({
                   >
                     {m.gender === 'M' ? '남' : m.gender === 'F' ? '여' : '?'}
                   </div>
-                  <div className="flex-1 text-left">
-                    <p className="text-sm font-medium text-foreground">{m.name}</p>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-medium text-foreground truncate">{m.name}</p>
                     {m.ntrp && (
                       <p className="text-xs text-primary font-semibold">NTRP {m.ntrp}</p>
                     )}

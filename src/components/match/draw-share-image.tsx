@@ -82,26 +82,55 @@ function inferGameType(
   return 'free';
 }
 
+type NameParts = { main: string; sub: string | null };
+
 /**
- * 팀 이름 칸 — 모든 경기 카드가 같은 크기가 되도록 폭은 정확히 절반(flex 1 1 0 + minWidth 0),
- * 높이는 항상 2줄로 고정. 긴 닉네임이 줄바꿈으로 카드 크기를 흐트러뜨리는 것을 막는다.
+ * 팀 이름 칸 — 실명(크게) + 닉네임(작게·회색) 2단 표기.
+ * 모든 경기 카드 크기가 같도록: 폭은 정확히 절반(flex 1 1 0 + minWidth 0),
+ * 각 선수는 항상 2줄(닉네임 없어도 자리 유지), 모든 줄은 nowrap+ellipsis로 고정.
  */
-function TeamNames({ p1, p2, size }: { p1: string; p2: string | null; size: number }) {
-  const line: React.CSSProperties = {
-    fontSize: size,
+function TeamNames({
+  a,
+  b,
+  nameSize,
+  subSize,
+}: {
+  a: NameParts | null;
+  b: NameParts | null;
+  nameSize: number;
+  subSize: number;
+}) {
+  const mainLine: React.CSSProperties = {
+    fontSize: nameSize,
     fontWeight: 700,
     color: '#EEEEEE',
-    lineHeight: 1.6,
+    lineHeight: 1.35,
     whiteSpace: 'nowrap',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
   };
-  return (
-    <div style={{ flex: '1 1 0', minWidth: 0, textAlign: 'center' }}>
-      <div style={line}>{p1}</div>
-      <div style={line}>{p2 ?? ' '}</div>
+  const subLine: React.CSSProperties = {
+    fontSize: subSize,
+    fontWeight: 500,
+    color: '#8F8F8F',
+    lineHeight: 1.4,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  };
+  const renderPlayer = (p: NameParts | null, key: string) => (
+    <div key={key} style={{ minWidth: 0 }}>
+      <div style={mainLine}>{p?.main ?? ' '}</div>
+      <div style={subLine}>{p?.sub ?? ' '}</div>
     </div>
   );
+  return (
+    <div style={{ flex: '1 1 0', minWidth: 0, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {renderPlayer(a, 'a')}
+      {renderPlayer(b, 'b')}
+    </div>
+  );
+
 }
 
 function formatDate(dateStr: string): string {
@@ -136,16 +165,21 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
     },
     ref
   ) {
-    // 공유 이미지는 코트 칸이 좁으므로 짧은 이름(실명) 사용 — 긴 '실명(닉네임)'은
-    // 잘리거나 칸을 밀어내 카드 크기가 어긋난다.
-    const getPlayerName = (id: string | null) => {
-      if (!id) return '-';
+    // 실명을 메인으로, 닉네임은 서브 줄로 분리해 표기한다.
+    // ('실명(닉네임)' 한 줄 표기는 좁은 칸에서 잘리거나 카드 크기를 흐트러뜨림)
+    const getPlayerParts = (id: string | null): NameParts | null => {
+      if (!id) return null;
       const p = participantMap[id];
-      return p?.shortName || p?.drawName || p?.name || '???';
+      if (!p) return { main: '???', sub: null };
+      const main = p.shortName || p.drawName || p.name || '???';
+      // 닉네임이 실명과 같으면(또는 실명이 없어 main이 닉네임이면) 서브 줄 생략
+      const sub = p.name && p.name !== main ? p.name : null;
+      return { main, sub };
     };
 
     // 한눈에 읽히도록 큼직하게. 코트가 많을수록 카드가 좁아지므로 이름 크기만 動적.
-    const nameSize = courtCount >= 3 ? 20 : 24;
+    const nameSize = courtCount >= 3 ? 19 : 22;
+    const subSize = courtCount >= 3 ? 12 : 14;
     const scoreSize = courtCount >= 3 ? 28 : 34;
 
     return (
@@ -158,7 +192,9 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
           fontFamily:
             '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", sans-serif',
           color: '#EEEEEE',
-          padding: 48,
+          // 하단을 넉넉히: html2canvas가 scale 캡처 시 소수점 반올림으로
+          // 마지막 몇 px을 잘라내는 문제 대비
+          padding: '48px 48px 64px',
           boxSizing: 'border-box',
         }}
       >
@@ -172,7 +208,8 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
             marginBottom: 6,
           }}
         >
-          <div style={{ paddingTop: 4 }}>
+          {/* minWidth:0 — 공백 없는 긴 경기 제목이 클럽 로고를 밀어내지 않도록 */}
+          <div style={{ paddingTop: 4, flex: '1 1 0', minWidth: 0 }}>
             <div
               style={{
                 fontSize: 24,
@@ -193,6 +230,7 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                 letterSpacing: '-1px',
                 lineHeight: 1.2,
                 marginBottom: 8,
+                overflow: 'hidden',
               }}
             >
               {matchTitle}
@@ -344,9 +382,10 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                       >
                         {/* Team A */}
                         <TeamNames
-                          p1={getPlayerName(game.team_a_player1_id)}
-                          p2={game.team_a_player2_id ? getPlayerName(game.team_a_player2_id) : null}
-                          size={nameSize}
+                          a={getPlayerParts(game.team_a_player1_id)}
+                          b={getPlayerParts(game.team_a_player2_id)}
+                          nameSize={nameSize}
+                          subSize={subSize}
                         />
 
                         {/* Score / VS */}
@@ -394,9 +433,10 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
 
                         {/* Team B */}
                         <TeamNames
-                          p1={getPlayerName(game.team_b_player1_id)}
-                          p2={game.team_b_player2_id ? getPlayerName(game.team_b_player2_id) : null}
-                          size={nameSize}
+                          a={getPlayerParts(game.team_b_player1_id)}
+                          b={getPlayerParts(game.team_b_player2_id)}
+                          nameSize={nameSize}
+                          subSize={subSize}
                         />
                       </div>
                     </div>

@@ -57,7 +57,7 @@ export function InlineScoreInput({
     <div className="border-t border-border/50 px-3 py-3 animate-fade-in">
       <div className="flex items-center gap-3">
         {/* Team A */}
-        <div className="flex-1 text-center">
+        <div className="flex-1 min-w-0 text-center">
           <p className="text-[10px] text-muted-foreground mb-1.5 truncate">
             {teamAName}
           </p>
@@ -90,7 +90,7 @@ export function InlineScoreInput({
         <span className="text-muted-foreground text-sm font-medium mt-4">vs</span>
 
         {/* Team B */}
-        <div className="flex-1 text-center">
+        <div className="flex-1 min-w-0 text-center">
           <p className="text-[10px] text-muted-foreground mb-1.5 truncate">
             {teamBName}
           </p>

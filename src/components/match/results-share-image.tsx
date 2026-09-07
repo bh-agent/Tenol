@@ -193,10 +193,12 @@ function PlayerNames({
   align: 'left' | 'right';
 }) {
   return (
-    <div style={{ flex: 1, textAlign: align }}>
-      <div style={{ fontSize: 24, fontWeight: win ? 700 : 500, color: win ? '#F5F5F5' : MUTED }}>{p1}</div>
+    // flex '1 1 0' + minWidth 0: 긴 이름이 칸을 밀어내 점수가 중앙에서 벗어나는 것 방지
+    // nowrap + ellipsis: 줄바꿈으로 행 높이가 제각각이 되는 것 방지
+    <div style={{ flex: '1 1 0', minWidth: 0, textAlign: align }}>
+      <div style={{ fontSize: 24, fontWeight: win ? 700 : 500, color: win ? '#F5F5F5' : MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p1}</div>
       {p2 && (
-        <div style={{ fontSize: 24, fontWeight: win ? 700 : 500, color: win ? '#F5F5F5' : MUTED, marginTop: 4 }}>
+        <div style={{ fontSize: 24, fontWeight: win ? 700 : 500, color: win ? '#F5F5F5' : MUTED, marginTop: 4, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {p2}
         </div>
       )}
@@ -239,9 +241,10 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
       >
         {/* Header — 왼쪽 텍스트 + 오른쪽 위 큰 클럽 로고 (인스타 스토리 프로필에 안 가림) */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, marginBottom: 32 }}>
-          <div style={{ paddingTop: 4 }}>
+          {/* minWidth:0 — 공백 없는 긴 경기 제목이 클럽 로고를 밀어내지 않도록 */}
+          <div style={{ paddingTop: 4, flex: '1 1 0', minWidth: 0 }}>
             <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.3px', color: GREEN, marginBottom: 14 }}>TENOL · 경기 결과</div>
-            <div style={{ fontSize: 42, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-1px', lineHeight: 1.2, marginBottom: 8 }}>{matchTitle}</div>
+            <div style={{ fontSize: 42, fontWeight: 800, color: '#FFFFFF', letterSpacing: '-1px', lineHeight: 1.2, marginBottom: 8, overflow: 'hidden' }}>{matchTitle}</div>
             <div style={{ fontSize: 19, color: MUTED }}>{formatDate(matchDate)}</div>
           </div>
           <ClubLogo src={clubLogoDataUrl} name={clubName} />
@@ -300,7 +303,10 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
                     <div
                       key={i}
                       style={{
-                        flex: 1,
+                        // '1 1 0' + minWidth 0: 긴 이름이 카드 폭을 밀어내
+                        // 두 카드가 비대칭이 되거나 캔버스를 넘는 것 방지
+                        flex: '1 1 0',
+                        minWidth: 0,
                         position: 'relative',
                         overflow: 'hidden',
                         background: CARD_BG,
@@ -314,7 +320,7 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
                         <span style={{ fontSize: 30, marginBottom: 4 }}>{m.emoji}</span>
                         <RingAvatar src={mvp.avatarDataUrl} name={mvp.displayName} size={84} ring={`${m.accent}80`} />
                         <div style={{ fontSize: 16, fontWeight: 800, letterSpacing: '0.5px', color: m.accent, marginTop: 10 }}>{rankLabel(mvp)}</div>
-                        <div style={{ fontSize: 24, fontWeight: 700, color: '#F5F5F5', marginTop: 4 }}>{mvp.displayName}</div>
+                        <div style={{ fontSize: 24, fontWeight: 700, color: '#F5F5F5', marginTop: 4, maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{mvp.displayName}</div>
                       </div>
                       <div style={{ display: 'flex', marginTop: 18, paddingTop: 18, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
                         <div style={{ flex: 1, textAlign: 'center' }}>

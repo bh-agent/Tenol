@@ -32,7 +32,7 @@ function MatchCard({ item }: { item: any }) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 flex-wrap">
-              <h4 className="font-medium text-foreground">{match.title}</h4>
+              <h4 className="font-medium text-foreground truncate min-w-0 max-w-full">{match.title}</h4>
               <Badge variant={statusVariant[match.status] || 'default'}>
                 {formatMatchStatus(match.status)}
               </Badge>
@@ -63,7 +63,7 @@ function MatchCard({ item }: { item: any }) {
             </p>
           )}
           <div className="flex items-center gap-2">
-            <Badge variant="outline">{match.clubs?.name}</Badge>
+            <Badge variant="outline" className="max-w-[10rem] truncate">{match.clubs?.name}</Badge>
             <Badge variant="outline">코트 {match.court_count}면</Badge>
           </div>
         </div>

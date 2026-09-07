@@ -270,12 +270,13 @@ export default async function MatchDetailPage({
                       fallback={p.profiles?.display_name || p.guest_name}
                       size="sm"
                     />
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                    {/* min-w-0 + truncate: 긴 닉네임이 배지를 밀어내지 않도록 이름만 말줄임 */}
+                    <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                      <span className="text-sm font-medium text-foreground hover:text-primary transition-colors truncate min-w-0">
                         {p.profiles?.display_name || p.guest_name}
                       </span>
                       {p.profiles?.ntrp_level && (
-                        <span className="text-xs text-primary ml-2 font-medium">
+                        <span className="text-xs text-primary font-medium shrink-0">
                           NTRP {p.profiles.ntrp_level}
                         </span>
                       )}
@@ -289,12 +290,12 @@ export default async function MatchDetailPage({
                       fallback={p.profiles?.display_name || p.guest_name}
                       size="sm"
                     />
-                    <div className="flex-1">
-                      <span className="text-sm font-medium text-foreground">
+                    <div className="flex-1 min-w-0 flex items-baseline gap-2">
+                      <span className="text-sm font-medium text-foreground truncate min-w-0">
                         {p.profiles?.display_name || p.guest_name}
                       </span>
                       {p.profiles?.ntrp_level && (
-                        <span className="text-xs text-primary ml-2 font-medium">
+                        <span className="text-xs text-primary font-medium shrink-0">
                           NTRP {p.profiles.ntrp_level}
                         </span>
                       )}
@@ -302,7 +303,7 @@ export default async function MatchDetailPage({
                   </>
                 )}
                 {isGuest(p) && (
-                  <Badge variant="outline">게스트</Badge>
+                  <Badge variant="outline" className="shrink-0">게스트</Badge>
                 )}
               </div>
             ))}
@@ -329,8 +330,8 @@ export default async function MatchDetailPage({
                         fallback={p.profiles?.display_name || p.guest_name}
                         size="sm"
                       />
-                      <div className="flex-1">
-                        <span className="text-sm font-medium text-foreground hover:text-primary transition-colors">
+                      <div className="flex-1 min-w-0">
+                        <span className="block truncate text-sm font-medium text-foreground hover:text-primary transition-colors">
                           {p.profiles?.display_name || p.guest_name}
                         </span>
                       </div>
@@ -343,14 +344,14 @@ export default async function MatchDetailPage({
                         fallback={p.profiles?.display_name || p.guest_name}
                         size="sm"
                       />
-                      <div className="flex-1">
-                        <span className="text-sm font-medium text-foreground">
+                      <div className="flex-1 min-w-0">
+                        <span className="block truncate text-sm font-medium text-foreground">
                           {p.profiles?.display_name || p.guest_name}
                         </span>
                       </div>
                     </>
                   )}
-                  <Badge variant="warning">대기 {index + 1}번째</Badge>
+                  <Badge variant="warning" className="shrink-0">대기 {index + 1}번째</Badge>
                 </div>
               ))}
             </div>

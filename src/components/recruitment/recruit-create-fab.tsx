@@ -74,8 +74,8 @@ export function RecruitCreateFab({ clubs }: RecruitCreateFabProps) {
                   className="flex items-center justify-between p-4 rounded-xl bg-surface-elevated border border-border active:scale-[0.98] transition-transform"
                   onClick={() => setSheetOpen(false)}
                 >
-                  <span className="font-medium">{club.name}</span>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  <span className="font-medium flex-1 min-w-0 truncate">{club.name}</span>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
                 </Link>
               ))}
             </div>

@@ -1007,6 +1007,9 @@ export default function DrawPage() {
         useCORS: true,
         logging: false,
         windowWidth: 1200,
+        // scale 캡처 시 소수점 높이가 잘려 하단 몇 px이 사라지는 문제 방지
+        height: Math.ceil(target.scrollHeight),
+        windowHeight: Math.ceil(target.scrollHeight) + 100,
       });
 
       const blob = await new Promise<Blob | null>((resolve) =>
@@ -1088,7 +1091,7 @@ export default function DrawPage() {
       <div
         key={p.id}
         className={cn(
-          'flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1.5 border transition-colors',
+          'flex items-center gap-1.5 rounded-full pl-3 pr-1.5 py-1.5 border transition-colors max-w-full',
           effectiveGender === 'M'
             ? 'bg-info/10 border-info/20 text-info'
             : effectiveGender === 'F'
@@ -1097,7 +1100,8 @@ export default function DrawPage() {
           isOverridden && 'ring-1 ring-yellow-500/40'
         )}
       >
-        <span className="text-sm font-medium text-foreground">{p.name}</span>
+        {/* 긴 닉네임이 칩을 카드 밖으로 밀어내지 않도록 이름만 말줄임 */}
+        <span className="text-sm font-medium text-foreground min-w-0 max-w-[9rem] truncate">{p.name}</span>
         {p.ntrp && (
           <span className="text-[10px] text-primary font-semibold">{p.ntrp}</span>
         )}
@@ -1473,14 +1477,15 @@ export default function DrawPage() {
                       <span className="font-semibold text-foreground">{slotNum}경기</span>
                       <span className="text-xs text-muted-foreground">{slotStart} ~ {slotEnd}</span>
                     </div>
-                    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${matchCourtCount}, 1fr)` }}>
+                    {/* minmax(0,1fr): 긴 선수 이름(select option)이 코트 칸을 밀어내지 않도록 */}
+                    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${matchCourtCount}, minmax(0, 1fr))` }}>
                       {Array.from({ length: matchCourtCount }, (_, courtIdx) => {
                         const courtNum = courtIdx + 1;
                         const key = `${slotNum}-${courtNum}`;
                         const g = manualGames[key] || { team_a_player1_id: '', team_a_player2_id: '', team_b_player1_id: '', team_b_player2_id: '' };
 
                         return (
-                          <div key={key} className="rounded-xl border border-border bg-surface-elevated p-3 space-y-2">
+                          <div key={key} className="min-w-0 rounded-xl border border-border bg-surface-elevated p-3 space-y-2">
                             <p className="text-xs font-semibold text-muted-foreground">{courtNames[courtNum] || `${courtNum}코트`}</p>
                             <div className="space-y-1.5">
                               <p className="text-[10px] font-semibold text-primary">팀 A</p>
@@ -1841,8 +1846,8 @@ export default function DrawPage() {
                       >
                         {m.gender === 'M' ? '남' : m.gender === 'F' ? '여' : '?'}
                       </div>
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-medium text-foreground">{m.name}</p>
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className="text-sm font-medium text-foreground truncate">{m.name}</p>
                         {m.ntrp && (
                           <p className="text-xs text-primary font-semibold">NTRP {m.ntrp}</p>
                         )}

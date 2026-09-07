@@ -407,7 +407,16 @@ export default function ResultsPage() {
         const target = tempContainer.firstElementChild as HTMLElement;
         if (!target) { toast.error('이미지를 생성할 수 없습니다'); return; }
 
-        const canvas = await html2canvas(target, { backgroundColor: '#0A0A0A', scale: 2, useCORS: true, logging: false, windowWidth: 1200 });
+        const canvas = await html2canvas(target, {
+          backgroundColor: '#0A0A0A',
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          windowWidth: 1200,
+          // scale 캡처 시 소수점 높이 반올림으로 하단이 잘리는 문제 방지
+          height: Math.ceil(target.scrollHeight),
+          windowHeight: Math.ceil(target.scrollHeight) + 100,
+        });
         const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
         if (!blob) { toast.error('이미지 변환에 실패했습니다'); return; }
 
@@ -617,7 +626,7 @@ export default function ResultsPage() {
                     <span className="text-xs font-extrabold tracking-wide" style={{ color: '#FFD740' }}>
                       {mvpTop3[0].tied ? '공동 ' : ''}{mvpTop3[0].rank}위
                     </span>
-                    <p className="text-lg font-bold text-foreground">{mvpTop3[0].displayName}</p>
+                    <p className="text-lg font-bold text-foreground truncate max-w-full">{mvpTop3[0].displayName}</p>
                   </div>
                   <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-[#FFD740]/10">
                     <div className="text-center">
@@ -651,7 +660,7 @@ export default function ResultsPage() {
                             <span className="text-[11px] font-bold tracking-wide" style={{ color: medal.accent }}>
                               {mvp.tied ? '공동 ' : ''}{mvp.rank}위
                             </span>
-                            <p className="text-sm font-semibold text-foreground mt-1">{mvp.displayName}</p>
+                            <p className="text-sm font-semibold text-foreground mt-1 truncate max-w-full">{mvp.displayName}</p>
                           </div>
                           <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/[0.06]">
                             <div className="text-center">
@@ -733,7 +742,7 @@ export default function ResultsPage() {
                             <div>
                               <div className="flex items-center justify-center gap-2 mb-3">
                                 {/* Team A */}
-                                <div className="flex-1 text-center">
+                                <div className="flex-1 min-w-0 text-center">
                                   <p className="text-[10px] text-muted-foreground mb-1.5 truncate">
                                     {[game.team_a_player1_id, game.team_a_player2_id].filter(Boolean).map((id) => getName(id)).join(', ')}
                                   </p>
@@ -769,7 +778,7 @@ export default function ResultsPage() {
                                 </div>
                                 <span className="text-muted-foreground font-bold mt-4">:</span>
                                 {/* Team B */}
-                                <div className="flex-1 text-center">
+                                <div className="flex-1 min-w-0 text-center">
                                   <p className="text-[10px] text-muted-foreground mb-1.5 truncate">
                                     {[game.team_b_player1_id, game.team_b_player2_id].filter(Boolean).map((id) => getName(id)).join(', ')}
                                   </p>
@@ -811,12 +820,12 @@ export default function ResultsPage() {
                           ) : (
                             <div className="flex items-center">
                               {/* Team A */}
-                              <div className="flex-1 text-right">
-                                <p className={cn('text-sm', game.winner === 'team_a' ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
+                              <div className="flex-1 min-w-0 text-right">
+                                <p className={cn('text-sm truncate', game.winner === 'team_a' ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
                                   {getName(game.team_a_player1_id)}
                                 </p>
                                 {game.team_a_player2_id && (
-                                  <p className={cn('text-sm mt-0.5', game.winner === 'team_a' ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
+                                  <p className={cn('text-sm mt-0.5 truncate', game.winner === 'team_a' ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
                                     {getName(game.team_a_player2_id)}
                                   </p>
                                 )}
@@ -834,12 +843,12 @@ export default function ResultsPage() {
                                 )}
                               </div>
                               {/* Team B */}
-                              <div className="flex-1">
-                                <p className={cn('text-sm', game.winner === 'team_b' ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
+                              <div className="flex-1 min-w-0">
+                                <p className={cn('text-sm truncate', game.winner === 'team_b' ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
                                   {getName(game.team_b_player1_id)}
                                 </p>
                                 {game.team_b_player2_id && (
-                                  <p className={cn('text-sm mt-0.5', game.winner === 'team_b' ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
+                                  <p className={cn('text-sm mt-0.5 truncate', game.winner === 'team_b' ? 'font-semibold text-foreground' : 'text-muted-foreground')}>
                                     {getName(game.team_b_player2_id)}
                                   </p>
                                 )}
