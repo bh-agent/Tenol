@@ -193,8 +193,8 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
       const p = participantMap[id];
       if (!p) return { main: '???', sub: null };
       const main = p.shortName || p.drawName || p.name || '???';
-      // 닉네임이 실명과 같으면(또는 실명이 없어 main이 닉네임이면) 서브 줄 생략
-      const sub = p.name && p.name !== main ? p.name : null;
+      // 닉네임은 실명과 같아도 항상 표시 (모든 선수 표기 통일)
+      const sub = p.name || null;
       return { main, sub };
     };
 
