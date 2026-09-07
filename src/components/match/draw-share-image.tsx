@@ -80,6 +80,28 @@ function inferGameType(
   return 'free';
 }
 
+/**
+ * 팀 이름 칸 — 모든 경기 카드가 같은 크기가 되도록 폭은 정확히 절반(flex 1 1 0 + minWidth 0),
+ * 높이는 항상 2줄로 고정. 긴 닉네임이 줄바꿈으로 카드 크기를 흐트러뜨리는 것을 막는다.
+ */
+function TeamNames({ p1, p2, size }: { p1: string; p2: string | null; size: number }) {
+  const line: React.CSSProperties = {
+    fontSize: size,
+    fontWeight: 700,
+    color: '#EEEEEE',
+    lineHeight: 1.6,
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  };
+  return (
+    <div style={{ flex: '1 1 0', minWidth: 0, textAlign: 'center' }}>
+      <div style={line}>{p1}</div>
+      <div style={line}>{p2 ?? ' '}</div>
+    </div>
+  );
+}
+
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00');
   const year = d.getFullYear();
@@ -310,35 +332,17 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                         }}
                       >
                         {/* Team A */}
-                        <div style={{ flex: 1, textAlign: 'center' }}>
-                          <div
-                            style={{
-                              fontSize: nameSize,
-                              fontWeight: 700,
-                              color: '#EEEEEE',
-                              lineHeight: '1.6',
-                            }}
-                          >
-                            {getPlayerName(game.team_a_player1_id)}
-                          </div>
-                          {game.team_a_player2_id && (
-                            <div
-                              style={{
-                                fontSize: nameSize,
-                                fontWeight: 700,
-                                color: '#EEEEEE',
-                                lineHeight: '1.6',
-                              }}
-                            >
-                              {getPlayerName(game.team_a_player2_id)}
-                            </div>
-                          )}
-                        </div>
+                        <TeamNames
+                          p1={getPlayerName(game.team_a_player1_id)}
+                          p2={game.team_a_player2_id ? getPlayerName(game.team_a_player2_id) : null}
+                          size={nameSize}
+                        />
 
                         {/* Score / VS */}
                         <div
                           style={{
-                            minWidth: 80,
+                            width: 92,
+                            flexShrink: 0,
                             textAlign: 'center',
                             padding: '0 8px',
                           }}
@@ -378,30 +382,11 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                         </div>
 
                         {/* Team B */}
-                        <div style={{ flex: 1, textAlign: 'center' }}>
-                          <div
-                            style={{
-                              fontSize: nameSize,
-                              fontWeight: 700,
-                              color: '#EEEEEE',
-                              lineHeight: '1.6',
-                            }}
-                          >
-                            {getPlayerName(game.team_b_player1_id)}
-                          </div>
-                          {game.team_b_player2_id && (
-                            <div
-                              style={{
-                                fontSize: nameSize,
-                                fontWeight: 700,
-                                color: '#EEEEEE',
-                                lineHeight: '1.6',
-                              }}
-                            >
-                              {getPlayerName(game.team_b_player2_id)}
-                            </div>
-                          )}
-                        </div>
+                        <TeamNames
+                          p1={getPlayerName(game.team_b_player1_id)}
+                          p2={game.team_b_player2_id ? getPlayerName(game.team_b_player2_id) : null}
+                          size={nameSize}
+                        />
                       </div>
                     </div>
                   );

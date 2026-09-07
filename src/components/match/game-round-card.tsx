@@ -80,6 +80,28 @@ function inferGameType(
   return 'free';
 }
 
+/**
+ * 한 팀의 선수 이름 칸. 모든 경기 카드의 크기를 동일하게 유지하기 위해
+ * 폭은 항상 절반(basis-0 + min-w-0), 높이는 항상 2줄로 고정한다.
+ * 이름이 길면 말줄임 처리하고 title로 전체 이름을 볼 수 있게 한다.
+ */
+function TeamNames({ p1, p2 }: { p1: string; p2: string | null }) {
+  return (
+    <div className="flex-1 basis-0 min-w-0 text-center">
+      <div className="text-sm font-medium text-foreground leading-6 truncate" title={p1}>
+        {p1}
+      </div>
+      <div
+        className="text-sm font-medium text-foreground leading-6 truncate"
+        title={p2 ?? undefined}
+        aria-hidden={p2 ? undefined : true}
+      >
+        {p2 ?? ' '}
+      </div>
+    </div>
+  );
+}
+
 export function GameRoundCard({
   timeSlotIndex,
   startTime,
@@ -227,20 +249,18 @@ export function GameRoundCard({
                   </div>
                 </div>
 
-                {/* Player names: Team A vs Team B - ALL same size */}
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 text-center">
-                    <div className="text-sm font-medium text-foreground">
-                      {getPlayerName(game.team_a_player1_id)}
-                    </div>
-                    {game.team_a_player2_id && (
-                      <div className="text-sm font-medium text-foreground">
-                        {getPlayerName(game.team_a_player2_id)}
-                      </div>
-                    )}
-                  </div>
+                {/* Player names: Team A vs Team B
+                    모든 경기 카드가 같은 크기가 되도록:
+                    ① 좌우 팀 칸을 정확히 반씩(basis-0 min-w-0) — 긴 닉네임이 칸을 밀어내지 못함
+                    ② 이름은 한 줄 고정(truncate) — 줄바꿈으로 높이가 달라지지 않음
+                    ③ 선수 2줄을 항상 확보 — 1명짜리 경기도 높이가 같음 */}
+                <div className="flex items-center justify-between gap-1">
+                  <TeamNames
+                    p1={getPlayerName(game.team_a_player1_id)}
+                    p2={game.team_a_player2_id ? getPlayerName(game.team_a_player2_id) : null}
+                  />
 
-                  <div className="px-3 text-center min-w-[60px]">
+                  <div className="w-[76px] shrink-0 text-center">
                     {game.score_team_a !== null ? (
                       <span className="font-bold text-lg">
                         <span
@@ -270,16 +290,10 @@ export function GameRoundCard({
                     )}
                   </div>
 
-                  <div className="flex-1 text-center">
-                    <div className="text-sm font-medium text-foreground">
-                      {getPlayerName(game.team_b_player1_id)}
-                    </div>
-                    {game.team_b_player2_id && (
-                      <div className="text-sm font-medium text-foreground">
-                        {getPlayerName(game.team_b_player2_id)}
-                      </div>
-                    )}
-                  </div>
+                  <TeamNames
+                    p1={getPlayerName(game.team_b_player1_id)}
+                    p2={game.team_b_player2_id ? getPlayerName(game.team_b_player2_id) : null}
+                  />
                 </div>
               </div>
 
