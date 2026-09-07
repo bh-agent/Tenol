@@ -81,6 +81,8 @@ type Participant = {
   guest_gender: string | null;
   name: string;
   drawName: string;
+  /** 공유 이미지처럼 폭이 좁은 곳에서 쓰는 짧은 이름(실명 우선, 없으면 닉네임) */
+  shortName: string;
   ntrp: number | null;
   gender: string | null;
 };
@@ -466,6 +468,7 @@ export default function DrawPage() {
         ntrp_override: p.ntrp_override,
         name: displayName,
         drawName,
+        shortName: realName || displayName,
         ntrp: p.ntrp_override || p.profiles?.ntrp_level || null,
         gender: p.profiles?.gender || p.guest_gender || null,
       };
@@ -938,7 +941,8 @@ export default function DrawPage() {
     sortedOrders.forEach((order) => {
       const sitOuts = getSitOutPlayersForSlot(gamesByOrder[order], participants);
       if (sitOuts.length > 0) {
-        sitOutsBySlot[order] = sitOuts.map((p) => p.drawName);
+        // 공유 이미지는 짧은 이름(실명) 사용 — 경기 카드 표기와 통일
+        sitOutsBySlot[order] = sitOuts.map((p) => p.shortName || p.drawName);
       }
     });
 

@@ -22,6 +22,8 @@ type Participant = {
   id: string;
   name: string;
   drawName: string;
+  /** 실명 우선 짧은 이름 — 공유 이미지는 칸이 좁아 이걸 쓴다 */
+  shortName?: string;
   gender: string | null;
   ntrp: number | null;
 };
@@ -134,8 +136,13 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
     },
     ref
   ) {
-    const getPlayerName = (id: string | null) =>
-      id ? participantMap[id]?.drawName || participantMap[id]?.name || '???' : '-';
+    // 공유 이미지는 코트 칸이 좁으므로 짧은 이름(실명) 사용 — 긴 '실명(닉네임)'은
+    // 잘리거나 칸을 밀어내 카드 크기가 어긋난다.
+    const getPlayerName = (id: string | null) => {
+      if (!id) return '-';
+      const p = participantMap[id];
+      return p?.shortName || p?.drawName || p?.name || '???';
+    };
 
     // 한눈에 읽히도록 큼직하게. 코트가 많을수록 카드가 좁아지므로 이름 크기만 動적.
     const nameSize = courtCount >= 3 ? 20 : 24;
@@ -278,7 +285,9 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: `repeat(${courtCount}, 1fr)`,
+                  // minmax(0, 1fr) 필수: 그냥 1fr이면 최소폭이 '내용 크기'라
+                  // 긴 이름이 든 코트 칸만 넓어진다(칸 크기 불일치의 실제 원인).
+                  gridTemplateColumns: `repeat(${courtCount}, minmax(0, 1fr))`,
                   gap: 12,
                 }}
               >
@@ -298,6 +307,8 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                         borderRadius: 16,
                         padding: '20px 22px',
                         boxSizing: 'border-box',
+                        minWidth: 0, // 그리드 칸을 넘어 늘어나지 않도록
+                        overflow: 'hidden',
                       }}
                     >
                       {/* Court name + game type */}
