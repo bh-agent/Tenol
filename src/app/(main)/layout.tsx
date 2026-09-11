@@ -39,7 +39,7 @@ export default async function MainLayout({
         {children}
       </main>
       <ScrollTopButton />
-      <BottomNav />
+      <BottomNav profileHref={`/profile/${user.id}`} />
     </div>
   );
 }

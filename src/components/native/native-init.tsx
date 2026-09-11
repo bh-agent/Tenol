@@ -44,6 +44,29 @@ export function NativeInit() {
         removers.push(() => h.remove());
       } catch {}
 
+      // iOS 검은 화면 대응: 앱을 오래 백그라운드에 뒀다 복귀하면 WKWebView가
+      // 렌더 자원을 회수해 화면이 비어 보이는 경우가 있다. 30분 이상 백그라운드
+      // 후 복귀 시 전체 새로고침으로 상태를 복구한다. (30분 이상 방치 후라
+      // 입력 중 데이터 유실 우려는 사실상 없음)
+      try {
+        const { App } = await import('@capacitor/app');
+        const STALE_MS = 30 * 60 * 1000;
+        let hiddenAt: number | null = null;
+        const hPause = await App.addListener('pause', () => {
+          hiddenAt = Date.now();
+        });
+        const hResume = await App.addListener('resume', () => {
+          if (hiddenAt && Date.now() - hiddenAt > STALE_MS) {
+            window.location.reload();
+          } else {
+            // 짧은 복귀는 데이터만 최신화
+            router.refresh();
+          }
+          hiddenAt = null;
+        });
+        removers.push(() => hPause.remove(), () => hResume.remove());
+      } catch {}
+
       // Push notifications — 리스너를 먼저 등록한 뒤 권한 처리
       try {
         const { PushNotifications } = await import('@capacitor/push-notifications');

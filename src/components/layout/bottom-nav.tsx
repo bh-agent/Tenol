@@ -5,15 +5,17 @@ import { Users, Trophy, Megaphone, User } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-const navItems = [
-  { href: '/clubs', label: '클럽', icon: Users },
-  { href: '/my-matches', label: '내 경기', icon: Trophy },
-  { href: '/recruit', label: '모집', icon: Megaphone },
-  { href: '/profile', label: '프로필', icon: User },
-];
-
-export function BottomNav() {
+export function BottomNav({ profileHref = '/profile' }: { profileHref?: string }) {
   const pathname = usePathname();
+
+  // 프로필은 /profile → /profile/[id] 리다이렉트(서버 렌더 2회)를 피해
+  // 레이아웃이 아는 내 id로 직행한다. activeMatch는 /profile 경로 전체.
+  const navItems = [
+    { href: '/clubs', label: '클럽', icon: Users, activePrefix: '/clubs' },
+    { href: '/my-matches', label: '내 경기', icon: Trophy, activePrefix: '/my-matches' },
+    { href: '/recruit', label: '모집', icon: Megaphone, activePrefix: '/recruit' },
+    { href: profileHref, label: '프로필', icon: User, activePrefix: '/profile' },
+  ];
 
   return (
     <nav className="hide-on-keyboard fixed bottom-0 left-0 right-0 z-40 px-4 pb-[max(env(safe-area-inset-bottom),8px)]">
@@ -21,9 +23,9 @@ export function BottomNav() {
         <div className="flex items-center justify-around h-16">
           {navItems.map((item) => {
             const isActive =
-              item.href === '/clubs'
+              item.activePrefix === '/clubs'
                 ? pathname === '/clubs' || pathname.startsWith('/clubs/')
-                : pathname.startsWith(item.href);
+                : pathname.startsWith(item.activePrefix);
 
             return (
               <Link

@@ -1,17 +1,22 @@
 import { createClient } from '@/lib/supabase/server';
 import type { ClubJoinRequest } from '@/types';
 
-export async function getMyClubs() {
+/** knownUserId를 넘기면 auth 재조회(네트워크 왕복 + 실패 시 150ms 재시도)를 건너뛴다. */
+export async function getMyClubs(knownUserId?: string) {
   const supabase = await createClient();
 
-  // 토큰 회전/쿠키 전파 레이스로 getUser가 일시적으로 null을 주면
-  // 로그인 상태인데도 "클럽 없음"으로 오표시된다 → 1회 재시도.
-  let user = (await supabase.auth.getUser()).data.user;
-  if (!user) {
-    await new Promise((r) => setTimeout(r, 150));
-    user = (await supabase.auth.getUser()).data.user;
+  let userId = knownUserId ?? null;
+  if (!userId) {
+    // 토큰 회전/쿠키 전파 레이스로 getUser가 일시적으로 null을 주면
+    // 로그인 상태인데도 "클럽 없음"으로 오표시된다 → 1회 재시도.
+    let user = (await supabase.auth.getUser()).data.user;
+    if (!user) {
+      await new Promise((r) => setTimeout(r, 150));
+      user = (await supabase.auth.getUser()).data.user;
+    }
+    if (!user) return [];
+    userId = user.id;
   }
-  if (!user) return [];
 
   const query = () =>
     supabase
@@ -23,7 +28,7 @@ export async function getMyClubs() {
           id, name, description, logo_url, region, main_court, invite_code, is_public, created_at
         )
       `)
-      .eq('user_id', user!.id)
+      .eq('user_id', userId!)
       .order('joined_at', { ascending: false });
 
   let { data, error } = await query();
@@ -35,7 +40,7 @@ export async function getMyClubs() {
   // 재시도 후에도 에러면 빈 배열 대신 throw → error.tsx(재시도 UI)가 뜨도록
   if (error) {
     const { logError } = await import('@/lib/logger');
-    logError('club', 'getMyClubs 실패', { userId: user.id, error });
+    logError('club', 'getMyClubs 실패', { userId, error });
     throw new Error('클럽 목록을 불러오지 못했습니다');
   }
 

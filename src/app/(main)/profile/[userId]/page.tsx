@@ -27,16 +27,12 @@ export default async function UserProfilePage({
   const { userId } = await params;
   const supabase = await createClient();
 
-  // Check current user
-  const { data: { user } } = await supabase.auth.getUser();
+  // auth 확인과 프로필 조회를 병렬로 (순차 왕복 제거)
+  const [{ data: { user } }, { data: profile }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+  ]);
   const isOwnProfile = user?.id === userId;
-
-  // Fetch profile
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
 
   if (!profile) notFound();
 
@@ -76,7 +72,7 @@ export default async function UserProfilePage({
     getPlayerStats(userId),
     getProfileStats(userId),
     isOwnProfile
-      ? getMyClubs()
+      ? getMyClubs(userId) // 내 id를 넘겨 내부 auth 재조회·재시도 대기(150ms×2) 생략
       : supabase
           .from('club_members')
           .select(`club_id, role, clubs (id, name, logo_url, region, is_public)`)
