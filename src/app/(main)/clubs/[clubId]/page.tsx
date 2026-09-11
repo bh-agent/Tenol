@@ -18,6 +18,8 @@ import { ClubCreatedCelebration } from '@/components/club/club-created-celebrati
 import { ClubActivitySummary } from '@/components/club/club-activity-summary';
 import { ShareButton } from '@/components/ui/share-button';
 import { JoinRequestList } from '@/components/club/join-request-list';
+import { ClubJoinButton } from '@/components/club/club-join-button';
+import { getMyJoinRequestStatus } from '@/lib/queries/clubs';
 import { ReportMenuButton } from '@/components/moderation/report-menu-button';
 import { Suspense } from 'react';
 
@@ -39,6 +41,9 @@ export default async function ClubDetailPage({
   const canEditClub = hasPermission(myRole, 'club.edit');
   const canManageMembers = hasPermission(myRole, 'member.manage');
   const canCreateMatch = hasPermission(myRole, 'match.create');
+
+  // 미가입자: 가입신청 버튼 표시용 초기 상태 (공개 클럽만)
+  const myJoinRequest = !myRole && club.is_public ? await getMyJoinRequestStatus(clubId) : null;
 
   // Only fetch admin data when the user has permission
   const [joinRequests, pendingGuestCount, pendingGuestByMatch] = canManageMembers
@@ -147,6 +152,17 @@ export default async function ClubDetailPage({
             {myRole && (
               <div className="pt-2 border-t border-border">
                 <ClubInviteLink code={club.invite_code} />
+              </div>
+            )}
+
+            {/* 미가입자: 가입 신청 (공개 클럽만 — 비공개는 초대 링크로만) */}
+            {!myRole && club.is_public && (
+              <div className="pt-3 border-t border-border">
+                <ClubJoinButton
+                  clubId={clubId}
+                  clubName={club.name}
+                  initialStatus={myJoinRequest?.status === 'pending' ? 'pending' : 'none'}
+                />
               </div>
             )}
           </div>

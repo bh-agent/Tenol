@@ -96,7 +96,9 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
           aria-modal="true"
           aria-label={title}
           tabIndex={-1}
-          style={{ maxHeight: 'calc(95vh - var(--keyboard-height, 0px))', outline: 'none' }}
+          // dvh: 안드로이드 WebView에서 vh는 시스템 바를 포함해 실제 가시 영역보다
+          // 커서 바텀시트 하단이 잘린다. dvh는 실제 보이는 높이 기준.
+          style={{ maxHeight: 'calc(92dvh - var(--keyboard-height, 0px))', outline: 'none' }}
           className={cn(
             'pointer-events-auto relative z-50 w-full flex flex-col',
             // Glass effect
@@ -129,8 +131,11 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
             </button>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto overscroll-contain p-5">
+          {/* Content — 하단은 제스처 바(safe-area)만큼 여유를 둬 버튼이 잘리지 않게 */}
+          <div
+            className="flex-1 overflow-y-auto overscroll-contain p-5"
+            style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom, 0px))' }}
+          >
             {children}
           </div>
         </div>

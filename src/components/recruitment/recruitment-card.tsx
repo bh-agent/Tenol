@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { useEffect, useState, useTransition } from 'react';
 import { createPortal } from 'react-dom';
 import { closeRecruitmentPost, deleteRecruitmentPost } from '@/lib/actions/recruitment';
+import { ClubJoinButton } from '@/components/club/club-join-button';
 import { ReportBlockMenu } from '@/components/moderation/report-block-menu';
 
 interface RecruitmentCardProps {
@@ -302,16 +303,14 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
             </Button>
           </Link>
         ) : isMemberRecruit ? (
-          <Link href={`/clubs/${post.club_id}`}>
-            <Button
-              variant="outline"
-              size="sm"
-              fullWidth
-              className="border-[#00E676]/30 text-[#00E676] hover:bg-[#00E676]/10 hover:border-[#00E676]/50"
-            >
-              가입 신청
-            </Button>
-          </Link>
+          /* 링크 이동 대신 바로 신청서 모달 — 이동만 하고 아무 일도 안 일어나던 버그 수정 */
+          <ClubJoinButton
+            clubId={post.club_id}
+            clubName={post.clubs?.name}
+            variant="outline"
+            size="sm"
+            className="border-[#00E676]/30 text-[#00E676] hover:bg-[#00E676]/10 hover:border-[#00E676]/50"
+          />
         ) : (
           <Link href={post.match_id ? `/clubs/${post.club_id}/matches/${post.match_id}` : `/clubs/${post.club_id}`}>
             <Button

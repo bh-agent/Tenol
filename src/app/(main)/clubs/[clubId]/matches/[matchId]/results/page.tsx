@@ -45,6 +45,7 @@ type MvpEntry = {
   totalScore: number;
   gamesPlayed: number;
   wins: number;
+  losses: number;
   avgScore: number;
   rank: number;
   tied: boolean;
@@ -82,6 +83,8 @@ export default function ResultsPage() {
 
   // Computed
   const [mvpTop3, setMvpTop3] = useState<MvpEntry[]>([]);
+  // 공유 이미지의 '선수별 결과'용 전체 순위 (게임별 결과 대체 — 이미지 길이 축소)
+  const [allPlayers, setAllPlayers] = useState<MvpEntry[]>([]);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [funStats, setFunStats] = useState<FunStat[]>([]);
   const [matchTitle, setMatchTitle] = useState('');
@@ -176,21 +179,23 @@ export default function ResultsPage() {
 
     // ── Compute MVP Top 3 ──
     if (completed.length > 0) {
-      const agg: Record<string, { totalScore: number; gamesPlayed: number; wins: number }> = {};
+      const agg: Record<string, { totalScore: number; gamesPlayed: number; wins: number; losses: number }> = {};
       for (const g of completed) {
         const teamA = [g.team_a_player1_id, g.team_a_player2_id].filter(Boolean) as string[];
         const teamB = [g.team_b_player1_id, g.team_b_player2_id].filter(Boolean) as string[];
         for (const pid of teamA) {
-          if (!agg[pid]) agg[pid] = { totalScore: 0, gamesPlayed: 0, wins: 0 };
+          if (!agg[pid]) agg[pid] = { totalScore: 0, gamesPlayed: 0, wins: 0, losses: 0 };
           agg[pid].gamesPlayed++;
           agg[pid].totalScore += g.score_team_a ?? 0;
           if (g.winner === 'team_a') agg[pid].wins++;
+          else if (g.winner === 'team_b') agg[pid].losses++;
         }
         for (const pid of teamB) {
-          if (!agg[pid]) agg[pid] = { totalScore: 0, gamesPlayed: 0, wins: 0 };
+          if (!agg[pid]) agg[pid] = { totalScore: 0, gamesPlayed: 0, wins: 0, losses: 0 };
           agg[pid].gamesPlayed++;
           agg[pid].totalScore += g.score_team_b ?? 0;
           if (g.winner === 'team_b') agg[pid].wins++;
+          else if (g.winner === 'team_a') agg[pid].losses++;
         }
       }
 
@@ -204,6 +209,7 @@ export default function ResultsPage() {
           totalScore: a.totalScore,
           gamesPlayed: a.gamesPlayed,
           wins: a.wins,
+          losses: a.losses,
           avgScore: a.gamesPlayed > 0 ? Math.round((a.totalScore / a.gamesPlayed) * 10) / 10 : 0,
         }))
         // 승리 우선, 같으면 득점(총득점) 우선. 평균 득점은 최종 표시 순서용.
@@ -226,65 +232,95 @@ export default function ResultsPage() {
         return { ...e, rank, tied: keyCount[`${e.wins}|${e.totalScore}`] > 1 };
       });
 
-      setMvpTop3(sorted.slice(0, 3));
+      // 공동 순위 포함 — 3위 이내(공동 포함)는 전원 표시
+      setMvpTop3(sorted.filter((e) => e.rank <= 3));
+      setAllPlayers(sorted);
 
-      // ── Compute Highlights ──
+      // ── Compute Highlights (동점자는 모두 나열) ──
       const hl: Highlight[] = [];
+      const nameList = (arr: { displayName: string }[]) => arr.map((p) => p.displayName).join(', ');
 
-      // 최다 득점자 (총득점 기준 — 정렬 순서와 무관하게 명시적으로 계산)
-      const topScorer = [...sorted].sort((a, b) => b.totalScore - a.totalScore || b.avgScore - a.avgScore)[0];
-      if (topScorer) {
-        hl.push({ icon: '🔥', label: '최다 득점', description: `${topScorer.displayName} (${topScorer.totalScore}점)` });
+      // 최다 득점 — 동점 전원
+      const maxScore = Math.max(...sorted.map((s) => s.totalScore));
+      const topScorers = sorted.filter((s) => s.totalScore === maxScore);
+      if (maxScore > 0) {
+        hl.push({ icon: '🔥', label: '최다 득점', description: `${nameList(topScorers)} (${maxScore}점)` });
       }
 
-      // 다승왕 (최다 승수) — 최다 득점자와 다를 때만 별도 표시
-      const mostWins = [...sorted].sort((a, b) => b.wins - a.wins)[0];
-      if (mostWins && mostWins.wins > 0 && mostWins.participantId !== topScorer?.participantId) {
-        hl.push({ icon: '🏆', label: '다승왕', description: `${mostWins.displayName} (${mostWins.wins}승)` });
+      // 다승왕 — 동점 전원. 최다 득점자 집합과 완전히 같으면 중복이라 생략
+      const maxWinCount = Math.max(...sorted.map((s) => s.wins));
+      const winKings = sorted.filter((s) => s.wins === maxWinCount);
+      const sameAsScorers =
+        winKings.length === topScorers.length &&
+        winKings.every((w) => topScorers.some((t) => t.participantId === w.participantId));
+      if (maxWinCount > 0 && !sameAsScorers) {
+        hl.push({ icon: '🏆', label: '다승왕', description: `${nameList(winKings)} (${maxWinCount}승)` });
       }
 
-      // 가장 치열했던 경기
-      let closestGame: GameWithDraw | null = null;
-      let closestDiff = Infinity;
-      for (const g of completed) {
-        if (g.score_team_a !== null && g.score_team_b !== null) {
-          const diff = Math.abs(g.score_team_a - g.score_team_b);
-          if (diff < closestDiff || (diff === closestDiff && (g.score_team_a + g.score_team_b) > ((closestGame?.score_team_a ?? 0) + (closestGame?.score_team_b ?? 0)))) {
-            closestDiff = diff;
-            closestGame = g;
-          }
+      // 가장 치열한 경기 — 최소 점수차 경기 모두
+      const diffOf = (g: GameWithDraw) => Math.abs((g.score_team_a ?? 0) - (g.score_team_b ?? 0));
+      const minDiff = Math.min(...completed.map(diffOf));
+      const closestGames = completed.filter((g) => diffOf(g) === minDiff);
+      if (closestGames.length > 0) {
+        const desc = closestGames
+          .map((g) => `${g.game_order}경기 ${g.court_number}코트 (${g.score_team_a}:${g.score_team_b})`)
+          .join(', ');
+        hl.push({ icon: '😰', label: '가장 치열한 경기', description: desc });
+      }
+
+      // 압도적 승리 — 최대 점수차(3점 이상) 경기 모두, 승리 팀 이름으로
+      const maxDiff = Math.max(...completed.map(diffOf));
+      if (maxDiff >= 3) {
+        const dominantGames = completed.filter((g) => diffOf(g) === maxDiff && g.winner);
+        if (dominantGames.length > 0) {
+          const desc = dominantGames
+            .map((g) => {
+              const winners = (g.winner === 'team_a'
+                ? [g.team_a_player1_id, g.team_a_player2_id]
+                : [g.team_b_player1_id, g.team_b_player2_id]
+              ).filter(Boolean).map((id) => pMap[id!] || '???').join('·');
+              return `${winners} (${g.score_team_a}:${g.score_team_b})`;
+            })
+            .join(', ');
+          hl.push({ icon: '💪', label: '압도적 승리', description: desc });
         }
       }
-      if (closestGame && closestGame.score_team_a !== null && closestGame.score_team_b !== null) {
-        hl.push({ icon: '😰', label: '가장 치열한 경기', description: `${closestGame.game_order}경기 ${closestGame.court_number}코트 (${closestGame.score_team_a}:${closestGame.score_team_b})` });
-      }
 
-      // 압도적 승리
-      let dominantGame: GameWithDraw | null = null;
-      let dominantDiff = 0;
+      // 환상의 페어 — 같은 팀 조합으로 2승 이상 (동률 모두)
+      const pairWins: Record<string, { ids: string[]; wins: number }> = {};
       for (const g of completed) {
-        if (g.score_team_a !== null && g.score_team_b !== null) {
-          const diff = Math.abs(g.score_team_a - g.score_team_b);
-          if (diff > dominantDiff) { dominantDiff = diff; dominantGame = g; }
+        if (!g.winner) continue;
+        const winIds = (g.winner === 'team_a'
+          ? [g.team_a_player1_id, g.team_a_player2_id]
+          : [g.team_b_player1_id, g.team_b_player2_id]
+        ).filter(Boolean) as string[];
+        if (winIds.length === 2) {
+          const key = [...winIds].sort().join('|');
+          if (!pairWins[key]) pairWins[key] = { ids: winIds, wins: 0 };
+          pairWins[key].wins++;
         }
       }
-      if (dominantGame && dominantDiff >= 3 && dominantGame.score_team_a !== null && dominantGame.score_team_b !== null) {
-        const winners = dominantGame.winner === 'team_a'
-          ? [dominantGame.team_a_player1_id, dominantGame.team_a_player2_id]
-          : [dominantGame.team_b_player1_id, dominantGame.team_b_player2_id];
-        const names = winners.filter(Boolean).map((id) => pMap[id!] || '???').join(', ');
-        hl.push({ icon: '💪', label: '압도적 승리', description: `${names} (${dominantGame.score_team_a}:${dominantGame.score_team_b})` });
+      const pairArr = Object.values(pairWins);
+      if (pairArr.length > 0) {
+        const maxPairWins = Math.max(...pairArr.map((p) => p.wins));
+        if (maxPairWins >= 2) {
+          const bestPairs = pairArr.filter((p) => p.wins === maxPairWins);
+          const desc = bestPairs
+            .map((p) => `${pMap[p.ids[0]] || '???'}·${pMap[p.ids[1]] || '???'}`)
+            .join(', ');
+          hl.push({ icon: '💚', label: '환상의 페어', description: `${desc} (${maxPairWins}승)` });
+        }
       }
 
-      // 철인 선수 (most games played)
+      // 철인 선수 — 최다 경기 전원 (기존부터 전원 표시)
       const maxGames = Math.max(...sorted.map((s) => s.gamesPlayed));
       const avgGames = sorted.reduce((sum, s) => sum + s.gamesPlayed, 0) / sorted.length;
       if (maxGames > avgGames) {
         const ironPlayers = sorted.filter((s) => s.gamesPlayed === maxGames);
-        hl.push({ icon: '🏃', label: '철인 선수', description: `${ironPlayers.map((p) => p.displayName).join(', ')} (${maxGames}경기)` });
+        hl.push({ icon: '🏃', label: '철인 선수', description: `${nameList(ironPlayers)} (${maxGames}경기)` });
       }
 
-      // 연승 기록
+      // 연승 기록 — 동률 전원
       const streaks: { name: string; streak: number }[] = [];
       for (const [pid] of Object.entries(agg)) {
         const playerGames = completed
@@ -300,29 +336,39 @@ export default function ResultsPage() {
         if (maxStreak >= 3) streaks.push({ name: pMap[pid] || '???', streak: maxStreak });
       }
       if (streaks.length > 0) {
-        const best = streaks.sort((a, b) => b.streak - a.streak)[0];
-        hl.push({ icon: '⚡', label: '연승 기록', description: `${best.name} (${best.streak}연승)` });
+        const bestStreak = Math.max(...streaks.map((s) => s.streak));
+        const bests = streaks.filter((s) => s.streak === bestStreak);
+        hl.push({ icon: '⚡', label: '연승 기록', description: `${bests.map((b) => b.name).join(', ')} (${bestStreak}연승)` });
       }
 
-      setHighlights(hl.slice(0, 6));
+      setHighlights(hl.slice(0, 7));
 
       // ── Compute Fun Stats ──
       const stats: FunStat[] = [];
       const totalPoints = completed.reduce((sum, g) => sum + (g.score_team_a ?? 0) + (g.score_team_b ?? 0), 0);
       stats.push({ label: '오늘 총 득점', value: `${totalPoints}점`, sub: `${completed.length}경기 합산` });
 
-      const shutouts = completed.filter((g) => g.score_team_a === 0 || g.score_team_b === 0).length;
-      stats.push({ label: '완봉승', value: shutouts > 0 ? `${shutouts}경기` : '없음' });
-
       const closeGames = completed.filter((g) => g.score_team_a !== null && g.score_team_b !== null && Math.abs(g.score_team_a - g.score_team_b) <= 1).length;
       const closeRate = completed.length > 0 ? Math.round((closeGames / completed.length) * 100) : 0;
       stats.push({ label: '접전율', value: `${closeRate}%`, sub: '1점차 이내' });
+
+      // 최다 득점 경기 (완봉승 대체 — 더 보편적으로 재미있는 지표)
+      const highestGame = completed.reduce<GameWithDraw | null>(
+        (best, g) => ((g.score_team_a ?? 0) + (g.score_team_b ?? 0) > (best ? (best.score_team_a ?? 0) + (best.score_team_b ?? 0) : -1) ? g : best),
+        null,
+      );
+      stats.push({
+        label: '최다 득점 경기',
+        value: highestGame ? `${highestGame.score_team_a}:${highestGame.score_team_b}` : '-',
+        sub: highestGame ? `${highestGame.game_order}경기 ${highestGame.court_number}코트` : undefined,
+      });
 
       stats.push({ label: '참여 선수', value: `${Object.keys(agg).length}명` });
 
       setFunStats(stats);
     } else {
       setMvpTop3([]);
+      setAllPlayers([]);
       setHighlights([]);
       setFunStats([]);
     }
@@ -361,17 +407,14 @@ export default function ResultsPage() {
       if (!html2canvasModule) { toast.error('이미지 생성 라이브러리를 로드할 수 없습니다.'); return; }
       const html2canvas = html2canvasModule.default;
 
-      const completed = games.filter((g) => g.score_team_a !== null && g.score_team_b !== null);
-      const gameResults = completed.map((g) => ({
-        gameOrder: g.game_order,
-        courtNumber: g.court_number,
-        teamAPlayer1: getName(g.team_a_player1_id),
-        teamAPlayer2: g.team_a_player2_id ? getName(g.team_a_player2_id) : null,
-        teamBPlayer1: getName(g.team_b_player1_id),
-        teamBPlayer2: g.team_b_player2_id ? getName(g.team_b_player2_id) : null,
-        scoreA: g.score_team_a ?? 0,
-        scoreB: g.score_team_b ?? 0,
-        winner: g.winner,
+      // 게임별 결과 대신 '선수별 결과' — 이미지가 지나치게 길어지는 문제 해결
+      const playerResults = allPlayers.map((p) => ({
+        displayName: p.displayName,
+        wins: p.wins,
+        losses: p.losses,
+        totalScore: p.totalScore,
+        rank: p.rank,
+        tied: p.tied,
       }));
 
       // MVP 아바타를 data URL로 선변환(앱 화면과 동일하게 사진 표시)
@@ -391,7 +434,7 @@ export default function ResultsPage() {
 
       const clubLogoDataUrl = await toDataUrl(clubLogoUrl);
 
-      const props: ResultsShareImageProps = { clubName, clubLogoDataUrl, matchTitle, matchDate, mvpTop3: mvpForImage, highlights, funStats, gameResults };
+      const props: ResultsShareImageProps = { clubName, clubLogoDataUrl, matchTitle, matchDate, mvpTop3: mvpForImage, highlights, funStats, playerResults };
 
       const tempContainer = document.createElement('div');
       tempContainer.style.cssText = 'position:absolute;left:-2000px;top:0;pointer-events:none;';
@@ -607,47 +650,54 @@ export default function ResultsPage() {
           />
         ) : (
           <>
-            {/* ═══ Section 1: MVP Top 3 ═══ */}
-            {mvpTop3.length > 0 && (
+            {/* ═══ Section 1: MVP (공동 순위 전원 표시) ═══ */}
+            {mvpTop3.length > 0 && (() => {
+              const firstGroup = mvpTop3.filter((e) => e.rank === 1);
+              const restGroup = mvpTop3.filter((e) => e.rank > 1);
+              return (
               <div>
                 <div className="flex items-center gap-2 mb-4">
                   <span className="text-2xl">🏆</span>
                   <h2 className="text-xl font-bold text-foreground">오늘의 MVP</h2>
                 </div>
 
-                {/* 1st place */}
-                <Card variant="glow" padding="lg" className={cn('relative overflow-hidden mb-3', medalColors[0].border)}>
-                  <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#FFD740] via-[#FFA000] to-[#FFD740]" />
-                  <div className="flex flex-col items-center gap-2">
-                    <span className="text-3xl">{medalColors[0].emoji}</span>
-                    <div className={cn('ring-2 ring-offset-2 ring-offset-background rounded-full', medalColors[0].ring)}>
-                      <Avatar src={mvpTop3[0].avatarUrl} alt={mvpTop3[0].displayName} fallback={mvpTop3[0].displayName} size="xl" />
-                    </div>
-                    <span className="text-xs font-extrabold tracking-wide" style={{ color: '#FFD740' }}>
-                      {mvpTop3[0].tied ? '공동 ' : ''}{mvpTop3[0].rank}위
-                    </span>
-                    <p className="text-lg font-bold text-foreground truncate max-w-full">{mvpTop3[0].displayName}</p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-[#FFD740]/10">
-                    <div className="text-center">
-                      <p className="text-[11px] text-muted-foreground">평균 득점</p>
-                      <p className="text-xl font-bold" style={{ color: '#FFD740' }}>{mvpTop3[0].avgScore}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[11px] text-muted-foreground">승수</p>
-                      <p className="text-xl font-bold text-primary">{mvpTop3[0].wins}승</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-[11px] text-muted-foreground">총 득점</p>
-                      <p className="text-xl font-bold text-foreground">{mvpTop3[0].totalScore}</p>
-                    </div>
-                  </div>
-                </Card>
+                {/* 1위 그룹 — 공동 1위면 나란히 (전원 금색 카드) */}
+                <div className={cn('gap-3 mb-3', firstGroup.length > 1 ? 'grid grid-cols-2' : '')}>
+                  {firstGroup.map((first) => (
+                    <Card key={first.participantId} variant="glow" padding={firstGroup.length > 1 ? 'md' : 'lg'} className={cn('relative overflow-hidden', medalColors[0].border)}>
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#FFD740] via-[#FFA000] to-[#FFD740]" />
+                      <div className="flex flex-col items-center gap-2">
+                        <span className={firstGroup.length > 1 ? 'text-2xl' : 'text-3xl'}>{medalColors[0].emoji}</span>
+                        <div className={cn('ring-2 ring-offset-2 ring-offset-background rounded-full', medalColors[0].ring)}>
+                          <Avatar src={first.avatarUrl} alt={first.displayName} fallback={first.displayName} size={firstGroup.length > 1 ? 'lg' : 'xl'} />
+                        </div>
+                        <span className="text-xs font-extrabold tracking-wide" style={{ color: '#FFD740' }}>
+                          {first.tied ? '공동 ' : ''}{first.rank}위
+                        </span>
+                        <p className="text-lg font-bold text-foreground truncate max-w-full">{first.displayName}</p>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-[#FFD740]/10">
+                        <div className="text-center">
+                          <p className="text-[11px] text-muted-foreground">평균 득점</p>
+                          <p className="text-xl font-bold" style={{ color: '#FFD740' }}>{first.avgScore}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[11px] text-muted-foreground">승수</p>
+                          <p className="text-xl font-bold text-primary">{first.wins}승</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[11px] text-muted-foreground">총 득점</p>
+                          <p className="text-xl font-bold text-foreground">{first.totalScore}</p>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
 
-                {/* 2nd & 3rd */}
-                {mvpTop3.length >= 2 && (
+                {/* 2·3위 그룹 — 공동 포함 전원 */}
+                {restGroup.length > 0 && (
                   <div className="grid grid-cols-2 gap-3">
-                    {mvpTop3.slice(1, 3).map((mvp) => {
+                    {restGroup.map((mvp) => {
                       const medal = medalColors[Math.min(mvp.rank - 1, 2)];
                       return (
                         <Card key={mvp.participantId} variant="glass" padding="md" className={cn('relative overflow-hidden', medal.border)}>
@@ -678,7 +728,8 @@ export default function ResultsPage() {
                   </div>
                 )}
               </div>
-            )}
+              );
+            })()}
 
             {/* ═══ Section 2: Highlights ═══ */}
             {highlights.length > 0 && (

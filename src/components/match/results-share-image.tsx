@@ -30,16 +30,13 @@ type FunStat = {
   sub?: string;
 };
 
-type GameResult = {
-  gameOrder: number;
-  courtNumber: number;
-  teamAPlayer1: string;
-  teamAPlayer2: string | null;
-  teamBPlayer1: string;
-  teamBPlayer2: string | null;
-  scoreA: number;
-  scoreB: number;
-  winner: string | null;
+type PlayerResult = {
+  displayName: string;
+  wins: number;
+  losses: number;
+  totalScore: number;
+  rank: number;
+  tied: boolean;
 };
 
 export interface ResultsShareImageProps {
@@ -50,7 +47,7 @@ export interface ResultsShareImageProps {
   mvpTop3: MvpEntry[];
   highlights: Highlight[];
   funStats: FunStat[];
-  gameResults: GameResult[];
+  playerResults: PlayerResult[];
 }
 
 // 앱 화면(results/page.tsx)과 동일한 디자인 언어. html2canvas가 color-mix/backdrop-blur/
@@ -228,17 +225,10 @@ function PlayerNames({
 }
 
 export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImageProps>(
-  function ResultsShareImage({ clubName, clubLogoDataUrl, matchTitle, matchDate, mvpTop3, highlights, funStats, gameResults }, ref) {
-    const first = mvpTop3[0];
-    const rest = mvpTop3.slice(1, 3);
-
-    // 게임 결과: 슬롯(game_order)별 그룹
-    const gamesByOrder: Record<number, GameResult[]> = {};
-    for (const g of gameResults) {
-      if (!gamesByOrder[g.gameOrder]) gamesByOrder[g.gameOrder] = [];
-      gamesByOrder[g.gameOrder].push(g);
-    }
-    const slotOrders = Object.keys(gamesByOrder).map(Number).sort((a, b) => a - b);
+  function ResultsShareImage({ clubName, clubLogoDataUrl, matchTitle, matchDate, mvpTop3, highlights, funStats, playerResults }, ref) {
+    // 공동 순위 그룹 — 공동 1위는 전원 금색 카드, 2·3위(공동 포함)는 그리드
+    const firstGroup = mvpTop3.filter((e) => e.rank === 1);
+    const restGroup = mvpTop3.filter((e) => e.rank > 1);
 
     const sectionTitle: React.CSSProperties = {
       fontSize: 30,
@@ -272,61 +262,66 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
         </div>
         <div style={{ height: 2, background: 'linear-gradient(90deg, #00E676 0%, rgba(0,230,118,0) 100%)', marginBottom: 40 }} />
 
-        {/* ═══ MVP Top 3 ═══ */}
-        {first && (
+        {/* ═══ MVP (공동 순위 전원) ═══ */}
+        {firstGroup.length > 0 && (
           <div style={{ marginBottom: 44 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 22 }}>
               <span style={{ fontSize: 34 }}>🏆</span>
               <span style={{ fontSize: 32, fontWeight: 800, color: '#FFFFFF' }}>오늘의 MVP</span>
             </div>
 
-            {/* 1st place */}
-            <div
-              style={{
-                position: 'relative',
-                overflow: 'hidden',
-                background: CARD_BG,
-                border: `1px solid ${GOLD}4D`,
-                borderRadius: 20,
-                padding: 32,
-                marginBottom: 16,
-              }}
-            >
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, ${GOLD}, #FFA000, ${GOLD})` }} />
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span style={{ fontSize: 46, marginBottom: 6 }}>{MEDAL[Math.min(first.rank - 1, 2)].emoji}</span>
-                <RingAvatar src={first.avatarDataUrl} name={first.displayName} size={110} ring={`${GOLD}80`} />
-                <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '0.5px', color: GOLD, marginTop: 12 }}>{rankLabel(first)}</div>
-                <div style={{ fontSize: 32, fontWeight: 800, color: '#FFFFFF', marginTop: 4 }}>{first.displayName}</div>
+            {/* 1위 그룹 — 공동 1위면 나란히 */}
+            <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+              {firstGroup.map((first, fi) => (
+              <div
+                key={fi}
+                style={{
+                  flex: '1 1 0',
+                  minWidth: 0,
+                  position: 'relative',
+                  overflow: 'hidden',
+                  background: CARD_BG,
+                  border: `1px solid ${GOLD}4D`,
+                  borderRadius: 20,
+                  padding: firstGroup.length > 1 ? 24 : 32,
+                }}
+              >
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: `linear-gradient(90deg, ${GOLD}, #FFA000, ${GOLD})` }} />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <span style={{ fontSize: 46, marginBottom: 6 }}>{MEDAL[0].emoji}</span>
+                  <RingAvatar src={first.avatarDataUrl} name={first.displayName} size={firstGroup.length > 1 ? 92 : 110} ring={`${GOLD}80`} />
+                  <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: '0.5px', color: GOLD, marginTop: 12 }}>{rankLabel(first)}</div>
+                  <div style={{ fontSize: firstGroup.length > 1 ? 27 : 32, fontWeight: 800, color: '#FFFFFF', marginTop: 4, whiteSpace: 'nowrap', lineHeight: 1.45 }}>{fitText(first.displayName, firstGroup.length > 1 ? 14 : 24)}</div>
+                </div>
+                <div style={{ display: 'flex', marginTop: 26, paddingTop: 26, borderTop: `1px solid ${GOLD}1A` }}>
+                  <div style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ fontSize: 16, color: MUTED, marginBottom: 6 }}>평균 득점</div>
+                    <div style={{ fontSize: 36, fontWeight: 800, color: GOLD }}>{first.avgScore}</div>
+                  </div>
+                  <div style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ fontSize: 16, color: MUTED, marginBottom: 6 }}>승수</div>
+                    <div style={{ fontSize: 36, fontWeight: 800, color: GREEN }}>{first.wins}승</div>
+                  </div>
+                  <div style={{ flex: 1, textAlign: 'center' }}>
+                    <div style={{ fontSize: 16, color: MUTED, marginBottom: 6 }}>총 득점</div>
+                    <div style={{ fontSize: 36, fontWeight: 800, color: '#F5F5F5' }}>{first.totalScore}</div>
+                  </div>
+                </div>
               </div>
-              <div style={{ display: 'flex', marginTop: 26, paddingTop: 26, borderTop: `1px solid ${GOLD}1A` }}>
-                <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: 16, color: MUTED, marginBottom: 6 }}>평균 득점</div>
-                  <div style={{ fontSize: 36, fontWeight: 800, color: GOLD }}>{first.avgScore}</div>
-                </div>
-                <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: 16, color: MUTED, marginBottom: 6 }}>승수</div>
-                  <div style={{ fontSize: 36, fontWeight: 800, color: GREEN }}>{first.wins}승</div>
-                </div>
-                <div style={{ flex: 1, textAlign: 'center' }}>
-                  <div style={{ fontSize: 16, color: MUTED, marginBottom: 6 }}>총 득점</div>
-                  <div style={{ fontSize: 36, fontWeight: 800, color: '#F5F5F5' }}>{first.totalScore}</div>
-                </div>
-              </div>
+              ))}
             </div>
 
-            {/* 2nd & 3rd */}
-            {rest.length > 0 && (
-              <div style={{ display: 'flex', gap: 16 }}>
-                {rest.map((mvp, i) => {
+            {/* 2·3위 그룹 — 공동 포함 전원, 2열 랩 */}
+            {restGroup.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+                {restGroup.map((mvp, i) => {
                   const m = MEDAL[Math.min(mvp.rank - 1, 2)];
                   return (
                     <div
                       key={i}
                       style={{
-                        // '1 1 0' + minWidth 0: 긴 이름이 카드 폭을 밀어내
-                        // 두 카드가 비대칭이 되거나 캔버스를 넘는 것 방지
-                        flex: '1 1 0',
+                        width: 'calc(50% - 8px)',
+                        boxSizing: 'border-box',
                         minWidth: 0,
                         position: 'relative',
                         overflow: 'hidden',
@@ -420,49 +415,54 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
           </div>
         )}
 
-        {/* ═══ Game Results ═══ */}
-        {slotOrders.length > 0 && (
+        {/* ═══ 선수별 결과 — 게임별 결과 대체(이미지 길이 대폭 축소) ═══ */}
+        {playerResults.length > 0 && (
           <div>
-            <div style={sectionTitle}>게임별 결과</div>
-            {slotOrders.map((order) => {
-              const slotGames = gamesByOrder[order].sort((a, b) => a.courtNumber - b.courtNumber);
-              return (
-                <div key={order} style={{ marginBottom: 24 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                    <div style={{ width: 9, height: 9, borderRadius: 9999, background: GREEN }} />
-                    <span style={{ fontSize: 20, fontWeight: 700, color: '#DDDDDD' }}>{order}경기</span>
-                    <div style={{ flex: 1, height: 1, background: BORDER }} />
+            <div style={sectionTitle}>선수별 결과</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+              {playerResults.map((p, i) => {
+                const isTop = p.rank === 1;
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      width: 'calc(50% - 6px)',
+                      boxSizing: 'border-box',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 12,
+                      background: CARD_BG,
+                      border: `1px solid ${isTop ? GOLD + '4D' : BORDER}`,
+                      borderRadius: 12,
+                      padding: '14px 18px',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 58,
+                        flexShrink: 0,
+                        fontSize: 15,
+                        fontWeight: 800,
+                        color: isTop ? GOLD : MUTED,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {rankLabel(p)}
+                    </span>
+                    <span style={{ flex: '1 1 0', minWidth: 0, fontSize: 21, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap', lineHeight: 1.45 }}>
+                      {fitText(p.displayName, 12)}
+                    </span>
+                    <span style={{ flexShrink: 0, fontSize: 19, fontWeight: 700, whiteSpace: 'nowrap' }}>
+                      <span style={{ color: GREEN }}>{p.wins}승</span>
+                      <span style={{ color: SUBTLE, margin: '0 4px' }}>·</span>
+                      <span style={{ color: MUTED }}>{p.losses}패</span>
+                      <span style={{ color: SUBTLE, margin: '0 4px' }}>·</span>
+                      <span style={{ color: '#CCCCCC' }}>{p.totalScore}점</span>
+                    </span>
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {slotGames.map((game, i) => {
-                      const aWin = game.winner === 'team_a';
-                      const bWin = game.winner === 'team_b';
-                      return (
-                        <div key={i} style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, padding: '18px 22px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                            <span style={{ fontSize: 16, fontWeight: 700, color: '#CCCCCC', border: `1px solid ${BORDER}`, borderRadius: 9, padding: '3px 11px' }}>
-                              {game.courtNumber}코트
-                            </span>
-                            {game.winner ? <span style={{ fontSize: 19 }}>🏆</span> : <span />}
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center' }}>
-                            <PlayerNames p1={game.teamAPlayer1} p2={game.teamAPlayer2} win={aWin} align="right" />
-                            <div style={{ minWidth: 116, textAlign: 'center', padding: '0 14px' }}>
-                              <span style={{ fontSize: 33, fontWeight: 800 }}>
-                                <span style={{ color: aWin ? GREEN : MUTED }}>{game.scoreA}</span>
-                                <span style={{ color: SUBTLE, margin: '0 9px' }}>:</span>
-                                <span style={{ color: bWin ? GREEN : MUTED }}>{game.scoreB}</span>
-                              </span>
-                            </div>
-                            <PlayerNames p1={game.teamBPlayer1} p2={game.teamBPlayer2} win={bWin} align="left" />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
 
