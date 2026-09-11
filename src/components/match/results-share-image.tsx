@@ -153,7 +153,7 @@ function RingAvatar({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={src} alt={name} width={size} height={size} style={{ width: size, height: size, objectFit: 'cover' }} />
           ) : (
-            <span style={{ color: GREEN_LIGHT, fontWeight: 800, fontSize: Math.round(size * 0.4) }}>{initialOf(name)}</span>
+            <span style={{ display: 'block', width: '100%', textAlign: 'center', lineHeight: `${size}px`, color: GREEN_LIGHT, fontWeight: 800, fontSize: Math.round(size * 0.4) }}>{initialOf(name)}</span>
           )}
         </div>
       </div>
@@ -189,7 +189,7 @@ function ClubLogo({ src, name }: { src: string | null; name: string }) {
           // eslint-disable-next-line @next/next/no-img-element
           <img src={src} alt={name} width={size} height={size} style={{ width: size, height: size, objectFit: 'cover' }} />
         ) : (
-          <span style={{ color: GREEN_LIGHT, fontWeight: 800, fontSize: 58 }}>{initialOf(name || 'T')}</span>
+          <span style={{ display: 'block', width: '100%', textAlign: 'center', lineHeight: `${size}px`, color: GREEN_LIGHT, fontWeight: 800, fontSize: 58 }}>{initialOf(name || 'T')}</span>
         )}
       </div>
     </div>
@@ -369,7 +369,7 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
                     borderBottom: i < highlights.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none',
                   }}
                 >
-                  <div style={{ width: 52, height: 52, borderRadius: 9999, background: CHIP_BG, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, flexShrink: 0 }}>
+                  <div style={{ width: 52, height: 52, borderRadius: 9999, background: CHIP_BG, textAlign: 'center', lineHeight: '52px', fontSize: 24, flexShrink: 0 }}>
                     {h.icon}
                   </div>
                   <div style={{ fontSize: 21, flex: 1 }}>
@@ -443,12 +443,11 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
                           width: 26,
                           height: 26,
                           borderRadius: 7,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
+                          display: 'block',
+                          textAlign: 'center',
                           fontSize: 13,
                           fontWeight: 800,
-                          lineHeight: 1,
+                          lineHeight: '26px',
                           color: r === '승' ? '#062B16' : r === '무' ? '#3A2E00' : MUTED,
                           background: r === '승' ? GREEN : r === '무' ? GOLD : '#242424',
                         }}

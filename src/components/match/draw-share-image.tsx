@@ -297,7 +297,7 @@ export const DrawShareImage = forwardRef<HTMLDivElement, DrawShareImageProps>(
                     style={{ width: 140, height: 140, objectFit: 'cover' }}
                   />
                 ) : (
-                  <span style={{ color: '#69F0AE', fontWeight: 800, fontSize: 58 }}>
+                  <span style={{ display: 'block', width: '100%', textAlign: 'center', lineHeight: '140px', color: '#69F0AE', fontWeight: 800, fontSize: 58 }}>
                     {initialOf(clubName || '')}
                   </span>
                 )}
