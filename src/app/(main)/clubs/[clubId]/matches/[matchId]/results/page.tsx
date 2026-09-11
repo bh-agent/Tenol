@@ -46,6 +46,8 @@ type MvpEntry = {
   gamesPlayed: number;
   wins: number;
   losses: number;
+  /** 경기 순서대로의 결과 시퀀스 — 공유 이미지 '선수별 결과'용 (승/패/무) */
+  record: ('승' | '패' | '무')[];
   avgScore: number;
   rank: number;
   tied: boolean;
@@ -199,6 +201,17 @@ export default function ResultsPage() {
         }
       }
 
+      // 선수별 경기 순서대로의 승/패/무 시퀀스 (공유 이미지의 '승승패승' 표기용)
+      const computeRecord = (pid: string): ('승' | '패' | '무')[] =>
+        completed
+          .filter((g) => [g.team_a_player1_id, g.team_a_player2_id, g.team_b_player1_id, g.team_b_player2_id].includes(pid))
+          .sort((a, b) => a.game_order - b.game_order || a.court_number - b.court_number)
+          .map((g) => {
+            if (!g.winner) return '무';
+            const isTeamA = [g.team_a_player1_id, g.team_a_player2_id].includes(pid);
+            return (isTeamA && g.winner === 'team_a') || (!isTeamA && g.winner === 'team_b') ? '승' : '패';
+          });
+
       const ranked = Object.entries(agg)
         .map(([pid, a]) => ({
           participantId: pid,
@@ -210,6 +223,7 @@ export default function ResultsPage() {
           gamesPlayed: a.gamesPlayed,
           wins: a.wins,
           losses: a.losses,
+          record: computeRecord(pid),
           avgScore: a.gamesPlayed > 0 ? Math.round((a.totalScore / a.gamesPlayed) * 10) / 10 : 0,
         }))
         // 승리 우선, 같으면 득점(총득점) 우선. 평균 득점은 최종 표시 순서용.
@@ -407,15 +421,14 @@ export default function ResultsPage() {
       if (!html2canvasModule) { toast.error('이미지 생성 라이브러리를 로드할 수 없습니다.'); return; }
       const html2canvas = html2canvasModule.default;
 
-      // 게임별 결과 대신 '선수별 결과' — 이미지가 지나치게 길어지는 문제 해결
-      const playerResults = allPlayers.map((p) => ({
-        displayName: p.displayName,
-        wins: p.wins,
-        losses: p.losses,
-        totalScore: p.totalScore,
-        rank: p.rank,
-        tied: p.tied,
-      }));
+      // 게임별 결과 대신 '선수별 결과'(승승패승 시퀀스) — 이미지 길이 축소.
+      // 순위·점수는 넣지 않고(공개 이미지에 서열 박제 방지) 가나다순 정렬.
+      const playerResults = [...allPlayers]
+        .sort((a, b) => a.displayName.localeCompare(b.displayName, 'ko'))
+        .map((p) => ({
+          displayName: p.displayName,
+          record: p.record,
+        }));
 
       // MVP 아바타를 data URL로 선변환(앱 화면과 동일하게 사진 표시)
       const mvpForImage = await Promise.all(

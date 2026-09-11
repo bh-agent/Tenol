@@ -32,11 +32,8 @@ type FunStat = {
 
 type PlayerResult = {
   displayName: string;
-  wins: number;
-  losses: number;
-  totalScore: number;
-  rank: number;
-  tied: boolean;
+  /** 경기 순서대로의 결과 시퀀스 ('승' | '패' | '무') */
+  record: string[];
 };
 
 export interface ResultsShareImageProps {
@@ -415,53 +412,53 @@ export const ResultsShareImage = forwardRef<HTMLDivElement, ResultsShareImagePro
           </div>
         )}
 
-        {/* ═══ 선수별 결과 — 게임별 결과 대체(이미지 길이 대폭 축소) ═══ */}
+        {/* ═══ 선수별 결과 — 순위 없이 경기 순서대로 승/패/무 시퀀스만 (가나다순) ═══ */}
         {playerResults.length > 0 && (
           <div>
             <div style={sectionTitle}>선수별 결과</div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-              {playerResults.map((p, i) => {
-                const isTop = p.rank === 1;
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      width: 'calc(50% - 6px)',
-                      boxSizing: 'border-box',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      background: CARD_BG,
-                      border: `1px solid ${isTop ? GOLD + '4D' : BORDER}`,
-                      borderRadius: 12,
-                      padding: '14px 18px',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 58,
-                        flexShrink: 0,
-                        fontSize: 15,
-                        fontWeight: 800,
-                        color: isTop ? GOLD : MUTED,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {rankLabel(p)}
-                    </span>
-                    <span style={{ flex: '1 1 0', minWidth: 0, fontSize: 21, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap', lineHeight: 1.45 }}>
-                      {fitText(p.displayName, 12)}
-                    </span>
-                    <span style={{ flexShrink: 0, fontSize: 19, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                      <span style={{ color: GREEN }}>{p.wins}승</span>
-                      <span style={{ color: SUBTLE, margin: '0 4px' }}>·</span>
-                      <span style={{ color: MUTED }}>{p.losses}패</span>
-                      <span style={{ color: SUBTLE, margin: '0 4px' }}>·</span>
-                      <span style={{ color: '#CCCCCC' }}>{p.totalScore}점</span>
-                    </span>
-                  </div>
-                );
-              })}
+              {playerResults.map((p, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: 'calc(50% - 6px)',
+                    boxSizing: 'border-box',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    background: CARD_BG,
+                    border: `1px solid ${BORDER}`,
+                    borderRadius: 12,
+                    padding: '13px 16px',
+                  }}
+                >
+                  <span style={{ flex: '1 1 0', minWidth: 0, fontSize: 20, fontWeight: 700, color: '#F5F5F5', whiteSpace: 'nowrap', lineHeight: 1.45 }}>
+                    {fitText(p.displayName, 8)}
+                  </span>
+                  <span style={{ flexShrink: 0, display: 'flex', gap: 5 }}>
+                    {p.record.map((r, j) => (
+                      <span
+                        key={j}
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: 7,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 13,
+                          fontWeight: 800,
+                          lineHeight: 1,
+                          color: r === '승' ? '#062B16' : r === '무' ? '#3A2E00' : MUTED,
+                          background: r === '승' ? GREEN : r === '무' ? GOLD : '#242424',
+                        }}
+                      >
+                        {r}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}
