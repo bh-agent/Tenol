@@ -81,19 +81,44 @@
     <line x1="12" y1="20" x2="12.01" y2="20" />
   </svg>
   <h1>인터넷 연결이 없습니다</h1>
-  <p>네트워크 연결을 확인한 후<br />다시 시도해 주세요.</p>
+  <p>연결되면 <b>자동으로 돌아갑니다</b>.<br />잠시만 기다리시거나 아래를 눌러주세요.</p>
   <button id="retry">다시 시도</button>
   <script>
     // 네이티브 앱: 이 페이지는 로컬 errorPath이므로 reload()는 같은 오프라인 화면만 다시 뜬다.
     // 실제 앱(원격 URL)으로 다시 진입해야 복구된다. 웹에서는 현재 페이지를 새로고침.
-    document.getElementById('retry').addEventListener('click', function () {
+    //
+    // 이 화면은 대부분 "앱을 백그라운드에서 복귀시킨 직후 OS 네트워크가 아직
+    // 깨어나기 전에 로드가 실패"해서 뜬다(진짜 오프라인이 아님). 그래서 서버에
+    // 주기적으로 핑을 보내 연결이 확인되는 즉시 자동으로 앱에 복귀한다.
+    (function () {
+      var APP_URL = 'https://tenol-one.vercel.app/clubs';
       var isLocal = location.protocol === 'capacitor:' || location.protocol === 'file:' || location.hostname === 'localhost';
-      if (isLocal) {
-        location.href = 'https://tenol-one.vercel.app/clubs';
-      } else {
-        location.reload();
+      var returning = false;
+
+      function goApp() {
+        if (returning) return;
+        returning = true;
+        if (isLocal) location.href = APP_URL;
+        else location.reload();
       }
-    });
+
+      function ping() {
+        if (returning) return;
+        // no-cors: CORS 실패와 무관하게 "네트워크 도달 여부"만 확인
+        fetch('https://tenol-one.vercel.app/offline.html', { method: 'HEAD', mode: 'no-cors', cache: 'no-store' })
+          .then(goApp)
+          .catch(function () {});
+      }
+
+      document.getElementById('retry').addEventListener('click', goApp);
+      window.addEventListener('online', ping);
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') ping();
+      });
+      // 1.5초 간격 폴링 — 복귀 직후 네트워크가 깨어나면 수 초 내 자동 복구
+      setInterval(ping, 1500);
+      ping();
+    })();
   </script>
 </body>
 </html>

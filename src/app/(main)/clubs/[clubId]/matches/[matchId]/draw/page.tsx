@@ -250,6 +250,8 @@ export default function DrawPage() {
   const [addNtrp, setAddNtrp] = useState('');
   const [adding, setAdding] = useState(false);
   const [clubMembers, setClubMembers] = useState<{ userId: string; name: string; gender: 'M' | 'F' | null; ntrp: number | null }[]>([]);
+  // 참가자 추가 모달 — 체크박스 다중 선택
+  const [selectedMemberIds, setSelectedMemberIds] = useState<Set<string>>(new Set());
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
 
@@ -581,19 +583,35 @@ export default function DrawPage() {
     }
   };
 
-  const handleAddMember = async (userId: string) => {
+  // 체크박스로 고른 멤버들을 한 번에 추가 (병렬 호출 후 결과 집계)
+  const handleAddSelectedMembers = async () => {
+    const ids = [...selectedMemberIds];
+    if (ids.length === 0) return;
     setAdding(true);
     try {
-      const res = await addMemberParticipant(matchId, userId);
-      if (res?.error) { toast.error(res.error); return; }
+      const results = await Promise.all(ids.map((id) => addMemberParticipant(matchId, id)));
+      const failed = results.filter((r) => r?.error);
+      if (failed.length > 0) {
+        toast.error(`${ids.length - failed.length}명 추가, ${failed.length}명 실패: ${failed[0]!.error}`);
+      } else {
+        toast.success(`${ids.length}명을 추가했습니다`);
+      }
+      setSelectedMemberIds(new Set());
       setShowAddModal(false);
       setMemberSearch('');
       await loadData();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : '추가에 실패했습니다');
     } finally {
       setAdding(false);
     }
+  };
+
+  const toggleMemberSelect = (userId: string) => {
+    setSelectedMemberIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
   };
 
   // Load club members when add modal opens on member tab
@@ -1768,7 +1786,7 @@ export default function DrawPage() {
       </Modal>
 
       {/* ── Add participant modal ── */}
-      <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); setMemberSearch(''); }} title="참가자 추가">
+      <Modal isOpen={showAddModal} onClose={() => { setShowAddModal(false); setMemberSearch(''); setSelectedMemberIds(new Set()); }} title="참가자 추가">
         {/* Tabs */}
         <div className="flex gap-1 p-1 rounded-xl bg-muted mb-4">
           <button
@@ -1822,18 +1840,31 @@ export default function DrawPage() {
               ) : (
                 clubMembers
                   .filter(m => !memberSearch || m.name.toLowerCase().includes(memberSearch.toLowerCase()))
-                  .map((m) => (
+                  .map((m) => {
+                    const checked = selectedMemberIds.has(m.userId);
+                    return (
                     <button
                       key={m.userId}
                       type="button"
-                      onClick={() => handleAddMember(m.userId)}
+                      onClick={() => toggleMemberSelect(m.userId)}
                       disabled={adding}
                       className={cn(
-                        'w-full flex items-center gap-3 p-3 rounded-xl border border-border',
-                        'hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer',
+                        'w-full flex items-center gap-3 p-3 rounded-xl border transition-all cursor-pointer',
+                        checked
+                          ? 'border-primary/50 bg-primary/10'
+                          : 'border-border hover:border-primary/30 hover:bg-primary/5',
                         'disabled:opacity-40 disabled:pointer-events-none'
                       )}
                     >
+                      {/* 체크박스 */}
+                      <div
+                        className={cn(
+                          'w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors',
+                          checked ? 'bg-primary border-primary' : 'border-border'
+                        )}
+                      >
+                        {checked && <Check className="w-3.5 h-3.5 text-black" strokeWidth={3} />}
+                      </div>
                       <div
                         className={cn(
                           'w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
@@ -1853,9 +1884,24 @@ export default function DrawPage() {
                         )}
                       </div>
                     </button>
-                  ))
+                    );
+                  })
               )}
             </div>
+
+            {/* 선택한 멤버 일괄 추가 */}
+            <Button
+              onClick={handleAddSelectedMembers}
+              disabled={adding || selectedMemberIds.size === 0}
+              loading={adding}
+              fullWidth
+            >
+              {adding
+                ? '추가 중...'
+                : selectedMemberIds.size > 0
+                  ? `${selectedMemberIds.size}명 추가하기`
+                  : '멤버를 선택하세요'}
+            </Button>
           </div>
         )}
 

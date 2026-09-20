@@ -56,13 +56,20 @@ export function NativeInit() {
           hiddenAt = Date.now();
         });
         const hResume = await App.addListener('resume', () => {
-          if (hiddenAt && Date.now() - hiddenAt > STALE_MS) {
-            window.location.reload();
+          const stale = hiddenAt && Date.now() - hiddenAt > STALE_MS;
+          hiddenAt = null;
+          if (stale) {
+            // 복귀 직후엔 OS 네트워크가 아직 안 깨어났을 수 있다 — 이때 reload하면
+            // 로드 실패로 오프라인 화면이 뜬다. 온라인 확인 후(또는 online 이벤트에) 새로고침.
+            if (navigator.onLine) {
+              window.location.reload();
+            } else {
+              window.addEventListener('online', () => window.location.reload(), { once: true });
+            }
           } else {
             // 짧은 복귀는 데이터만 최신화
             router.refresh();
           }
-          hiddenAt = null;
         });
         removers.push(() => hPause.remove(), () => hResume.remove());
       } catch {}
