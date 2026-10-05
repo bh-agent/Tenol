@@ -107,7 +107,60 @@ export async function createMatch(formData: FormData) {
     }
   }
 
+  // 클럽 멤버 전체에게 새 경기 공지 (생성자 제외). 알림 실패가 생성을 막지 않도록 격리.
+  try {
+    const { data: members } = await supabase
+      .from('club_members')
+      .select('user_id')
+      .eq('club_id', matchData.club_id);
+    const targets = (members || []).map((m) => m.user_id).filter((id) => id && id !== userId);
+    const { notifyUsers } = await import('@/lib/server/notify');
+    await notifyUsers(
+      targets,
+      'match_invite',
+      '새 경기가 열렸어요 🎾',
+      `${matchData.title} · ${fmtMatchWhen(matchData.match_date, matchData.start_time)}`,
+      { match_id: match.id, club_id: matchData.club_id },
+    );
+  } catch {
+    // 공지 실패는 경기 생성에 영향 없음
+  }
+
   redirect(`/clubs/${matchData.club_id}/matches/${match.id}`);
+}
+
+/** 알림 본문용 날짜 표기: "10월 9일(목) 20:00" */
+function fmtMatchWhen(dateStr: string, timeStr?: string | null): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  const wd = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+  const time = timeStr ? ` ${timeStr.slice(0, 5)}` : '';
+  return `${d.getMonth() + 1}월 ${d.getDate()}일(${wd})${time}`;
+}
+
+/** 경기의 참가자(회원 계정 보유, 확정+대기)에게 일괄 알림. actor 제외. */
+async function notifyMatchParticipants(
+  supabase: SupabaseServer,
+  matchId: string,
+  excludeUserId: string | null,
+  type: 'match_updated' | 'match_cancelled',
+  title: string,
+  body: string,
+  clubId: string,
+) {
+  try {
+    const { data: parts } = await supabase
+      .from('match_participants')
+      .select('user_id')
+      .eq('match_id', matchId)
+      .in('status', ['confirmed', 'waitlisted', 'pending']);
+    const targets = (parts || [])
+      .map((p) => p.user_id)
+      .filter((id): id is string => !!id && id !== excludeUserId);
+    const { notifyUsers } = await import('@/lib/server/notify');
+    await notifyUsers(targets, type, title, body, { match_id: matchId, club_id: clubId });
+  } catch {
+    // 알림 실패는 본 동작에 영향 없음
+  }
 }
 
 type SupabaseServer = Awaited<ReturnType<typeof createClient>>;
@@ -897,7 +950,7 @@ export async function replaceWithOffline(
 
 export async function updateMatch(matchId: string, formData: FormData) {
   const validMatchId = uuidSchema.parse(matchId);
-  const { clubId } = await requireMatchPermission(validMatchId, 'match.create');
+  const { clubId, userId: actorId } = await requireMatchPermission(validMatchId, 'match.create');
 
   const validated = updateMatchSchema.parse({
     title: formData.get('title'),
@@ -913,10 +966,10 @@ export async function updateMatch(matchId: string, formData: FormData) {
 
   const supabase = await createClient();
 
-  // 정원 증가 시 대기자 자동 승격을 위해 이전 정원을 먼저 확인
+  // 정원 증가 시 대기자 자동 승격 + 일정 변경 감지를 위해 이전 값을 먼저 확인
   const { data: prevMatch } = await supabase
     .from('matches')
-    .select('max_participants')
+    .select('max_participants, match_date, start_time, location, title')
     .eq('id', validMatchId)
     .maybeSingle();
 
@@ -943,6 +996,29 @@ export async function updateMatch(matchId: string, formData: FormData) {
     }
   }
 
+  // 날짜·시간·장소가 바뀌었으면 참가자에게 변경 공지 (헛걸음 방지)
+  if (prevMatch) {
+    const prevTime = prevMatch.start_time?.slice(0, 5) ?? null;
+    const newTime = validated.start_time?.slice(0, 5) ?? null;
+    const dateChanged = prevMatch.match_date !== validated.match_date;
+    const timeChanged = prevTime !== newTime;
+    const placeChanged = (prevMatch.location ?? '') !== (validated.location ?? '');
+    if (dateChanged || timeChanged || placeChanged) {
+      const parts: string[] = [];
+      if (dateChanged || timeChanged) parts.push(fmtMatchWhen(validated.match_date, validated.start_time));
+      if (placeChanged && validated.location) parts.push(validated.location);
+      await notifyMatchParticipants(
+        supabase,
+        validMatchId,
+        actorId,
+        'match_updated',
+        '경기 일정이 변경되었어요 📅',
+        `${validated.title} → ${parts.join(' · ')}`,
+        clubId,
+      );
+    }
+  }
+
   redirect(`/clubs/${clubId}/matches/${validMatchId}`);
 }
 
@@ -955,7 +1031,7 @@ export async function deleteMatch(matchId: string) {
   // Check match status - only upcoming or cancelled can be deleted
   const { data: match } = await supabase
     .from('matches')
-    .select('status')
+    .select('status, title, match_date, start_time')
     .eq('id', validMatchId)
     .maybeSingle();
 
@@ -964,12 +1040,41 @@ export async function deleteMatch(matchId: string) {
     throw new Error('진행 중이거나 완료된 경기는 삭제할 수 없습니다');
   }
 
+  // 삭제 전에 참가자 목록 확보 (삭제 시 CASCADE로 함께 사라짐)
+  const { data: { user: actor } } = await supabase.auth.getUser();
+  const { data: partsBefore } = match.status === 'upcoming'
+    ? await supabase
+        .from('match_participants')
+        .select('user_id')
+        .eq('match_id', validMatchId)
+        .in('status', ['confirmed', 'waitlisted', 'pending'])
+    : { data: null };
+
   const { error } = await supabase
     .from('matches')
     .delete()
     .eq('id', validMatchId);
 
   if (error) throw new Error('경기 삭제에 실패했습니다');
+
+  // 예정 경기 삭제는 취소와 동일하게 참가자에게 공지 (이미 취소된 경기는 중복 공지 안 함)
+  if (partsBefore && partsBefore.length > 0) {
+    try {
+      const targets = partsBefore
+        .map((p) => p.user_id)
+        .filter((id): id is string => !!id && id !== actor?.id);
+      const { notifyUsers } = await import('@/lib/server/notify');
+      await notifyUsers(
+        targets,
+        'match_cancelled',
+        '경기가 취소되었어요 ❌',
+        `${match.title} (${fmtMatchWhen(match.match_date, match.start_time)}) 경기가 취소되었습니다.`,
+        { club_id: clubId },
+      );
+    } catch {
+      // 공지 실패는 삭제에 영향 없음
+    }
+  }
 
   redirect(`/clubs/${clubId}`);
 }
@@ -994,14 +1099,14 @@ export async function updateMatchStatus(matchId: string, status: string): Promis
 async function updateMatchStatusImpl(matchId: string, status: string) {
   const validMatchId = uuidSchema.parse(matchId);
   const validStatus = matchStatusSchema.parse(status);
-  await requireMatchPermission(validMatchId, 'match.create');
+  const { userId: actorId, clubId } = await requireMatchPermission(validMatchId, 'match.create');
 
   const supabase = await createClient();
 
   // Validate state transition
   const { data: match } = await supabase
     .from('matches')
-    .select('status')
+    .select('status, title, match_date, start_time')
     .eq('id', validMatchId)
     .maybeSingle();
 
@@ -1018,4 +1123,17 @@ async function updateMatchStatusImpl(matchId: string, status: string) {
     .eq('id', validMatchId);
 
   if (error) throw new Error('상태 변경에 실패했습니다');
+
+  // 취소는 참가자에게 즉시 공지 (코트에 헛걸음 방지)
+  if (validStatus === 'cancelled') {
+    await notifyMatchParticipants(
+      supabase,
+      validMatchId,
+      actorId,
+      'match_cancelled',
+      '경기가 취소되었어요 ❌',
+      `${match.title} (${fmtMatchWhen(match.match_date, match.start_time)}) 경기가 취소되었습니다.`,
+      clubId,
+    );
+  }
 }

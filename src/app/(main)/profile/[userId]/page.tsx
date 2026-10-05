@@ -9,6 +9,7 @@ import { TopBar } from '@/components/layout/top-bar';
 import { ClubAvatar } from '@/components/club/club-avatar';
 import { ProfileHeader } from '@/components/profile/profile-header';
 import { SignOutButton } from '@/components/profile/sign-out-button';
+import { SettingsSection } from '@/components/profile/settings-section';
 import { StatShareButton } from '@/components/profile/stat-share-card';
 import { ReportMenuButton } from '@/components/moderation/report-menu-button';
 import { createClient } from '@/lib/supabase/server';
@@ -286,6 +287,9 @@ export default async function UserProfilePage({
             <ChevronRight className="w-5 h-5 text-red-400" />
           </Link>
         )}
+
+        {/* Settings: 차단 관리 + 약관/개인정보 (own profile only) */}
+        {isOwnProfile && <SettingsSection />}
 
         {/* Sign Out (own profile only) */}
         {isOwnProfile && <SignOutButton />}

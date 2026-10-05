@@ -7,7 +7,7 @@ export async function getClubMatches(clubId: string) {
     .from('matches')
     .select(`
       *,
-      match_participants (id, status)
+      match_participants (id, user_id, status)
     `)
     .eq('club_id', clubId)
     .order('match_date', { ascending: false });
@@ -64,7 +64,9 @@ export async function getMyMatches() {
       )
     `)
     .eq('user_id', user.id)
-    .eq('status', 'confirmed')
+    // confirmed만 보여주면 대기자·게스트 승인대기인 사람은 '내 경기'가 비어 보인다
+    // → 자기 신청 상태를 확인할 수 있도록 waitlisted/pending도 포함 (UI에서 배지로 구분)
+    .in('status', ['confirmed', 'waitlisted', 'pending'])
     .order('requested_at', { ascending: false });
 
   return data || [];

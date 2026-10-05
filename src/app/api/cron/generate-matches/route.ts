@@ -145,6 +145,31 @@ export async function GET(request: Request) {
         .update({ last_created_date: matchDate, updated_at: new Date().toISOString() })
         .eq('id', template.id);
 
+      // 클럽 멤버에게 새 경기 공지 — 자동 생성은 아무도 모르던 문제 해결
+      // (멤버는 알림을 받아야 신청하러 들어온다; 템플릿 작성자는 제외)
+      try {
+        const { data: members } = await supabase
+          .from('club_members')
+          .select('user_id')
+          .eq('club_id', template.club_id);
+        const targets = (members || [])
+          .map((m: { user_id: string }) => m.user_id)
+          .filter((id: string) => id && id !== template.created_by);
+        const d = new Date(matchDate + 'T00:00:00');
+        const wd = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+        const when = `${d.getMonth() + 1}월 ${d.getDate()}일(${wd})${template.start_time ? ' ' + String(template.start_time).slice(0, 5) : ''}`;
+        const { notifyUsers } = await import('@/lib/server/notify');
+        await notifyUsers(
+          targets,
+          'match_invite',
+          '새 경기가 열렸어요 🎾',
+          `${title} · ${when} — 지금 참가 신청하세요!`,
+          { match_id: match.id, club_id: template.club_id },
+        );
+      } catch {
+        // 공지 실패는 생성에 영향 없음
+      }
+
       created += 1;
       createdMatchIds.push(match.id);
     } catch (err) {

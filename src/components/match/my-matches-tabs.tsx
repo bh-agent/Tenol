@@ -2,6 +2,7 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
 import { FilterChips } from '@/components/search/filter-chips';
 import { SearchEmpty } from '@/components/search/search-empty';
 import { cn } from '@/lib/utils/cn';
@@ -33,6 +34,13 @@ function MatchCard({ item }: { item: any }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="font-medium text-foreground truncate min-w-0 max-w-full">{match.title}</h4>
+              {/* 내 참가 상태 — 대기자·게스트 승인대기도 목록에 포함되므로 구분 표시 */}
+              {item.status === 'waitlisted' && (
+                <Badge variant="warning">대기 중</Badge>
+              )}
+              {item.status === 'pending' && (
+                <Badge variant="outline">승인 대기</Badge>
+              )}
               <Badge variant={statusVariant[match.status] || 'default'}>
                 {formatMatchStatus(match.status)}
               </Badge>
@@ -104,7 +112,7 @@ export function MyMatchesTabs({ upcoming, history }: MyMatchesTabsProps) {
   const currentList = activeTab === 'upcoming' ? upcoming : history;
 
   const filteredList = useMemo(() => {
-    return currentList.filter((item: any) => {
+    const filtered = currentList.filter((item: any) => {
       const match = item.matches;
       if (!match) return false;
 
@@ -117,7 +125,19 @@ export function MyMatchesTabs({ upcoming, history }: MyMatchesTabsProps) {
 
       return true;
     });
-  }, [currentList, selectedClub, startDate, endDate]);
+
+    // 예정 탭은 임박순("다음에 언제 치지?"에 바로 답), 기록 탭은 최근순.
+    // 쿼리 기본 정렬(신청순)은 임박한 경기를 중간에 묻어버린다.
+    return [...filtered].sort((a: any, b: any) => {
+      const ma = a.matches, mb = b.matches;
+      const byDate =
+        activeTab === 'upcoming'
+          ? (ma.match_date || '').localeCompare(mb.match_date || '')
+          : (mb.match_date || '').localeCompare(ma.match_date || '');
+      if (byDate !== 0) return byDate;
+      return (ma.start_time || '').localeCompare(mb.start_time || '');
+    });
+  }, [currentList, selectedClub, startDate, endDate, activeTab]);
 
   const hasFilters = selectedClub !== 'all' || startDate || endDate;
 
@@ -231,25 +251,21 @@ export function MyMatchesTabs({ upcoming, history }: MyMatchesTabsProps) {
               description="필터를 변경해보세요."
             />
           ) : (
-            <div className="text-center py-16">
-              {activeTab === 'upcoming' ? (
-                <>
-                  <div className="w-16 h-16 rounded-2xl bg-primary-dim flex items-center justify-center mx-auto mb-5">
-                    <CalendarClock className="w-7 h-7 text-primary" />
-                  </div>
-                  <p className="text-lg font-semibold text-foreground mb-1.5">예정된 경기가 없어요</p>
-                  <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">새 경기를 만들어보세요! 클럽에서 멤버들과 함께 경기에 참가해보세요.</p>
-                </>
-              ) : (
-                <>
-                  <div className="w-16 h-16 rounded-2xl bg-primary-dim flex items-center justify-center mx-auto mb-5">
-                    <Trophy className="w-7 h-7 text-primary" />
-                  </div>
-                  <p className="text-lg font-semibold text-foreground mb-1.5">경기 기록이 없어요</p>
-                  <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">경기를 완료하면 여기에 기록이 쌓여요. 첫 경기를 시작해보세요!</p>
-                </>
-              )}
-            </div>
+            activeTab === 'upcoming' ? (
+              <EmptyState
+                icon={CalendarClock}
+                title="예정된 경기가 없어요"
+                description="클럽 경기에 참가하거나, 모집 게시판에서 게스트로 참여해보세요."
+                actionLabel="내 클럽 보러 가기"
+                actionHref="/clubs"
+              />
+            ) : (
+              <EmptyState
+                icon={Trophy}
+                title="경기 기록이 없어요"
+                description="경기를 완료하면 여기에 기록이 쌓여요. 첫 경기를 시작해보세요!"
+              />
+            )
           )
         ) : (
           <div className="space-y-3 stagger">

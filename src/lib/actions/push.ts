@@ -17,18 +17,19 @@ export async function saveDeviceToken(token: string, platform: 'ios' | 'android'
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return; // 로그인 전이면 조용히 무시
 
-  const { error } = await supabase.from('device_tokens').upsert(
-    {
-      token: validated.token,
-      user_id: user.id,
-      platform: validated.platform,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'token' },
-  );
+  // RPC 사용: 같은 기기에서 다른 계정으로 로그인하면 토큰을 현재 유저로 재배정.
+  // (기존 upsert는 이전 유저 소유 행의 UPDATE가 RLS에 막혀 2주간 36회 실패 —
+  //  해당 유저는 푸시를 못 받았음. 00054 마이그레이션 참고)
+  const { error } = await supabase.rpc('save_device_token', {
+    p_token: validated.token,
+    p_platform: validated.platform,
+  });
 
   if (error) {
-    logError('system', '디바이스 토큰 저장 실패', { userId: user.id, error });
+    logError('system', '디바이스 토큰 저장 실패', {
+      userId: user.id,
+      metadata: { code: error.code, message: error.message },
+    });
   }
 }
 

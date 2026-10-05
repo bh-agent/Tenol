@@ -41,6 +41,23 @@ export async function createNotification(
   }
 }
 
+/**
+ * 여러 사용자에게 같은 알림을 병렬 발송. 개별 실패는 전체를 막지 않는다.
+ * (경기 생성/변경/취소 공지, 리마인더 등 브로드캐스트용)
+ */
+export async function notifyUsers(
+  userIds: string[],
+  type: NotificationType,
+  title: string,
+  body: string,
+  data: Record<string, string> = {},
+) {
+  if (userIds.length === 0) return;
+  await Promise.allSettled(
+    [...new Set(userIds)].map((id) => createNotification(id, type, title, body, data)),
+  );
+}
+
 /** 대상 사용자의 모든 기기에 FCM 푸시 발송. 서버 내부 전용. */
 export async function sendPushToUser(userId: string, payload: PushPayload) {
   if (!isPushConfigured()) return;

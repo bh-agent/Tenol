@@ -218,6 +218,9 @@ export default function DrawPage() {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [participantMap, setParticipantMap] = useState<Record<string, Participant>>({});
   const [loading, setLoading] = useState(true);
+  // 네트워크 등으로 핵심 조회가 실패했는지 — 실패를 "대진표 없음"으로 오표시하면
+  // 운영진이 파괴적 재생성을 시도할 수 있어 반드시 구분한다.
+  const [loadFailed, setLoadFailed] = useState(false);
   const [myRole, setMyRole] = useState<ClubRole | null>(null);
   const [matchCourtCount, setMatchCourtCount] = useState(2);
   const [matchStatus, setMatchStatus] = useState<string>('upcoming');
@@ -420,7 +423,7 @@ export default function DrawPage() {
     }
 
     // Get match info for court_count, start_time, title, date
-    const { data: matchData } = await supabase
+    const { data: matchData, error: matchErr } = await supabase
       .from('matches')
       .select('court_count, start_time, title, match_date, status, court_names')
       .eq('id', matchId)
@@ -443,17 +446,26 @@ export default function DrawPage() {
       setCourtNames(names);
     }
 
-    const { data: drawsData } = await supabase
+    const { data: drawsData, error: drawsErr } = await supabase
       .from('draws')
       .select('*, games (*)')
       .eq('match_id', matchId)
       .order('round_number');
 
-    const { data: parts } = await supabase
+    const { data: parts, error: partsErr } = await supabase
       .from('match_participants')
       .select('id, user_id, guest_name, guest_gender, participant_type, status, ntrp_override, profiles:user_id (display_name, real_name, ntrp_level, gender)')
       .eq('match_id', matchId)
       .eq('status', 'confirmed');
+
+    // 핵심 조회가 하나라도 실패하면(오프라인·순단) 기존 화면 데이터를 유지하고
+    // 실패 상태만 표시한다 — null을 "데이터 없음"으로 덮어쓰지 않는 것이 중요.
+    if (matchErr || drawsErr || partsErr) {
+      setLoadFailed(true);
+      setLoading(false);
+      return;
+    }
+    setLoadFailed(false);
 
     const pList: Participant[] = (parts || []).map((p: any) => {
       const displayName = p.profiles?.display_name || p.guest_name || '???';
@@ -495,6 +507,15 @@ export default function DrawPage() {
   }, [matchId, clubId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // 네트워크 복구 시 자동 재시도 (코트는 신호가 약한 환경이라 체감 빈도가 높음)
+  const loadFailedRef = useRef(loadFailed);
+  loadFailedRef.current = loadFailed;
+  useEffect(() => {
+    const onOnline = () => { if (loadFailedRef.current) loadData(); };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [loadData]);
 
   // Effective gender considers overrides
   const getEffectiveGender = (p: Participant) => genderOverrides[p.id] || p.gender;
@@ -1569,7 +1590,17 @@ export default function DrawPage() {
         )}
 
         {/* ── Draw Results ── */}
-        {!loading && draws.length === 0 ? (
+        {!loading && loadFailed && draws.length === 0 ? (
+          /* 로드 실패 ≠ 대진표 없음 — "없어요"로 보이면 운영진이 재생성을 시도함 */
+          <Card padding="lg" className="text-center space-y-3">
+            <p className="text-sm font-medium text-foreground">데이터를 불러오지 못했습니다</p>
+            <p className="text-xs text-muted-foreground">네트워크 연결을 확인한 후 다시 시도해주세요.</p>
+            <Button variant="outline" size="sm" onClick={() => loadData()}>
+              <RefreshCw className="w-4 h-4 mr-1.5" />
+              다시 시도
+            </Button>
+          </Card>
+        ) : !loading && draws.length === 0 ? (
           <EmptyState
             icon={Shuffle}
             title="아직 대진표가 없어요"

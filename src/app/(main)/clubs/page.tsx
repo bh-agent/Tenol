@@ -6,14 +6,42 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { TopBar } from '@/components/layout/top-bar';
 import { NotificationBell } from '@/components/notifications/notification-bell';
 import { getMyClubs } from '@/lib/queries/clubs';
-import { formatRole } from '@/lib/utils/format';
-import { Users, Plus, MapPin, Search, Link2 as LinkIcon } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
+import { formatRole, formatDate, formatTime, formatDDayWithStatus } from '@/lib/utils/format';
+import { Users, Plus, MapPin, Search, Link2 as LinkIcon, Megaphone, CalendarClock, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { ClubAvatar } from '@/components/club/club-avatar';
 
+/** 내가 참가 확정한 경기 중 가장 임박한 1건 — 홈 상단 "다음 내 경기" 카드용 */
+async function getMyNextMatch() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const todayKst = new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const { data } = await supabase
+    .from('match_participants')
+    .select('matches:match_id (id, club_id, title, match_date, start_time, location, status)')
+    .eq('user_id', user.id)
+    .eq('status', 'confirmed');
+
+  const upcoming = (data || [])
+    .map((r: any) => r.matches)
+    .filter(
+      (m: any) =>
+        m && (m.status === 'upcoming' || m.status === 'in_progress') && m.match_date >= todayKst,
+    )
+    .sort(
+      (a: any, b: any) =>
+        (a.match_date || '').localeCompare(b.match_date || '') ||
+        (a.start_time || '').localeCompare(b.start_time || ''),
+    );
+  return upcoming[0] || null;
+}
+
 export default async function ClubsPage() {
-  const clubs = await getMyClubs();
+  const [clubs, nextMatch] = await Promise.all([getMyClubs(), getMyNextMatch()]);
 
   return (
     <>
@@ -36,6 +64,45 @@ export default async function ClubsPage() {
       />
 
       <div className="px-4 py-5 animate-fade-in">
+        {/* 다음 내 경기 — 홈에서 바로 "다음에 언제 치지?"에 답한다 */}
+        {nextMatch && (
+          <Link href={`/clubs/${nextMatch.club_id}/matches/${nextMatch.id}`}>
+            <Card
+              variant="glow"
+              className="mb-5 hover:shadow-[0_0_24px_rgba(0,230,118,0.15)] active:scale-[0.98] transition-all duration-300"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
+                  <CalendarClock className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs font-semibold text-primary">다음 내 경기</p>
+                    <Badge
+                      variant={
+                        formatDDayWithStatus(nextMatch.match_date, nextMatch.status) === '오늘' ||
+                        nextMatch.status === 'in_progress'
+                          ? 'success'
+                          : 'warning'
+                      }
+                      className="text-[10px] px-1.5 py-0"
+                    >
+                      {formatDDayWithStatus(nextMatch.match_date, nextMatch.status)}
+                    </Badge>
+                  </div>
+                  <h3 className="font-semibold text-foreground truncate mt-0.5">{nextMatch.title}</h3>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {formatDate(nextMatch.match_date)}
+                    {nextMatch.start_time && ` ${formatTime(nextMatch.start_time)}`}
+                    {nextMatch.location && ` · ${nextMatch.location}`}
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+              </div>
+            </Card>
+          </Link>
+        )}
+
         {/* Section header */}
         <div className="mb-4">
           <h2 className="text-xl font-bold text-foreground">
@@ -71,6 +138,14 @@ export default async function ClubsPage() {
                 </Card>
               </Link>
             </div>
+            {/* 클럽 없이도 칠 수 있는 유일한 경로 — 게스트 참가 */}
+            <Link href="/recruit">
+              <Card variant="default" className="text-center py-5 hover:border-primary/30 transition-all active:scale-[0.97]">
+                <Megaphone className="w-6 h-6 text-primary mx-auto mb-2" />
+                <p className="text-sm font-medium text-foreground">게스트로 경기 참여하기</p>
+                <p className="text-xs text-muted-foreground mt-0.5">클럽 가입 없이 모집 중인 경기에 참가</p>
+              </Card>
+            </Link>
           </div>
         ) : (
           <div className="space-y-3 stagger">

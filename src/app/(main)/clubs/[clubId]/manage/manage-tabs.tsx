@@ -71,7 +71,11 @@ export function ManageTabs({
   guestApplications,
 }: ManageTabsProps) {
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<'join' | 'guest'>('join');
+  // 처리할 건이 있는 탭을 초기 선택 — 가입 0건·게스트 N건인데 빈 '가입' 탭이
+  // 먼저 보이던 혼란 방지. 가입 건이 있으면 기존대로 가입 탭 우선.
+  const [activeTab, setActiveTab] = useState<'join' | 'guest'>(
+    joinRequests.length === 0 && guestApplications.length > 0 ? 'guest' : 'join',
+  );
   const [processedJoinIds, setProcessedJoinIds] = useState<Set<string>>(new Set());
   const [processedGuestIds, setProcessedGuestIds] = useState<Set<string>>(new Set());
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());

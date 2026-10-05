@@ -12,6 +12,8 @@ import {
   Shield,
   Bell,
   Calendar,
+  CalendarClock,
+  CalendarX,
   Users,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -21,6 +23,8 @@ const typeConfig: Record<string, { icon: typeof Bell; color: string }> = {
   guest_approved: { icon: UserCheck, color: 'text-success bg-success/10' },
   guest_rejected: { icon: UserX, color: 'text-destructive bg-destructive/10' },
   match_reminder: { icon: Bell, color: 'text-warning bg-warning/10' },
+  match_updated: { icon: CalendarClock, color: 'text-warning bg-warning/10' },
+  match_cancelled: { icon: CalendarX, color: 'text-destructive bg-destructive/10' },
   draw_published: { icon: Shuffle, color: 'text-primary bg-primary-dim' },
   score_updated: { icon: Trophy, color: 'text-warning bg-warning/10' },
   role_changed: { icon: Shield, color: 'text-primary bg-primary-dim' },

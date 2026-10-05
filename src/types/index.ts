@@ -159,6 +159,8 @@ export type NotificationType =
   | 'guest_approved'
   | 'guest_rejected'
   | 'match_reminder'
+  | 'match_updated'
+  | 'match_cancelled'
   | 'draw_published'
   | 'score_updated'
   | 'role_changed'

@@ -103,7 +103,9 @@ export function RecruitmentList({
           <EmptyState
             icon={Megaphone}
             title="모집글이 없습니다"
-            description="현재 진행 중인 모집이 없습니다. 나중에 다시 확인해보세요."
+            description="지금 모집 중인 글이 없어요. 공개 클럽을 둘러보고 마음에 드는 곳에 가입해보세요."
+            actionLabel="클럽 탐색하기"
+            actionHref="/clubs/explore"
           />
         ) : (
           posts.map((post) => (

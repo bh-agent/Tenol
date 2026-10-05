@@ -5,10 +5,11 @@ import { Card } from '@/components/ui/card';
 import { SearchInput } from '@/components/search/search-input';
 import { FilterChips } from '@/components/search/filter-chips';
 import { SearchEmpty } from '@/components/search/search-empty';
+import { createClient } from '@/lib/supabase/client';
 import { formatDate, formatMatchStatus, formatTime, formatDDayWithStatus } from '@/lib/utils/format';
 import { Calendar, Clock, MapPin, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface MatchesTabProps {
   clubId: string;
@@ -37,9 +38,18 @@ export function MatchesTab({ clubId, matches, canCreateMatch, pendingGuestByMatc
   const [statusFilter, setStatusFilter] = useState('all');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  // '참가 중' 배지용 — 목록에서 내 참가 여부를 바로 보여준다 (경기마다 들어가 확인할 필요 없이)
+  const [myUserId, setMyUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    createClient()
+      .auth.getUser()
+      .then(({ data }) => setMyUserId(data.user?.id ?? null))
+      .catch(() => {});
+  }, []);
 
   const filteredMatches = useMemo(() => {
-    return matches.filter((match: any) => {
+    const filtered = matches.filter((match: any) => {
       // 상태 필터
       if (statusFilter !== 'all' && match.status !== statusFilter) return false;
 
@@ -55,7 +65,97 @@ export function MatchesTab({ clubId, matches, canCreateMatch, pendingGuestByMatc
 
       return true;
     });
+
+    // 예정/진행 경기는 임박순으로 위에, 지난 경기는 최근순으로 아래에.
+    // (기존 단일 내림차순은 가장 먼 미래 경기가 맨 위라 다음 경기가 중간에 묻혔다)
+    const isActive = (m: any) => m.status === 'upcoming' || m.status === 'in_progress';
+    const active = filtered
+      .filter(isActive)
+      .sort((a: any, b: any) =>
+        (a.match_date || '').localeCompare(b.match_date || '') ||
+        (a.start_time || '').localeCompare(b.start_time || ''));
+    const past = filtered
+      .filter((m: any) => !isActive(m))
+      .sort((a: any, b: any) => (b.match_date || '').localeCompare(a.match_date || ''));
+    return { active, past };
   }, [matches, statusFilter, searchQuery, startDate, endDate]);
+
+  // 내 참가 상태 ('confirmed' | 'waitlisted' | null)
+  const myStatusIn = (match: any): string | null => {
+    if (!myUserId) return null;
+    const mine = match.match_participants?.find((p: any) => p.user_id === myUserId);
+    return mine && (mine.status === 'confirmed' || mine.status === 'waitlisted') ? mine.status : null;
+  };
+
+  const renderMatchCard = (match: any) => {
+    const confirmedCount = match.match_participants?.filter(
+      (p: any) => p.status === 'confirmed'
+    ).length || 0;
+    const pendingCount = pendingGuestByMatch?.[match.id] || 0;
+    const myStatus = myStatusIn(match);
+
+    return (
+      <Link key={match.id} href={`/clubs/${clubId}/matches/${match.id}`}>
+        <Card className="hover:border-primary/30 transition-all active:scale-[0.99] mb-3">
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="font-medium text-foreground">{match.title}</h4>
+                {/* 내 참가 여부 — 목록에서 바로 보이게 */}
+                {myStatus === 'confirmed' && match.status !== 'completed' && match.status !== 'cancelled' && (
+                  <Badge variant="success" className="text-[10px] px-1.5 py-0">참가 중</Badge>
+                )}
+                {myStatus === 'waitlisted' && (
+                  <Badge variant="warning" className="text-[10px] px-1.5 py-0">대기 중</Badge>
+                )}
+                <Badge variant={statusVariant[match.status] || 'default'}>
+                  {formatMatchStatus(match.status)}
+                </Badge>
+                <Badge
+                  variant={
+                    match.status === 'completed' || match.status === 'cancelled'
+                      ? 'default'
+                      : formatDDayWithStatus(match.match_date, match.status) === '오늘'
+                        ? 'success'
+                        : match.status === 'in_progress'
+                          ? 'success'
+                          : 'warning'
+                  }
+                  className="text-[10px] px-1.5 py-0"
+                >
+                  {formatDDayWithStatus(match.match_date, match.status)}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                {formatDate(match.match_date)}
+                {match.start_time && ` ${formatTime(match.start_time)}`}
+              </p>
+              {match.location && (
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {match.location}
+                </p>
+              )}
+            </div>
+            <div className="text-right text-sm space-y-1">
+              <div>
+                <span className="text-primary font-semibold">{confirmedCount}명</span>
+                {match.max_participants && (
+                  <span className="text-muted-foreground">/{match.max_participants}</span>
+                )}
+              </div>
+              {pendingCount > 0 && (
+                <Badge variant="warning" className="text-[10px] px-1.5 py-0 flex items-center gap-0.5">
+                  <Clock className="w-2.5 h-2.5" />
+                  대기 {pendingCount}
+                </Badge>
+              )}
+            </div>
+          </div>
+        </Card>
+      </Link>
+    );
+  };
 
   const hasFilters = searchQuery || statusFilter !== 'all' || startDate || endDate;
 
@@ -118,7 +218,7 @@ export function MatchesTab({ clubId, matches, canCreateMatch, pendingGuestByMatc
         </div>
       )}
 
-      {filteredMatches.length === 0 ? (
+      {filteredMatches.active.length === 0 && filteredMatches.past.length === 0 ? (
         hasFilters ? (
           <SearchEmpty
             query={searchQuery}
@@ -140,67 +240,15 @@ export function MatchesTab({ clubId, matches, canCreateMatch, pendingGuestByMatc
         )
       ) : (
         <div className="stagger">
-          {filteredMatches.map((match: any) => {
-            const confirmedCount = match.match_participants?.filter(
-              (p: any) => p.status === 'confirmed'
-            ).length || 0;
-            const pendingCount = pendingGuestByMatch?.[match.id] || 0;
-
-            return (
-              <Link key={match.id} href={`/clubs/${clubId}/matches/${match.id}`}>
-                <Card className="hover:border-primary/30 transition-all active:scale-[0.99] mb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-medium text-foreground">{match.title}</h4>
-                        <Badge variant={statusVariant[match.status] || 'default'}>
-                          {formatMatchStatus(match.status)}
-                        </Badge>
-                        <Badge
-                          variant={
-                            match.status === 'completed' || match.status === 'cancelled'
-                              ? 'default'
-                              : formatDDayWithStatus(match.match_date, match.status) === '오늘'
-                                ? 'success'
-                                : match.status === 'in_progress'
-                                  ? 'success'
-                                  : 'warning'
-                          }
-                          className="text-[10px] px-1.5 py-0"
-                        >
-                          {formatDDayWithStatus(match.match_date, match.status)}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {formatDate(match.match_date)}
-                        {match.start_time && ` ${formatTime(match.start_time)}`}
-                      </p>
-                      {match.location && (
-                        <p className="text-sm text-muted-foreground flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5" />
-                          {match.location}
-                        </p>
-                      )}
-                    </div>
-                    <div className="text-right text-sm space-y-1">
-                      <div>
-                        <span className="text-primary font-semibold">{confirmedCount}명</span>
-                        {match.max_participants && (
-                          <span className="text-muted-foreground">/{match.max_participants}</span>
-                        )}
-                      </div>
-                      {pendingCount > 0 && (
-                        <Badge variant="warning" className="text-[10px] px-1.5 py-0 flex items-center gap-0.5">
-                          <Clock className="w-2.5 h-2.5" />
-                          대기 {pendingCount}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              </Link>
-            );
-          })}
+          {filteredMatches.active.map((match: any) => renderMatchCard(match))}
+          {filteredMatches.past.length > 0 && filteredMatches.active.length > 0 && (
+            <div className="flex items-center gap-2 pt-2 pb-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground">지난 경기</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+          )}
+          {filteredMatches.past.map((match: any) => renderMatchCard(match))}
         </div>
       )}
     </div>

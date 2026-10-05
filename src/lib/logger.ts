@@ -32,6 +32,20 @@ async function writeLog(entry: LogEntry): Promise<void> {
 
     const errorObj = entry.error instanceof Error ? entry.error : null;
 
+    // Supabase 에러 등 plain object는 String()하면 "[object Object]"가 되어
+    // 원인 추적이 불가능했다 → message/code를 뽑고, 없으면 JSON으로 직렬화.
+    let errorName: string | null = null;
+    if (errorObj) {
+      errorName = errorObj.name;
+    } else if (entry.error) {
+      const e = entry.error as { message?: unknown; code?: unknown };
+      errorName =
+        typeof entry.error === 'string'
+          ? entry.error
+          : [e.code, e.message].filter(Boolean).join(': ') ||
+            (() => { try { return JSON.stringify(entry.error).slice(0, 500); } catch { return String(entry.error); } })();
+    }
+
     await supabase.from('app_logs').insert({
       level: entry.level,
       category: entry.category,
@@ -39,7 +53,7 @@ async function writeLog(entry: LogEntry): Promise<void> {
       user_id: entry.userId || null,
       club_id: entry.clubId || null,
       match_id: entry.matchId || null,
-      error_name: errorObj?.name || (entry.error ? String(entry.error) : null),
+      error_name: errorName,
       error_stack: errorObj?.stack || null,
       path: entry.path || null,
       method: entry.method || null,

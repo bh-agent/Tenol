@@ -13,7 +13,7 @@ import { EmptyState } from '@/components/ui/empty-state';
 import { ResultsShareImage, type ResultsShareImageProps } from '@/components/match/results-share-image';
 import { Trophy, RefreshCw, Crown, Share2, Download, X, Minus, Plus } from 'lucide-react';
 import { useParams } from 'next/navigation';
-import { useCallback, useEffect, useState, createElement } from 'react';
+import { useCallback, useEffect, useRef, useState, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { flushSync } from 'react-dom';
 import { cn } from '@/lib/utils/cn';
@@ -82,6 +82,8 @@ export default function ResultsPage() {
   const [saving, setSaving] = useState(false);
   const [myRole, setMyRole] = useState<ClubRole | null>(null);
   const [loading, setLoading] = useState(true);
+  // 핵심 조회 실패 여부 — 빈 상태("경기 없음")와 구분해 표시
+  const [loadFailed, setLoadFailed] = useState(false);
 
   // Computed
   const [mvpTop3, setMvpTop3] = useState<MvpEntry[]>([]);
@@ -135,25 +137,39 @@ export default function ResultsPage() {
       setClubLogoUrl(clubData.logo_url || null);
     }
 
-    const { data: draws } = await supabase
+    const { data: draws, error: drawsErr } = await supabase
       .from('draws')
       .select('id')
       .eq('match_id', matchId);
 
-    if (!draws?.length) { setLoading(false); return; }
+    // 조회 실패(오프라인·순단)를 "경기 없음"으로 오표시하지 않는다.
+    if (drawsErr) {
+      setLoadFailed(true);
+      setLoading(false);
+      return;
+    }
+
+    if (!draws?.length) { setLoadFailed(false); setLoading(false); return; }
 
     const drawIds = draws.map((d) => d.id);
-    const { data: gamesData } = await supabase
+    const { data: gamesData, error: gamesErr } = await supabase
       .from('games')
       .select('*')
       .in('draw_id', drawIds)
       .order('game_order')
       .order('court_number');
 
-    const { data: parts } = await supabase
+    const { data: parts, error: partsErr } = await supabase
       .from('match_participants')
       .select('id, user_id, guest_name, profiles:user_id (display_name, real_name, avatar_url, ntrp_level)')
       .eq('match_id', matchId);
+
+    if (gamesErr || partsErr) {
+      setLoadFailed(true);
+      setLoading(false);
+      return;
+    }
+    setLoadFailed(false);
 
     const pMap: Record<string, string> = {};
     const avatarMap: Record<string, string | null> = {};
@@ -391,6 +407,15 @@ export default function ResultsPage() {
   }, [matchId, clubId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // 네트워크 복구 시 자동 재시도
+  const loadFailedRef = useRef(loadFailed);
+  loadFailedRef.current = loadFailed;
+  useEffect(() => {
+    const onOnline = () => { if (loadFailedRef.current) loadData(); };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [loadData]);
 
   const getName = (id: string | null) => id ? participants[id] || '???' : '-';
 
@@ -655,6 +680,16 @@ export default function ResultsPage() {
           <div className="flex items-center justify-center py-16">
             <RefreshCw className="w-6 h-6 text-primary animate-spin" />
           </div>
+        ) : loadFailed && games.length === 0 ? (
+          /* 로드 실패 ≠ 경기 없음 — 오프라인을 빈 상태로 오표시하지 않는다 */
+          <Card padding="lg" className="text-center space-y-3">
+            <p className="text-sm font-medium text-foreground">데이터를 불러오지 못했습니다</p>
+            <p className="text-xs text-muted-foreground">네트워크 연결을 확인한 후 다시 시도해주세요.</p>
+            <Button variant="outline" size="sm" onClick={() => loadData()}>
+              <RefreshCw className="w-4 h-4 mr-1.5" />
+              다시 시도
+            </Button>
+          </Card>
         ) : games.length === 0 ? (
           <EmptyState
             icon={Trophy}
