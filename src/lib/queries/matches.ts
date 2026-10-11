@@ -54,7 +54,7 @@ export async function getMyMatches() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('match_participants')
     .select(`
       id, status, participant_type,
@@ -68,6 +68,17 @@ export async function getMyMatches() {
     // → 자기 신청 상태를 확인할 수 있도록 waitlisted/pending도 포함 (UI에서 배지로 구분)
     .in('status', ['confirmed', 'waitlisted', 'pending'])
     .order('requested_at', { ascending: false });
+
+  // 에러를 삼키고 []를 반환하면 "경기 없음"으로 위장되어 장애가 보이지 않는다.
+  // (실사례: enum에 waitlisted가 없던 DB에서 쿼리 전체가 터졌는데 빈 탭으로만 보임)
+  if (error) {
+    const { logError } = await import('@/lib/logger');
+    logError('match', 'getMyMatches 조회 실패', {
+      userId: user.id,
+      metadata: { code: error.code, message: error.message },
+    });
+    throw new Error('내 경기를 불러오지 못했습니다'); // error.tsx가 재시도 UI 표시
+  }
 
   return data || [];
 }
