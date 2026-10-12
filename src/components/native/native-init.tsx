@@ -52,6 +52,39 @@ export function NativeInit() {
         const { App } = await import('@capacitor/app');
         const STALE_MS = 30 * 60 * 1000;
         let hiddenAt: number | null = null;
+
+        // ⚠️ navigator.onLine은 WKWebView에서 라디오가 깨기 전에도 true를 주므로
+        // 믿으면 안 된다 — 복귀 직후 즉시 reload하면 메인 문서 로드가 실패해
+        // Capacitor errorPath(오프라인 화면)로 떨어진다("오래 있다 들어가면
+        // 인터넷 없음 화면" 증상의 원인). fetch 실패는 errorPath를 유발하지
+        // 않으므로, 실제 서버 핑이 성공했을 때만 reload한다.
+        const pingServer = async (timeoutMs = 2500): Promise<boolean> => {
+          try {
+            const ctrl = new AbortController();
+            const t = setTimeout(() => ctrl.abort(), timeoutMs);
+            await fetch('/offline.html', { method: 'HEAD', cache: 'no-store', signal: ctrl.signal });
+            clearTimeout(t);
+            return true;
+          } catch {
+            return false;
+          }
+        };
+        let reloading = false;
+        const reloadWhenReachable = async () => {
+          if (reloading) return;
+          reloading = true;
+          for (let i = 0; i < 8; i++) {
+            if (await pingServer()) {
+              window.location.reload();
+              return;
+            }
+            await new Promise((r) => setTimeout(r, 1000 + i * 500)); // 총 ~20초 백오프
+          }
+          // 끝내 도달 못 하면 현재 화면 유지(진짜 오프라인) — 연결 복구 시 1회 재시도
+          reloading = false;
+          window.addEventListener('online', () => { void reloadWhenReachable(); }, { once: true });
+        };
+
         const hPause = await App.addListener('pause', () => {
           hiddenAt = Date.now();
         });
@@ -59,15 +92,9 @@ export function NativeInit() {
           const stale = hiddenAt && Date.now() - hiddenAt > STALE_MS;
           hiddenAt = null;
           if (stale) {
-            // 복귀 직후엔 OS 네트워크가 아직 안 깨어났을 수 있다 — 이때 reload하면
-            // 로드 실패로 오프라인 화면이 뜬다. 온라인 확인 후(또는 online 이벤트에) 새로고침.
-            if (navigator.onLine) {
-              window.location.reload();
-            } else {
-              window.addEventListener('online', () => window.location.reload(), { once: true });
-            }
+            void reloadWhenReachable();
           } else {
-            // 짧은 복귀는 데이터만 최신화
+            // 짧은 복귀는 데이터만 최신화 (fetch 기반이라 실패해도 오프라인 화면 안 뜸)
             router.refresh();
           }
         });
