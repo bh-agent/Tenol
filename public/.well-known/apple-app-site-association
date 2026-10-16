@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["U73UP8WL5G.app.tenol.club"],
+        "components": [
+          { "/": "/auth/*", "exclude": true, "comment": "외부 브라우저 OAuth 흐름은 앱이 가로채면 안 됨" },
+          { "/": "/login", "exclude": true },
+          { "/": "/clubs/*" },
+          { "/": "/recruit*" },
+          { "/": "/profile/*" },
+          { "/": "/my-matches" },
+          { "/": "/notifications" }
+        ]
+      }
+    ]
+  }
+}

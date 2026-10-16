@@ -10,5 +10,10 @@
 	<array>
 		<string>Default</string>
 	</array>
+	<!-- Universal Links: /.well-known/apple-app-site-association (Team U73UP8WL5G). Xcode > Signing & Capabilities에 Associated Domains가 켜져 있어야 함 -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:tenol-one.vercel.app</string>
+	</array>
 </dict>
 </plist>

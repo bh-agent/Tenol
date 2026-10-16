@@ -23,20 +23,23 @@ export const metadata: Metadata = {
     icon: '/icons/icon-192.png',
     apple: '/icons/apple-touch-icon.png',
   },
+  // og:image는 src/app/opengraph-image.tsx(1200×630)가 자동 주입. 여기서 images를 지정하면 그걸 덮어쓰므로 비워둔다.
   openGraph: {
     title: '테놀 - 테니스 치며 놀자',
     description: '테니스 클럽 운영을 더 쉽고 즐겁게. 게스트 구인, 대진표, 경기 기록, MVP까지 한 번에.',
     siteName: '테놀',
-    images: [{ url: '/icons/icon-512.png', width: 512, height: 512, alt: '테놀' }],
     locale: 'ko_KR',
     type: 'website',
   },
   twitter: {
-    card: 'summary',
+    card: 'summary_large_image',
     title: '테놀 - 테니스 치며 놀자',
     description: '테니스 클럽 운영을 더 쉽고 즐겁게.',
-    images: ['/icons/icon-512.png'],
   },
+  // iOS Safari 스마트 앱 배너 (App Store 등록 후 NEXT_PUBLIC_APP_STORE_ID 설정 시)
+  ...(process.env.NEXT_PUBLIC_APP_STORE_ID
+    ? { other: { 'apple-itunes-app': `app-id=${process.env.NEXT_PUBLIC_APP_STORE_ID}` } }
+    : {}),
 };
 
 export const viewport: Viewport = {

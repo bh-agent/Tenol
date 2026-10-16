@@ -32,6 +32,20 @@
                 <data android:scheme="@string/custom_url_scheme" />
             </intent-filter>
 
+            <!-- Android App Links: https://tenol-one.vercel.app/clubs/... 등을 앱에서 바로 연다.
+                 검증에는 /.well-known/assetlinks.json의 서명 인증서 SHA-256이 맞아야 한다(docs/DEEP_LINK_SETUP.md).
+                 /auth, /login은 제외 — 외부 브라우저 OAuth 흐름을 가로채면 안 됨. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="tenol-one.vercel.app" android:pathPrefix="/clubs" />
+                <data android:scheme="https" android:host="tenol-one.vercel.app" android:pathPrefix="/recruit" />
+                <data android:scheme="https" android:host="tenol-one.vercel.app" android:pathPrefix="/profile" />
+                <data android:scheme="https" android:host="tenol-one.vercel.app" android:pathPrefix="/my-matches" />
+                <data android:scheme="https" android:host="tenol-one.vercel.app" android:pathPrefix="/notifications" />
+            </intent-filter>
+
         </activity>
 
         <provider

@@ -17,6 +17,7 @@ import { GuestPendingList } from '@/components/match/guest-pending-list';
 import { MatchBottomBar } from '@/components/match/match-bottom-bar';
 import { MatchReminderBanner } from '@/components/match/match-reminder-banner';
 import { ShareButton } from '@/components/ui/share-button';
+import { OpenInAppBanner } from '@/components/native/open-in-app-banner';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function MatchDetailPage({
@@ -106,10 +107,11 @@ export default async function MatchDetailPage({
           <ShareButton
             url={`/clubs/${clubId}/matches/${matchId}`}
             title={match.title}
-            text={`${match.title} - 테놀`}
           />
         }
       />
+
+      <OpenInAppBanner />
 
       {match.status === 'upcoming' && (
         <MatchReminderBanner

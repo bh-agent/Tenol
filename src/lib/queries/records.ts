@@ -13,14 +13,29 @@ export type ClubRecord = {
 export async function getClubRecords(clubId: string): Promise<ClubRecord[]> {
   const supabase = await createClient();
 
-  const { data: statsData } = await supabase
+  const { data: rawStats } = await supabase
     .from('player_game_stats')
     .select('*')
     .eq('club_id', clubId)
     .not('score_team_a', 'is', null)
     .order('match_date', { ascending: true });
 
-  if (!statsData || statsData.length === 0) return [];
+  if (!rawStats || rawStats.length === 0) return [];
+
+  // 같은 날 여러 게임의 순서가 DB 반환 순서에 따라 뒤섞이면 연승 계산이 흔들린다.
+  // match_date → completed_at → game_order → court_number 순으로 결정적 정렬.
+  // (뷰 확장 컬럼은 00048/00052 적용 전 DB에서는 undefined → 0으로 취급)
+  type Ordered = { match_date: string; completed_at?: string | null; game_order?: number | null; court_number?: number | null };
+  const statsData = [...rawStats].sort((a: Ordered, b: Ordered) => {
+    if (a.match_date !== b.match_date) return a.match_date < b.match_date ? -1 : 1;
+    const ca = a.completed_at ?? '';
+    const cb = b.completed_at ?? '';
+    if (ca !== cb) return ca < cb ? -1 : 1;
+    const ga = a.game_order ?? 0;
+    const gb = b.game_order ?? 0;
+    if (ga !== gb) return ga - gb;
+    return (a.court_number ?? 0) - (b.court_number ?? 0);
+  });
 
   // Collect all user IDs to fetch profiles
   const userIds = [...new Set(statsData.map((s) => s.user_id))];
@@ -197,18 +212,25 @@ export async function getClubActivityCalendar(
   const endMonth = month === 12 ? 1 : month + 1;
   const endDate = `${endYear}-${String(endMonth).padStart(2, '0')}-01`;
 
+  // player_game_stats는 "선수 × 게임" 행이라 복식 한 게임이 4행으로 잡힌다.
+  // 날짜별 '경기 수'는 game_id를 중복 제거해 센다. (점수 입력 여부와 무관하게 대진표상 게임 수)
   const { data } = await supabase
     .from('player_game_stats')
-    .select('match_date')
+    .select('match_date, game_id')
     .eq('club_id', clubId)
     .gte('match_date', startDate)
     .lt('match_date', endDate);
 
   if (!data || data.length === 0) return {};
 
-  const activity: Record<string, number> = {};
+  const gamesByDate: Record<string, Set<string>> = {};
   for (const row of data) {
-    activity[row.match_date] = (activity[row.match_date] || 0) + 1;
+    (gamesByDate[row.match_date] ??= new Set()).add(row.game_id);
+  }
+
+  const activity: Record<string, number> = {};
+  for (const [date, games] of Object.entries(gamesByDate)) {
+    activity[date] = games.size;
   }
 
   return activity;

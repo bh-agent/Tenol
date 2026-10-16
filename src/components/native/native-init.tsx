@@ -50,6 +50,28 @@ export function NativeInit() {
         await Keyboard.setScroll({ isDisabled: false });
       } catch {}
 
+      // 유니버설 링크(iOS) / 앱 링크(Android): https://tenol-one.vercel.app/clubs/... 로
+      // 앱이 열리면 WebView를 그 화면으로 이동시킨다. 콜드 스타트는 getLaunchUrl로 처리.
+      // 커스텀 스킴(app.tenol.club://auth/...)은 로그인 페이지가 담당하므로 건드리지 않는다.
+      try {
+        const { App } = await import('@capacitor/app');
+        const routeFromUrl = (raw: string | null | undefined) => {
+          if (!raw) return;
+          try {
+            const u = new URL(raw);
+            if (u.protocol !== 'https:' && u.protocol !== 'http:') return;
+            if (u.host !== window.location.host) return;
+            if (u.pathname.startsWith('/auth') || u.pathname.startsWith('/login')) return;
+            const target = u.pathname + u.search;
+            if (target !== window.location.pathname + window.location.search) router.push(target);
+          } catch {}
+        };
+        const hUrl = await App.addListener('appUrlOpen', ({ url }) => routeFromUrl(url));
+        removers.push(() => hUrl.remove());
+        const launch = await App.getLaunchUrl();
+        routeFromUrl(launch?.url);
+      } catch {}
+
       // Android back button
       try {
         const { App } = await import('@capacitor/app');

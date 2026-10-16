@@ -17,6 +17,7 @@ import { ClubTabs } from '@/components/club/club-tabs';
 import { ClubCreatedCelebration } from '@/components/club/club-created-celebration';
 import { ClubActivitySummary } from '@/components/club/club-activity-summary';
 import { ShareButton } from '@/components/ui/share-button';
+import { OpenInAppBanner } from '@/components/native/open-in-app-banner';
 import { JoinRequestList } from '@/components/club/join-request-list';
 import { ClubJoinButton } from '@/components/club/club-join-button';
 import { getMyJoinRequestStatus } from '@/lib/queries/clubs';
@@ -65,7 +66,7 @@ export default async function ClubDetailPage({
         backHref="/clubs"
         rightAction={
           <div className="flex items-center gap-1">
-            <ShareButton url={`/clubs/${clubId}`} title={club.name} text={`${club.name} - 테놀`} />
+            <ShareButton url={`/clubs/${clubId}`} title={club.name} />
             <RefreshButton />
             {canEditClub && (
               <Link
@@ -82,6 +83,8 @@ export default async function ClubDetailPage({
           </div>
         }
       />
+
+      <OpenInAppBanner />
 
       {/* Club Header Card */}
       <div className="px-4 pt-4 pb-2 animate-fade-in">

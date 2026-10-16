@@ -13,6 +13,17 @@ export type MvpEntry = {
   win_rate: number;
 };
 
+type MvpAgg = { totalScore: number; gamesPlayed: number; wins: number };
+
+/** MVP 순위 규칙 (results/page.tsx와 동일): 승수 → 총득점 → 평균득점 */
+export function compareMvp(a: MvpAgg, b: MvpAgg): number {
+  if (b.wins !== a.wins) return b.wins - a.wins;
+  if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+  const avgA = a.gamesPlayed > 0 ? a.totalScore / a.gamesPlayed : 0;
+  const avgB = b.gamesPlayed > 0 ? b.totalScore / b.gamesPlayed : 0;
+  return avgB - avgA;
+}
+
 function getPeriodStartDate(period: MvpPeriod): string | null {
   if (period === 'all' || period === 'match') return null;
   const now = new Date();
@@ -91,14 +102,10 @@ async function buildMvpRanking(
     if (qualified.length === 0) return [];
   }
 
-  // Sort by avg score (total/games) desc, tiebreaker: total score, then wins
-  qualified.sort((a, b) => {
-    const avgA = a[1].gamesPlayed > 0 ? a[1].totalScore / a[1].gamesPlayed : 0;
-    const avgB = b[1].gamesPlayed > 0 ? b[1].totalScore / b[1].gamesPlayed : 0;
-    if (avgB !== avgA) return avgB - avgA;
-    if (b[1].totalScore !== a[1].totalScore) return b[1].totalScore - a[1].totalScore;
-    return b[1].wins - a[1].wins;
-  });
+  // 경기 결과 화면(results/page.tsx)의 '오늘의 MVP'와 동일한 규칙으로 통일:
+  // 승수 → 총득점 → 평균득점. (이전엔 평균득점 우선이라 같은 클럽에서 결과 화면과
+  // 통계 화면의 MVP가 서로 다르게 나왔다)
+  qualified.sort((a, b) => compareMvp(a[1], b[1]));
 
   const topEntries = qualified.slice(0, limit);
   const userIds = topEntries.map(([uid]) => uid);
@@ -184,13 +191,7 @@ export async function getMatchMvp(
   const entries = Object.entries(playerAgg);
   if (entries.length === 0) return null;
 
-  entries.sort((a, b) => {
-    const avgA = a[1].gamesPlayed > 0 ? a[1].totalScore / a[1].gamesPlayed : 0;
-    const avgB = b[1].gamesPlayed > 0 ? b[1].totalScore / b[1].gamesPlayed : 0;
-    if (avgB !== avgA) return avgB - avgA;
-    if (b[1].totalScore !== a[1].totalScore) return b[1].totalScore - a[1].totalScore;
-    return b[1].wins - a[1].wins;
-  });
+  entries.sort((a, b) => compareMvp(a[1], b[1]));
 
   const [mvpId, agg] = entries[0];
 
