@@ -10,6 +10,6 @@ export const config = {
   // 미들웨어가 API까지 /login으로 리다이렉트하면 Vercel Cron(쿠키 없음)이 영원히 차단됨.
   // 정적 파일(manifest/sw/offline/robots/sitemap)도 인증 대상이 아니므로 제외.
   matcher: [
-    '/((?!api/|_next/static|_next/image|favicon.ico|\.well-known/|manifest\\.json|sw\\.js|offline\\.html|robots\\.txt|sitemap\\.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api/|_next/static|_next/image|favicon.ico|\.well-known/|opengraph-image|twitter-image|manifest\\.json|sw\\.js|offline\\.html|robots\\.txt|sitemap\\.xml|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
