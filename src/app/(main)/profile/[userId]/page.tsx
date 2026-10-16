@@ -156,7 +156,7 @@ export default async function UserProfilePage({
         <Card variant="glass" padding="lg">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-primary" />
+              <BarChart3 className="w-5 h-5 text-primary-ink" />
             </div>
             <div className="flex-1">
               <h3 className="font-semibold text-foreground">전체 전적</h3>
@@ -199,7 +199,7 @@ export default async function UserProfilePage({
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Users className="w-5 h-5 text-primary" />
+                <Users className="w-5 h-5 text-primary-ink" />
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">가입한 클럽</h3>
@@ -213,7 +213,7 @@ export default async function UserProfilePage({
               <div className="text-center py-8 space-y-4">
                 <div className="flex justify-center">
                   <div className="w-16 h-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-                    <Users className="w-8 h-8 text-primary/60" />
+                    <Users className="w-8 h-8 text-primary-ink/60" />
                   </div>
                 </div>
                 <div>
@@ -222,7 +222,7 @@ export default async function UserProfilePage({
                 </div>
                 <div className="flex gap-3 px-2">
                   <Link href="/clubs/new" className="flex-1">
-                    <div className="h-11 rounded-xl border border-primary bg-primary/10 text-primary text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-primary/20 transition-all duration-200 active:scale-[0.97]">
+                    <div className="h-11 rounded-xl border border-primary bg-primary/10 text-primary-ink text-sm font-medium flex items-center justify-center gap-1.5 hover:bg-primary/20 transition-all duration-200 active:scale-[0.97]">
                       <Plus className="w-4 h-4" />
                       클럽 만들기
                     </div>
@@ -263,7 +263,7 @@ export default async function UserProfilePage({
                         </span>
                       </Badge>
                     )}
-                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary-ink transition-colors" />
                   </div>
                 </Link>
               ))}
@@ -275,16 +275,16 @@ export default async function UserProfilePage({
         {isOwnProfile && profile.is_admin && (
           <Link
             href="/admin"
-            className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 hover:border-red-500/40 transition-all"
+            className="flex items-center gap-3 p-4 rounded-2xl bg-destructive/10 border border-destructive/20 hover:border-destructive/40 transition-all"
           >
-            <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center">
-              <ShieldAlert className="w-5 h-5 text-red-400" />
+            <div className="w-10 h-10 rounded-xl bg-destructive/15 flex items-center justify-center">
+              <ShieldAlert className="w-5 h-5 text-destructive" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-semibold text-foreground">관리자 모드</p>
               <p className="text-xs text-muted-foreground">플랫폼 관리 대시보드</p>
             </div>
-            <ChevronRight className="w-5 h-5 text-red-400" />
+            <ChevronRight className="w-5 h-5 text-destructive" />
           </Link>
         )}
 

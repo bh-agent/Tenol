@@ -27,9 +27,9 @@ export default async function AdminDashboardPage() {
         title="관리자"
         backHref="/profile"
         rightAction={
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-red-500/15 border border-red-500/30">
-            <Shield className="w-3.5 h-3.5 text-red-400" />
-            <span className="text-xs font-semibold text-red-400">ADMIN</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive/15 border border-destructive/30">
+            <Shield className="w-3.5 h-3.5 text-destructive" />
+            <span className="text-xs font-semibold text-destructive">ADMIN</span>
           </div>
         }
       />
@@ -50,14 +50,14 @@ export default async function AdminDashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <UserPlus className="w-5 h-5 text-primary" />
+                <UserPlus className="w-5 h-5 text-primary-ink" />
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">최근 가입</h3>
                 <p className="text-xs text-muted-foreground">최근 5명</p>
               </div>
             </div>
-            <Link href="/admin/users" className="text-xs text-primary hover:text-primary/80 transition-colors">
+            <Link href="/admin/users" className="text-xs text-primary-ink hover:text-primary-ink/80 transition-colors">
               전체보기
             </Link>
           </div>
@@ -87,14 +87,14 @@ export default async function AdminDashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-primary" />
+                <Building2 className="w-5 h-5 text-primary-ink" />
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">최근 생성 클럽</h3>
                 <p className="text-xs text-muted-foreground">최근 5개</p>
               </div>
             </div>
-            <Link href="/admin/clubs" className="text-xs text-primary hover:text-primary/80 transition-colors">
+            <Link href="/admin/clubs" className="text-xs text-primary-ink hover:text-primary-ink/80 transition-colors">
               전체보기
             </Link>
           </div>

@@ -151,7 +151,7 @@ export function GameRoundCard({
             'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-bold',
             allCompleted
               ? 'bg-success/10 text-success'
-              : 'bg-primary/10 text-primary'
+              : 'bg-primary/10 text-primary-ink'
           )}
         >
           {allCompleted && <Check className="w-3.5 h-3.5" />}
@@ -228,7 +228,7 @@ export function GameRoundCard({
                           e.stopPropagation();
                           onEditGame?.(game);
                         }}
-                        className="p-1 rounded-md hover:bg-white/5 transition-colors cursor-pointer"
+                        className="p-1 rounded-md hover:bg-hairline transition-colors cursor-pointer"
                         title="수정"
                       >
                         <Pencil className="w-3 h-3 text-muted-foreground" />
@@ -266,7 +266,7 @@ export function GameRoundCard({
                         <span
                           className={
                             game.winner === 'team_a'
-                              ? 'text-primary'
+                              ? 'text-primary-ink'
                               : 'text-foreground'
                           }
                         >
@@ -276,7 +276,7 @@ export function GameRoundCard({
                         <span
                           className={
                             game.winner === 'team_b'
-                              ? 'text-primary'
+                              ? 'text-primary-ink'
                               : 'text-foreground'
                           }
                         >
@@ -284,7 +284,7 @@ export function GameRoundCard({
                         </span>
                       </span>
                     ) : (
-                      <span className="text-xs text-primary font-bold tracking-wider">
+                      <span className="text-xs text-primary-ink font-bold tracking-wider">
                         VS
                       </span>
                     )}
@@ -329,7 +329,7 @@ export function GameRoundCard({
         {canManage && onAddGame && (
           <button
             onClick={onAddGame}
-            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-border text-xs text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-border text-xs text-muted-foreground hover:text-primary-ink hover:border-primary/40 transition-colors cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             {timeSlotIndex}경기에 코트 추가

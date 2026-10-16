@@ -58,7 +58,7 @@ export function MembersTab({ clubId, members, myRole, canManageMembers, achievem
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-foreground truncate hover:text-primary transition-colors">
+                  <span className="font-semibold text-sm text-foreground truncate hover:text-primary-ink transition-colors">
                     {member.profiles?.display_name}
                   </span>
                   {member.profiles?.id && achievementsByUser[member.profiles.id]?.length > 0 && (
@@ -68,8 +68,8 @@ export function MembersTab({ clubId, members, myRole, canManageMembers, achievem
                   )}
                   <Badge variant={roleVariant(member.role)}>
                     <span className="flex items-center gap-1">
-                      {member.role === 'owner' && <Crown className="w-3 h-3 text-yellow-500" />}
-                      {member.role === 'admin' && <Shield className="w-3 h-3 text-emerald-500" />}
+                      {member.role === 'owner' && <Crown className="w-3 h-3 text-medal-gold" />}
+                      {member.role === 'admin' && <Shield className="w-3 h-3 text-primary-ink" />}
                       {formatRole(member.role)}
                     </span>
                   </Badge>
@@ -77,7 +77,7 @@ export function MembersTab({ clubId, members, myRole, canManageMembers, achievem
 
                 <div className="flex items-center gap-3 mt-1">
                   {member.profiles?.ntrp_level && (
-                    <span className="text-xs text-primary font-medium">
+                    <span className="text-xs text-primary-ink font-medium">
                       NTRP {member.profiles.ntrp_level}
                     </span>
                   )}

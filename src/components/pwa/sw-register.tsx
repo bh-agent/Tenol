@@ -52,10 +52,10 @@ function showUpdateToast(worker: ServiceWorker) {
     left: 50%;
     transform: translateX(-50%);
     z-index: 10000;
-    background: rgba(20, 20, 20, 0.9);
+    background: var(--t-glass-bg-opaque, rgba(20, 20, 20, 0.96));
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    color: #F5F5F5;
+    color: var(--t-foreground, #F5F5F5);
     padding: 12px 20px;
     border-radius: 16px;
     font-size: 14px;
@@ -63,7 +63,7 @@ function showUpdateToast(worker: ServiceWorker) {
     display: flex;
     align-items: center;
     gap: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 0 1px rgba(42,42,42,1);
+    box-shadow: 0 4px 20px var(--t-shadow-color, rgba(0,0,0,0.3)), 0 0 0 1px var(--t-border, #2A2A2A);
     font-family: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
     animation: fadeIn 0.4s ease-out;
   `;
@@ -74,7 +74,7 @@ function showUpdateToast(worker: ServiceWorker) {
   const button = document.createElement('button');
   button.textContent = '새로고침';
   button.style.cssText = `
-    background: #00E676;
+    background: var(--t-primary, #00E676);
     color: #0A0A0A;
     border: none;
     border-radius: 8px;
@@ -85,10 +85,10 @@ function showUpdateToast(worker: ServiceWorker) {
     transition: background 0.2s;
   `;
   button.addEventListener('mouseenter', () => {
-    button.style.background = '#69F0AE';
+    button.style.background = 'var(--t-primary-light, #69F0AE)';
   });
   button.addEventListener('mouseleave', () => {
-    button.style.background = '#00E676';
+    button.style.background = 'var(--t-primary, #00E676)';
   });
   button.addEventListener('click', () => {
     worker.postMessage('skipWaiting');

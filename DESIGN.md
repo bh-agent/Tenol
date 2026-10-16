@@ -10,7 +10,57 @@ Source of truth for the Tenol design language. All color values, spacing convent
 - **Tagline:** 테니스 치며 놀자
 - **Aesthetic:** Premium dark, sports-tech, neon green on black
 - **Language:** Korean (lang="ko"), word-break: keep-all
-- **Theme color:** `#0A0A0A` (used in PWA manifest and viewport meta)
+- **Theme color:** `#0A0A0A` dark / `#F5F6F5` light (viewport meta는 런타임에 갱신, 매니페스트는 다크 고정)
+
+---
+
+## Themes (Dark / Light)
+
+다크가 기본이고 라이트는 선택이다. 선호는 프로필 하단 설정의 **화면 테마**(시스템 / 라이트 / 다크)에서 고르며 `localStorage` + 쿠키 `tenol-theme`에 저장된다. 코드는 `src/lib/theme/`.
+
+구조는 2단이다. `globals.css`의 `--t-*` 원시 값이 `html`(다크 기본) / `[data-theme="light"]` / `[data-theme="dark"]`에 정의되고, `@theme inline`의 `--color-*` 토큰이 그 값을 참조한다. 컴포넌트는 항상 토큰 클래스(`bg-surface`, `text-primary-ink` 등)만 쓴다. 토큰으로 못 푸는 예외에만 `light:` 변형을 쓴다(현재 5곳).
+
+**핵심 규칙: 글자용 그린과 채움용 그린은 다른 토큰이다.** 브랜드 그린 `#00E676`은 흰 배경에서 대비 1.6:1이라 글자로 못 쓴다.
+
+- `text-primary-ink` — 글자·아이콘·링크. 다크 `#00E676`, 라이트 `#007F55`(5.1:1)
+- `bg-primary` + `text-black` — 버튼·FAB·인디케이터 채움. 다크 `#00E676`, 라이트 `#00C853`
+- `text-primary`는 쓰지 않는다. 새 코드에서 그린 글자는 항상 `text-primary-ink`
+
+| Token | Dark | Light | 라이트 대비 (흰 카드) |
+|---|---|---|---|
+| `--color-primary` (채움) | `#00E676` | `#00C853` | 검은 글자 9.4:1 |
+| `--color-primary-ink` (글자) | `#00E676` | `#007F55` | 5.1:1 |
+| `--color-primary-light` | `#69F0AE` | `#00E676` | 채움 전용 |
+| `--color-primary-dark` | `#00C853` | `#00A846` | 채움 전용 |
+| `--color-primary-dim` | `rgba(0,230,118,.12)` | `rgba(0,200,83,.10)` | |
+| `--color-background` | `#0A0A0A` | `#F5F6F5` | 바닥 |
+| `--color-surface` / `--color-card` | `#141414` | `#FFFFFF` | 카드 |
+| `--color-surface-elevated` | `#1C1C1C` | `#F0F1F0` | |
+| `--color-surface-hover` | `#222222` | `#E8EAE8` | |
+| `--color-foreground` | `#F5F5F5` | `#111111` | 18:1 |
+| `--color-muted` (인풋 배경) | `#1A1A1A` | `#F0F1F0` | |
+| `--color-muted-foreground` | `#A3A3A3` | `#5C5F5C` | 6.3:1 |
+| `--color-subtle` (플레이스홀더) | `#7A7A7A` | `#8A8D8A` | 3.5:1 |
+| `--color-border` | `#2A2A2A` | `#E2E4E2` | |
+| `--color-border-light` | `#1F1F1F` | `#ECEEEC` | |
+| `--color-hairline` (글래스 가장자리) | `rgba(255,255,255,.06)` | `rgba(0,0,0,.06)` | 구 `border-white/[0.06]` |
+| `--color-scrim` (모달 배경) | `rgba(0,0,0,.6)` | `rgba(0,0,0,.4)` | 구 `bg-black/60` |
+| `--color-success` | `#00E676` | `#007F55` | 5.1:1 |
+| `--color-warning` | `#FFD740` | `#9E5F00` | 5.1:1 |
+| `--color-info` | `#40C4FF` | `#1565C0` | 5.8:1 |
+| `--color-destructive` | `#FF5252` | `#C62828` | 5.6:1 |
+| `--color-medal-gold` | `#FFD740` | `#8F6400` | 5.3:1 |
+| `--color-medal-silver` | `#C0C0C0` | `#757575` | 4.6:1 |
+| `--color-medal-bronze` | `#CD7F32` | `#A0522D` | 5.6:1 |
+| `--color-recruit-guest` (게스트 모집 파랑) | `#42A5F5` | `#1565C0` | 5.8:1 |
+
+효과(`.glass`, `.glow-*`, `.text-gradient`, 그림자 `var(--t-shadow-color)`)도 같은 방식으로 테마별 값을 가진다. 라이트 대비 수치는 `src/lib/theme/contrast.test.ts`가 회귀 검사한다.
+
+테마와 무관하게 **다크 고정**인 것: 공유 이미지 3종(인라인 스타일, 브랜드 자산), 네이티브 스플래시, 매니페스트 `theme_color`, `global-error.tsx`(CSS 미로드). 소셜 로그인 버튼은 각 플랫폼 색을 유지한다.
+
+네이티브: `native-init.tsx`가 테마 변경을 구독해 상태바 스타일과 안드로이드 상태바 색(`THEME_BACKGROUND`)을 맞춘다. OAuth 중간 페이지(`auth/callback`, `auth/native-callback`)는 쿠키를 읽어 `interstitialThemeCss()`로 분기한다.
+
+아래 색 토큰 표의 값은 **다크** 기준이다.
 
 ---
 

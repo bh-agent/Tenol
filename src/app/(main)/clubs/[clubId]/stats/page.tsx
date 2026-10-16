@@ -78,8 +78,8 @@ export default async function ClubStatsPage({
         <section>
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#FFD740]/15 flex items-center justify-center">
-                <Award className="w-5 h-5 text-[#FFD740]" />
+              <div className="w-10 h-10 rounded-xl bg-medal-gold/15 flex items-center justify-center">
+                <Award className="w-5 h-5 text-medal-gold" />
               </div>
               <div>
                 <h2 className="font-semibold text-foreground">업적 배지</h2>
@@ -100,7 +100,7 @@ export default async function ClubStatsPage({
         <section>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-primary" />
+              <BarChart3 className="w-5 h-5 text-primary-ink" />
             </div>
             <div>
               <h2 className="font-semibold text-foreground">내 전적</h2>
@@ -123,7 +123,7 @@ export default async function ClubStatsPage({
         {stats.total > 0 && (
           <Card variant="glass" padding="lg">
             <div className="flex items-center gap-2 mb-4">
-              <TrendingUp className="w-4 h-4 text-primary" />
+              <TrendingUp className="w-4 h-4 text-primary-ink" />
               <CardTitle className="text-base mb-0">승률 차트</CardTitle>
             </div>
             <WinRateChart
@@ -139,7 +139,7 @@ export default async function ClubStatsPage({
         <section>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-primary" />
+              <Calendar className="w-5 h-5 text-primary-ink" />
             </div>
             <div>
               <h2 className="font-semibold text-foreground">활동 캘린더</h2>
@@ -153,7 +153,7 @@ export default async function ClubStatsPage({
         {clubRecords.length > 0 && (
           <section>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#FFD740]/15 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-medal-gold/15 flex items-center justify-center">
                 <span className="text-lg">🏆</span>
               </div>
               <div>
@@ -169,7 +169,7 @@ export default async function ClubStatsPage({
         <section>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <Swords className="w-5 h-5 text-primary" />
+              <Swords className="w-5 h-5 text-primary-ink" />
             </div>
             <div>
               <h2 className="font-semibold text-foreground">전적 비교</h2>
@@ -187,7 +187,7 @@ export default async function ClubStatsPage({
         <section>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <Trophy className="w-5 h-5 text-primary" />
+              <Trophy className="w-5 h-5 text-primary-ink" />
             </div>
             <div>
               <h2 className="font-semibold text-foreground">클럽 랭킹</h2>
@@ -201,7 +201,7 @@ export default async function ClubStatsPage({
         <section>
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <Users className="w-5 h-5 text-primary" />
+              <Users className="w-5 h-5 text-primary-ink" />
             </div>
             <div>
               <h2 className="font-semibold text-foreground">최근 경기</h2>

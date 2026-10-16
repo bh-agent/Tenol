@@ -45,7 +45,7 @@ export function AchievementInfoButton({
       <button
         onClick={() => setOpen(true)}
         className={cn(
-          'text-xs text-primary/80 hover:text-primary transition-colors underline underline-offset-2 cursor-pointer',
+          'text-xs text-primary-ink/80 hover:text-primary-ink transition-colors underline underline-offset-2 cursor-pointer',
           className
         )}
       >

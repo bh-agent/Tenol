@@ -36,7 +36,7 @@ export function OfflineBanner() {
     <div
       className={[
         'fixed top-0 left-0 right-0 z-[100]',
-        'glass border-b border-white/[0.06]',
+        'glass border-b border-hairline',
         // 노치/다이내믹 아일랜드(상단 세이프영역)만큼 위 여백 확보
         'text-center pt-[max(env(safe-area-inset-top),0.625rem)] pb-2.5 px-4 text-sm font-medium',
         'flex items-center justify-center gap-2',

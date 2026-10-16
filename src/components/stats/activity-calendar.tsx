@@ -13,10 +13,10 @@ const DAY_LABELS = ['일', '월', '화', '수', '목', '금', '토'];
 
 function getIntensityClass(count: number): string {
   if (count === 0) return 'bg-surface-elevated';
-  if (count === 1) return 'bg-[#00E676]/20';
-  if (count === 2) return 'bg-[#00E676]/40';
-  if (count <= 4) return 'bg-[#00E676]/60';
-  return 'bg-[#00E676]/80';
+  if (count === 1) return 'bg-primary/20';
+  if (count === 2) return 'bg-primary/40';
+  if (count <= 4) return 'bg-primary/60';
+  return 'bg-primary/80';
 }
 
 function getDaysInMonth(year: number, month: number): number {
@@ -121,10 +121,10 @@ export function ActivityCalendar({ activityData, className }: ActivityCalendarPr
       <div className="flex items-center justify-end gap-1.5 mt-3">
         <span className="text-[9px] text-muted-foreground">적음</span>
         <div className="w-3 h-3 rounded-sm bg-surface-elevated" />
-        <div className="w-3 h-3 rounded-sm bg-[#00E676]/20" />
-        <div className="w-3 h-3 rounded-sm bg-[#00E676]/40" />
-        <div className="w-3 h-3 rounded-sm bg-[#00E676]/60" />
-        <div className="w-3 h-3 rounded-sm bg-[#00E676]/80" />
+        <div className="w-3 h-3 rounded-sm bg-primary/20" />
+        <div className="w-3 h-3 rounded-sm bg-primary/40" />
+        <div className="w-3 h-3 rounded-sm bg-primary/60" />
+        <div className="w-3 h-3 rounded-sm bg-primary/80" />
         <span className="text-[9px] text-muted-foreground">많음</span>
       </div>
     </Card>

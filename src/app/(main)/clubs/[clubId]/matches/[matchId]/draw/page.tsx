@@ -1142,13 +1142,13 @@ export default function DrawPage() {
         {/* 긴 닉네임이 칩을 카드 밖으로 밀어내지 않도록 이름만 말줄임 */}
         <span className="text-sm font-medium text-foreground min-w-0 max-w-[9rem] truncate">{p.name}</span>
         {p.ntrp && (
-          <span className="text-[10px] text-primary font-semibold">{p.ntrp}</span>
+          <span className="text-[10px] text-primary-ink font-semibold">{p.ntrp}</span>
         )}
         {!p.user_id && (
           <span className="text-[10px] text-muted-foreground">(비회원)</span>
         )}
         {isOverridden && (
-          <span className="text-[10px] text-yellow-400 font-semibold">(이동)</span>
+          <span className="text-[10px] text-warning font-semibold">(이동)</span>
         )}
         {canEditGames && !isEditBlocked && (
           <>
@@ -1157,9 +1157,9 @@ export default function DrawPage() {
                 onClick={() => toggleGenderOverride(p)}
                 title="성별 그룹 이동"
                 aria-label="성별 그룹 이동"
-                className="w-9 h-9 -m-1.5 flex items-center justify-center rounded-full hover:bg-yellow-500/20 transition-colors cursor-pointer"
+                className="w-9 h-9 -m-1.5 flex items-center justify-center rounded-full hover:bg-warning/20 transition-colors cursor-pointer"
               >
-                <ArrowRightLeft className="w-3.5 h-3.5 text-muted-foreground hover:text-yellow-400" />
+                <ArrowRightLeft className="w-3.5 h-3.5 text-muted-foreground hover:text-warning" />
               </button>
             )}
             <button
@@ -1168,7 +1168,7 @@ export default function DrawPage() {
               aria-label="대체 선수 지정"
               className="w-9 h-9 -m-1.5 flex items-center justify-center rounded-full hover:bg-primary/20 transition-colors cursor-pointer"
             >
-              <Replace className="w-3.5 h-3.5 text-muted-foreground hover:text-primary" />
+              <Replace className="w-3.5 h-3.5 text-muted-foreground hover:text-primary-ink" />
             </button>
             {canManageDraw && (
               <button
@@ -1202,14 +1202,14 @@ export default function DrawPage() {
 
       {/* Draw edit lock banner */}
       {isEditBlocked && (
-        <div className="mx-4 mt-3 px-4 py-3 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center gap-3">
-          <Lock className="w-4 h-4 text-yellow-400 shrink-0" />
+        <div className="mx-4 mt-3 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 flex items-center gap-3">
+          <Lock className="w-4 h-4 text-warning shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-yellow-300">
+            <p className="text-sm font-medium text-warning">
               {lockHolder}님이 대진표를 수정 중입니다
             </p>
             {lockStartTime && (
-              <p className="text-xs text-yellow-400/70 mt-0.5">
+              <p className="text-xs text-warning/70 mt-0.5">
                 {new Date(lockStartTime).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}부터
               </p>
             )}
@@ -1219,13 +1219,13 @@ export default function DrawPage() {
       {canManageDraw && !drawLocked && (
         <div className="mx-4 mt-3 px-4 py-2 rounded-xl bg-primary/5 border border-primary/20 flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <p className="text-xs text-primary/80">수정 중</p>
+          <p className="text-xs text-primary-ink/80">수정 중</p>
         </div>
       )}
       {isMatchEnded && isOwnerOrAdmin && (
-        <div className="mx-4 mt-3 px-4 py-2.5 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center gap-2">
-          <Lock className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
-          <p className="text-xs text-yellow-300/90">
+        <div className="mx-4 mt-3 px-4 py-2.5 rounded-xl bg-warning/10 border border-warning/30 flex items-center gap-2">
+          <Lock className="w-3.5 h-3.5 text-warning shrink-0" />
+          <p className="text-xs text-warning/90">
             종료된 대진입니다 — 회장·운영진만 선수 교체·개별 경기 수정이 가능합니다 (재생성·삭제 불가)
           </p>
         </div>
@@ -1236,13 +1236,13 @@ export default function DrawPage() {
         <Card variant="glass" padding="lg">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-semibold text-foreground flex items-center gap-2">
-              <Users className="w-4 h-4 text-primary" />
+              <Users className="w-4 h-4 text-primary-ink" />
               참가자 ({participants.length}명)
             </h3>
             {canManageDraw && !isEditBlocked && (
               <button
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-1.5 text-sm text-primary font-medium px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 text-sm text-primary-ink font-medium px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors cursor-pointer"
               >
                 <UserPlus className="w-4 h-4" />
                 추가
@@ -1252,7 +1252,7 @@ export default function DrawPage() {
 
           {loading ? (
             <div className="flex items-center justify-center py-6">
-              <RefreshCw className="w-5 h-5 text-primary animate-spin" />
+              <RefreshCw className="w-5 h-5 text-primary-ink animate-spin" />
             </div>
           ) : participants.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">확정된 참가자가 없습니다</p>
@@ -1296,7 +1296,7 @@ export default function DrawPage() {
         {canManageDraw && !isEditBlocked && (
           <Card variant="glow" padding="lg">
             <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
-              <Shuffle className="w-4 h-4 text-primary" />
+              <Shuffle className="w-4 h-4 text-primary-ink" />
               대진표 생성
             </h3>
             <div className="space-y-4">
@@ -1336,7 +1336,7 @@ export default function DrawPage() {
                           <div
                             className={cn(
                               'text-sm font-semibold',
-                              isSelected ? 'text-primary' : 'text-foreground'
+                              isSelected ? 'text-primary-ink' : 'text-foreground'
                             )}
                           >
                             {opt.label}
@@ -1483,12 +1483,12 @@ export default function DrawPage() {
           <Card variant="glass" padding="lg">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <PenLine className="w-4 h-4 text-primary" />
+                <PenLine className="w-4 h-4 text-primary-ink" />
                 수동 대진표
               </h3>
               <button
                 onClick={() => setManualMode(false)}
-                className="p-1.5 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg hover:bg-hairline transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
@@ -1527,7 +1527,7 @@ export default function DrawPage() {
                           <div key={key} className="min-w-0 rounded-xl border border-border bg-surface-elevated p-3 space-y-2">
                             <p className="text-xs font-semibold text-muted-foreground">{courtNames[courtNum] || `${courtNum}코트`}</p>
                             <div className="space-y-1.5">
-                              <p className="text-[10px] font-semibold text-primary">팀 A</p>
+                              <p className="text-[10px] font-semibold text-primary-ink">팀 A</p>
                               <Select
                                 id={`m-${key}-a1`}
                                 options={playerOptions}
@@ -1690,7 +1690,7 @@ export default function DrawPage() {
                         <button
                           onClick={() => handleRegenerate(draw)}
                           disabled={regenerating === draw.id}
-                          className="flex items-center gap-1 text-xs text-primary font-medium px-2.5 py-1.5 rounded-lg hover:bg-primary/10 transition-colors cursor-pointer disabled:opacity-40"
+                          className="flex items-center gap-1 text-xs text-primary-ink font-medium px-2.5 py-1.5 rounded-lg hover:bg-primary/10 transition-colors cursor-pointer disabled:opacity-40"
                         >
                           {regenerating === draw.id ? (
                             <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -1748,7 +1748,7 @@ export default function DrawPage() {
                   {canEditGames && !isEditBlocked && (
                     <button
                       onClick={() => handleAddGame(draw.id, (sortedOrders[sortedOrders.length - 1] || 0) + 1)}
-                      className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors cursor-pointer"
+                      className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-dashed border-border text-sm text-muted-foreground hover:text-primary-ink hover:border-primary/40 transition-colors cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
                       새 시간대 경기 추가
@@ -1911,7 +1911,7 @@ export default function DrawPage() {
                       <div className="flex-1 min-w-0 text-left">
                         <p className="text-sm font-medium text-foreground truncate">{m.name}</p>
                         {m.ntrp && (
-                          <p className="text-xs text-primary font-semibold">NTRP {m.ntrp}</p>
+                          <p className="text-xs text-primary-ink font-semibold">NTRP {m.ntrp}</p>
                         )}
                       </div>
                     </button>
@@ -2049,7 +2049,7 @@ export default function DrawPage() {
 
             <div className="space-y-3">
               <div className="bg-primary/5 rounded-lg p-3 border border-primary/10">
-                <p className="text-xs font-semibold text-primary mb-2">팀 A</p>
+                <p className="text-xs font-semibold text-primary-ink mb-2">팀 A</p>
                 <div className="space-y-2">
                   <Select
                     id="edit_a1"

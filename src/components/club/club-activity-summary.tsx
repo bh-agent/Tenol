@@ -52,9 +52,9 @@ export function ClubActivitySummary({ matches, members }: ClubActivitySummaryPro
   const getIcon = (type: ActivityItem['type']) => {
     switch (type) {
       case 'match_created':
-        return <Swords className="w-3.5 h-3.5 text-primary" />;
+        return <Swords className="w-3.5 h-3.5 text-primary-ink" />;
       case 'member_joined':
-        return <UserPlus className="w-3.5 h-3.5 text-primary" />;
+        return <UserPlus className="w-3.5 h-3.5 text-primary-ink" />;
     }
   };
 
@@ -70,7 +70,7 @@ export function ClubActivitySummary({ matches, members }: ClubActivitySummaryPro
   return (
     <div className="px-4 py-2 animate-fade-in">
       <div className="flex items-center gap-2 mb-2">
-        <Activity className="w-3.5 h-3.5 text-primary/70" />
+        <Activity className="w-3.5 h-3.5 text-primary-ink/70" />
         <h3 className="text-sm font-semibold text-foreground">최근 활동</h3>
       </div>
       <div className="space-y-1.5">

@@ -113,7 +113,7 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-          <CalendarPlus className="w-5 h-5 text-primary" />
+          <CalendarPlus className="w-5 h-5 text-primary-ink" />
         </div>
         <div>
           <h3 className="font-semibold text-foreground">새 경기</h3>
@@ -138,7 +138,7 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
         {/* Date & Time section */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4 text-primary/70" />
+            <Clock className="w-4 h-4 text-primary-ink/70" />
             <span className="font-medium">일시</span>
           </div>
           <Input
@@ -167,7 +167,7 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
         {/* Location section */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="w-4 h-4 text-primary/70" />
+            <MapPin className="w-4 h-4 text-primary-ink/70" />
             <span className="font-medium">장소</span>
           </div>
           <Input
@@ -181,7 +181,7 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
         {/* Court & participants section */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <LayoutGrid className="w-4 h-4 text-primary/70" />
+            <LayoutGrid className="w-4 h-4 text-primary-ink/70" />
             <span className="font-medium">경기 설정</span>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -228,7 +228,7 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
             className="w-full flex items-center justify-between p-4 rounded-2xl bg-surface border border-border transition-colors hover:border-border/80 cursor-pointer"
           >
             <span className="flex items-center gap-2 text-sm font-medium text-foreground">
-              <Users className="w-4 h-4 text-primary/70" />
+              <Users className="w-4 h-4 text-primary-ink/70" />
               참가자 미리 선택 (선택)
             </span>
             <span className="flex items-center gap-1.5">
@@ -300,7 +300,7 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
               </div>
 
               {selectedMembers.size > 0 && (
-                <p className="text-xs text-primary font-medium">
+                <p className="text-xs text-primary-ink font-medium">
                   {selectedMembers.size}명 선택됨
                 </p>
               )}
@@ -364,8 +364,8 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
                             className={cn(
                               'text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0',
                               member.gender === 'M'
-                                ? 'bg-blue-500/15 text-blue-400'
-                                : 'bg-pink-500/15 text-pink-400'
+                                ? 'bg-info/15 text-info'
+                                : 'bg-pink-500/15 text-pink-400 light:text-pink-700'
                             )}
                           >
                             {member.gender === 'M' ? '남' : '여'}
@@ -404,7 +404,7 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
                       className={cn(
                         'flex-1 h-10 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer',
                         offlineGender === 'M'
-                          ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40'
+                          ? 'bg-info/20 text-info border border-info/40'
                           : 'bg-muted text-muted-foreground border border-border hover:border-border/80'
                       )}
                     >
@@ -416,7 +416,7 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
                       className={cn(
                         'flex-1 h-10 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer',
                         offlineGender === 'F'
-                          ? 'bg-pink-500/20 text-pink-400 border border-pink-500/40'
+                          ? 'bg-pink-500/20 text-pink-400 light:text-pink-700 border border-pink-500/40'
                           : 'bg-muted text-muted-foreground border border-border hover:border-border/80'
                       )}
                     >
@@ -460,14 +460,14 @@ export function MatchCreateForm({ clubId, members }: MatchCreateFormProps) {
                       <span
                         className={cn(
                           'text-[10px] font-bold shrink-0',
-                          p.gender === 'M' ? 'text-blue-400' : 'text-pink-400'
+                          p.gender === 'M' ? 'text-info' : 'text-pink-400 light:text-pink-700'
                         )}
                       >
                         {p.gender === 'M' ? '남' : '여'}
                       </span>
                       <span className="min-w-0 truncate">{p.name}</span>
                       {p.ntrp && (
-                        <span className="text-xs text-primary">{p.ntrp}</span>
+                        <span className="text-xs text-primary-ink">{p.ntrp}</span>
                       )}
                       <button
                         type="button"

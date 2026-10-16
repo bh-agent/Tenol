@@ -211,7 +211,7 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
           {!profile.ntrp_level && !profile.tennis_start_date && (
             <button
               onClick={() => setShowEdit(true)}
-              className="text-xs text-primary font-medium hover:underline"
+              className="text-xs text-primary-ink font-medium hover:underline"
             >
               + 상세 정보 입력하기
             </button>
@@ -261,7 +261,7 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
                 className={cn(
                   'h-11 rounded-xl border text-sm font-medium transition-all duration-200',
                   editGender === 'M'
-                    ? 'border-primary bg-primary/10 text-primary'
+                    ? 'border-primary bg-primary/10 text-primary-ink'
                     : 'border-border bg-surface text-muted-foreground hover:border-primary/30 hover:text-foreground'
                 )}
               >
@@ -273,7 +273,7 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
                 className={cn(
                   'h-11 rounded-xl border text-sm font-medium transition-all duration-200',
                   editGender === 'F'
-                    ? 'border-primary bg-primary/10 text-primary'
+                    ? 'border-primary bg-primary/10 text-primary-ink'
                     : 'border-border bg-surface text-muted-foreground hover:border-primary/30 hover:text-foreground'
                 )}
               >
@@ -342,7 +342,7 @@ export function ProfileHeader({ profile: initialProfile }: ProfileHeaderProps) {
         <div className="space-y-3">
           {NTRP_GUIDE.map((item) => (
             <div key={item.level} className="flex gap-3">
-              <span className="text-sm font-bold text-primary whitespace-nowrap min-w-[70px]">
+              <span className="text-sm font-bold text-primary-ink whitespace-nowrap min-w-[70px]">
                 {item.level}
               </span>
               <p className="text-sm text-muted-foreground">{item.desc}</p>

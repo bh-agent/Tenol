@@ -148,7 +148,7 @@ export default async function MatchDetailPage({
             <div className="space-y-2.5">
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Clock className="w-4 h-4 text-primary" />
+                  <Clock className="w-4 h-4 text-primary-ink" />
                 </div>
                 <span>
                   {formatDate(match.match_date)}
@@ -159,14 +159,14 @@ export default async function MatchDetailPage({
               {match.location && (
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-4 h-4 text-primary" />
+                    <MapPin className="w-4 h-4 text-primary-ink" />
                   </div>
                   <span>{match.location}</span>
                 </div>
               )}
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <LayoutGrid className="w-4 h-4 text-primary" />
+                  <LayoutGrid className="w-4 h-4 text-primary-ink" />
                 </div>
                 <span>코트 {match.court_count}면</span>
               </div>
@@ -195,7 +195,7 @@ export default async function MatchDetailPage({
           <div className="grid grid-cols-2 gap-3">
             <Link href={`/clubs/${clubId}/matches/${matchId}/draw`}>
               <Card className="text-center py-5 hover:border-primary/30 hover:shadow-[0_0_16px_rgba(0,230,118,0.1)] active:scale-[0.97] transition-all duration-300">
-                <LayoutGrid className="w-7 h-7 text-primary mx-auto mb-2" />
+                <LayoutGrid className="w-7 h-7 text-primary-ink mx-auto mb-2" />
                 <span className="text-sm font-semibold text-foreground">대진표</span>
                 {!canManageDraw && <p className="text-[10px] text-muted-foreground mt-1">열람만 가능</p>}
                 <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto mt-1" />
@@ -203,7 +203,7 @@ export default async function MatchDetailPage({
             </Link>
             <Link href={`/clubs/${clubId}/matches/${matchId}/results`}>
               <Card className="text-center py-5 hover:border-primary/30 hover:shadow-[0_0_16px_rgba(0,230,118,0.1)] active:scale-[0.97] transition-all duration-300">
-                <Trophy className="w-7 h-7 text-primary mx-auto mb-2" />
+                <Trophy className="w-7 h-7 text-primary-ink mx-auto mb-2" />
                 <span className="text-sm font-semibold text-foreground">경기 결과</span>
                 {!canInputResult && <p className="text-[10px] text-muted-foreground mt-1">열람만 가능</p>}
                 <ChevronRight className="w-4 h-4 text-muted-foreground mx-auto mt-1" />
@@ -222,7 +222,7 @@ export default async function MatchDetailPage({
           <div className="space-y-3 mb-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-foreground flex items-center gap-2">
-                <Users className="w-4 h-4 text-primary" />
+                <Users className="w-4 h-4 text-primary-ink" />
                 참가자 ({confirmed.length}명
                 {match.max_participants && `/${match.max_participants}`})
               </h3>
@@ -272,11 +272,11 @@ export default async function MatchDetailPage({
                     />
                     {/* min-w-0 + truncate: 긴 닉네임이 배지를 밀어내지 않도록 이름만 말줄임 */}
                     <div className="flex-1 min-w-0 flex items-baseline gap-2">
-                      <span className="text-sm font-medium text-foreground hover:text-primary transition-colors truncate min-w-0">
+                      <span className="text-sm font-medium text-foreground hover:text-primary-ink transition-colors truncate min-w-0">
                         {p.profiles?.display_name || p.guest_name}
                       </span>
                       {p.profiles?.ntrp_level && (
-                        <span className="text-xs text-primary font-medium shrink-0">
+                        <span className="text-xs text-primary-ink font-medium shrink-0">
                           NTRP {p.profiles.ntrp_level}
                         </span>
                       )}
@@ -295,7 +295,7 @@ export default async function MatchDetailPage({
                         {p.profiles?.display_name || p.guest_name}
                       </span>
                       {p.profiles?.ntrp_level && (
-                        <span className="text-xs text-primary font-medium shrink-0">
+                        <span className="text-xs text-primary-ink font-medium shrink-0">
                           NTRP {p.profiles.ntrp_level}
                         </span>
                       )}
@@ -331,7 +331,7 @@ export default async function MatchDetailPage({
                         size="sm"
                       />
                       <div className="flex-1 min-w-0">
-                        <span className="block truncate text-sm font-medium text-foreground hover:text-primary transition-colors">
+                        <span className="block truncate text-sm font-medium text-foreground hover:text-primary-ink transition-colors">
                           {p.profiles?.display_name || p.guest_name}
                         </span>
                       </div>

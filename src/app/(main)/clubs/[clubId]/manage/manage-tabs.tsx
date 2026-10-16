@@ -142,7 +142,7 @@ export function ManageTabs({
           onClick={() => setActiveTab('join')}
           className={`flex-1 py-3 text-sm font-medium text-center transition-colors relative ${
             activeTab === 'join'
-              ? 'text-primary'
+              ? 'text-primary-ink'
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -162,7 +162,7 @@ export function ManageTabs({
           onClick={() => setActiveTab('guest')}
           className={`flex-1 py-3 text-sm font-medium text-center transition-colors relative ${
             activeTab === 'guest'
-              ? 'text-primary'
+              ? 'text-primary-ink'
               : 'text-muted-foreground hover:text-foreground'
           }`}
         >
@@ -220,7 +220,7 @@ export function ManageTabs({
                               className="w-10 h-10 rounded-full object-cover"
                             />
                           ) : (
-                            <span className="text-sm font-bold text-primary">
+                            <span className="text-sm font-bold text-primary-ink">
                               {avatarInitial}
                             </span>
                           )}
@@ -334,7 +334,7 @@ export function ManageTabs({
                     <div key={matchId}>
                       {/* Match group header */}
                       <div className="flex items-center gap-2 mb-3">
-                        <Calendar className="w-4 h-4 text-primary/70" />
+                        <Calendar className="w-4 h-4 text-primary-ink/70" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">
                             {title}
@@ -381,7 +381,7 @@ export function ManageTabs({
                                       className="w-10 h-10 rounded-full object-cover"
                                     />
                                   ) : (
-                                    <span className="text-sm font-bold text-primary">
+                                    <span className="text-sm font-bold text-primary-ink">
                                       {avatarInitial}
                                     </span>
                                   )}

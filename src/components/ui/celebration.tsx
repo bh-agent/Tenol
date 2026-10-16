@@ -23,7 +23,7 @@ export function Celebration({ show, title, description, onComplete }: Celebratio
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 animate-fade-in">
       <div className="flex flex-col items-center gap-4 px-8 text-center">
         <div className="animate-scale-in">
-          <CheckCircle className="w-20 h-20 text-primary" strokeWidth={1.5} />
+          <CheckCircle className="w-20 h-20 text-primary-ink" strokeWidth={1.5} />
         </div>
         <h2 className="text-xl font-bold text-foreground">{title}</h2>
         {description && (

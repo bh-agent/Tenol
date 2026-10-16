@@ -44,7 +44,7 @@ export function WinRateChart({ winRate, wins, losses, total, className }: WinRat
               strokeWidth="10"
               strokeDasharray={`${(winRate / 100) * 327} 327`}
               strokeLinecap="round"
-              className="text-primary transition-all duration-700"
+              className="text-primary-ink transition-all duration-700"
               style={{ filter: 'drop-shadow(0 0 6px rgba(0, 230, 118, 0.4))' }}
             />
           </svg>
@@ -60,7 +60,7 @@ export function WinRateChart({ winRate, wins, losses, total, className }: WinRat
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">승리</span>
-          <span className="font-semibold text-primary">{wins}승</span>
+          <span className="font-semibold text-primary-ink">{wins}승</span>
         </div>
         <div className="h-3 bg-surface-elevated rounded-full overflow-hidden flex">
           {winRate > 0 && (

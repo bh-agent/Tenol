@@ -35,7 +35,7 @@ export function BottomNav({ profileHref = '/profile' }: { profileHref?: string }
                 aria-label={item.label}
                 className={cn(
                   'flex flex-col items-center justify-center gap-1 w-16 h-full transition-colors duration-200',
-                  isActive ? 'text-primary' : 'text-muted-foreground'
+                  isActive ? 'text-primary-ink' : 'text-muted-foreground'
                 )}
               >
                 <span

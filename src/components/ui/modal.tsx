@@ -78,7 +78,7 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
       {/* Backdrop with blur */}
       <div
         className={cn(
-          'fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300',
+          'fixed inset-0 bg-scrim backdrop-blur-sm transition-opacity duration-300',
           visible ? 'opacity-100' : 'opacity-0'
         )}
         onClick={onClose}
@@ -102,11 +102,11 @@ export function Modal({ isOpen, onClose, title, children, className }: ModalProp
           className={cn(
             'pointer-events-auto relative z-50 w-full flex flex-col',
             // Glass effect
-            'glass border-t border-white/[0.06]',
+            'glass border-t border-hairline',
             // Mobile: bottom-sheet style
             'rounded-t-2xl',
             // Desktop: centered modal
-            'sm:max-w-md sm:rounded-2xl sm:max-h-[85vh] sm:border sm:border-white/[0.06]',
+            'sm:max-w-md sm:rounded-2xl sm:max-h-[85vh] sm:border sm:border-hairline',
             // Animation
             'transition-all duration-300 ease-out',
             visible

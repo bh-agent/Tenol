@@ -50,7 +50,7 @@ export function ShareButton({ url, title, text, className }: ShareButtonProps) {
       className={className ?? 'p-2 rounded-full hover:bg-surface-elevated transition-colors cursor-pointer'}
       aria-label="공유하기"
     >
-      <Share2 className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
+      <Share2 className="w-5 h-5 text-muted-foreground hover:text-primary-ink transition-colors" />
     </button>
   );
 }

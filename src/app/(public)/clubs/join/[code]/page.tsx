@@ -167,12 +167,12 @@ export default async function JoinByLinkPage({
             <div className="flex flex-wrap justify-center gap-3 text-sm text-muted-foreground">
               {club.region && (
                 <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-elevated border border-border">
-                  <MapPin className="w-3.5 h-3.5 text-primary/70" />
+                  <MapPin className="w-3.5 h-3.5 text-primary-ink/70" />
                   {club.region}
                 </span>
               )}
               <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-elevated border border-border">
-                <Users className="w-3.5 h-3.5 text-primary/70" />
+                <Users className="w-3.5 h-3.5 text-primary-ink/70" />
                 {memberCount ?? 0}명
               </span>
             </div>
@@ -180,14 +180,14 @@ export default async function JoinByLinkPage({
             {/* Status / Action */}
             <div className="pt-2 border-t border-border">
               {isMember ? (
-                <div className="flex items-center justify-center gap-2 py-3 text-primary">
+                <div className="flex items-center justify-center gap-2 py-3 text-primary-ink">
                   <CheckCircle2 className="w-5 h-5" />
                   <span className="font-medium text-sm">
                     이미 가입된 클럽입니다
                   </span>
                 </div>
               ) : isPending ? (
-                <div className="flex items-center justify-center gap-2 py-3 text-amber-400">
+                <div className="flex items-center justify-center gap-2 py-3 text-warning">
                   <Clock className="w-5 h-5" />
                   <span className="font-medium text-sm">
                     이미 가입 신청한 클럽입니다
@@ -206,7 +206,7 @@ export default async function JoinByLinkPage({
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
               >
-                <MessageCircle className="w-4 h-4 text-primary/70" />
+                <MessageCircle className="w-4 h-4 text-primary-ink/70" />
                 궁금한 점은 오픈채팅으로 문의하세요
               </a>
             )}
@@ -217,7 +217,7 @@ export default async function JoinByLinkPage({
                 rel="noopener noreferrer"
                 className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
               >
-                <Instagram className="w-4 h-4 text-primary/70" />
+                <Instagram className="w-4 h-4 text-primary-ink/70" />
                 인스타그램에서 클럽 둘러보기
               </a>
             )}

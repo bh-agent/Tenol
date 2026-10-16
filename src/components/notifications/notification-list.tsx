@@ -41,7 +41,7 @@ export function NotificationList({ notifications, hasUnread }: NotificationListP
             size="sm"
             onClick={handleMarkAllRead}
             disabled={isPending}
-            className="text-primary hover:text-primary hover:bg-primary-dim"
+            className="text-primary-ink hover:text-primary-ink hover:bg-primary-dim"
           >
             <CheckCheck className="w-4 h-4 mr-1.5" />
             {isPending ? '처리 중...' : '모두 읽음'}

@@ -31,8 +31,8 @@ export function RefreshButton({ className }: RefreshButtonProps) {
     >
       <RefreshCw
         className={cn(
-          'w-5 h-5 text-muted-foreground hover:text-primary transition-colors',
-          isPending && 'animate-spin text-primary'
+          'w-5 h-5 text-muted-foreground hover:text-primary-ink transition-colors',
+          isPending && 'animate-spin text-primary-ink'
         )}
       />
     </button>

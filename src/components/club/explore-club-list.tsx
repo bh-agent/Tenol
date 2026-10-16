@@ -265,7 +265,7 @@ export function ExploreClubList({
                 </Link>
                 <div className="flex-1 min-w-0 space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <Link href={`/clubs/${club.id}`} className="hover:text-primary transition-colors">
+                    <Link href={`/clubs/${club.id}`} className="hover:text-primary-ink transition-colors">
                       <h4 className="font-semibold text-foreground truncate">{club.name}</h4>
                     </Link>
                   </div>
@@ -294,9 +294,9 @@ export function ExploreClubList({
                         href={club.open_chat_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary px-2.5 py-1.5 rounded-lg border border-border hover:border-primary/40 transition-colors"
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary-ink px-2.5 py-1.5 rounded-lg border border-border hover:border-primary/40 transition-colors"
                       >
-                        <MessageCircle className="w-3.5 h-3.5 text-primary/70" />
+                        <MessageCircle className="w-3.5 h-3.5 text-primary-ink/70" />
                         문의하기
                       </a>
                     )}
@@ -305,9 +305,9 @@ export function ExploreClubList({
                         href={club.instagram_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary px-2.5 py-1.5 rounded-lg border border-border hover:border-primary/40 transition-colors"
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary-ink px-2.5 py-1.5 rounded-lg border border-border hover:border-primary/40 transition-colors"
                       >
-                        <Instagram className="w-3.5 h-3.5 text-primary/70" />
+                        <Instagram className="w-3.5 h-3.5 text-primary-ink/70" />
                         인스타
                       </a>
                     )}

@@ -20,7 +20,7 @@ export function StatCard({ label, value, subValue, variant = 'default', classNam
       <p
         className={cn('text-2xl font-bold', {
           'text-foreground': variant === 'default',
-          'text-primary': variant === 'primary',
+          'text-primary-ink': variant === 'primary',
           'text-success': variant === 'success',
           'text-destructive': variant === 'destructive',
         })}

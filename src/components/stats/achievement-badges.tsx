@@ -105,7 +105,7 @@ export function AchievementBadges({
 
               {/* Criteria */}
               <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 mb-3">
-                <p className="text-xs font-medium text-primary/80 mb-1">획득 조건</p>
+                <p className="text-xs font-medium text-primary-ink/80 mb-1">획득 조건</p>
                 <p className="text-sm text-foreground/80">
                   {selectedBadge.criteria}
                 </p>
@@ -119,7 +119,7 @@ export function AchievementBadges({
                   <p className="text-xs text-muted-foreground">현재 보유자</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-primary">
+                  <p className="text-lg font-bold text-primary-ink">
                     {selectedBadge.value}
                     <span className="text-xs text-muted-foreground ml-0.5">
                       {VALUE_LABELS[selectedBadge.type] || ''}

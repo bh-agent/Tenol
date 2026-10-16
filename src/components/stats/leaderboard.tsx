@@ -49,11 +49,11 @@ export function Leaderboard({ entries, currentUserId, className }: LeaderboardPr
               {/* Rank */}
               <div className="w-7 flex-shrink-0 text-center">
                 {rank === 1 ? (
-                  <Crown className="w-5 h-5 text-yellow-500 mx-auto drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]" />
+                  <Crown className="w-5 h-5 text-medal-gold mx-auto drop-shadow-[0_0_4px_rgba(234,179,8,0.5)]" />
                 ) : rank === 2 ? (
                   <Medal className="w-5 h-5 text-muted-foreground mx-auto" />
                 ) : rank === 3 ? (
-                  <Medal className="w-5 h-5 text-amber-600 mx-auto" />
+                  <Medal className="w-5 h-5 text-medal-bronze mx-auto" />
                 ) : (
                   <span className="text-sm font-bold text-muted-foreground">{rank}</span>
                 )}
@@ -70,7 +70,7 @@ export function Leaderboard({ entries, currentUserId, className }: LeaderboardPr
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <p className={cn('text-sm font-medium truncate hover:text-primary transition-colors', isCurrentUser ? 'text-primary' : 'text-foreground')}>
+                    <p className={cn('text-sm font-medium truncate hover:text-primary-ink transition-colors', isCurrentUser ? 'text-primary-ink' : 'text-foreground')}>
                       {entry.displayName}
                       {isCurrentUser && ' (나)'}
                     </p>
@@ -90,7 +90,7 @@ export function Leaderboard({ entries, currentUserId, className }: LeaderboardPr
               <div className="text-right flex-shrink-0">
                 <p className={cn(
                   'text-lg font-bold',
-                  entry.winRate >= 60 ? 'text-primary' :
+                  entry.winRate >= 60 ? 'text-primary-ink' :
                   entry.winRate >= 40 ? 'text-foreground' :
                   'text-destructive'
                 )}>

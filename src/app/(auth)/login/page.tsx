@@ -384,7 +384,7 @@ function LoginContent() {
             onClick={handleAppleLogin}
             disabled={loading !== null || handoff !== null}
             className={cn(
-              'group w-full h-14 rounded-2xl font-semibold text-white bg-black border-2 border-white',
+              'group w-full h-14 rounded-2xl font-semibold text-white bg-black border-2 border-white light:border-black',
               'flex items-center justify-center gap-3',
               'transition-all duration-200 ease-out',
               'hover:bg-black/80 active:scale-[0.97]',

@@ -4,6 +4,7 @@ import { OfflineBanner } from '@/components/ui/offline-banner';
 import { KeyboardScrollFix } from '@/components/native/keyboard-scroll-fix';
 import ServiceWorkerRegister from '@/components/pwa/sw-register';
 import InstallPrompt from '@/components/pwa/install-prompt';
+import { THEME_BACKGROUND, THEME_INIT_SCRIPT } from '@/lib/theme/theme';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -13,7 +14,9 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
-    statusBarStyle: 'black-translucent',
+    // default: iOS 홈화면 PWA 상태바가 OS 외형(라이트/다크)을 따라감.
+    // black-translucent는 글자가 항상 흰색이라 라이트 테마에서 안 보인다. (네이티브 앱은 무관)
+    statusBarStyle: 'default',
     title: '테놀',
   },
   icons: {
@@ -44,7 +47,8 @@ export const viewport: Viewport = {
   maximumScale: 5,
   userScalable: true,
   viewportFit: 'cover',
-  themeColor: '#0A0A0A',
+  // 초기값은 다크. 런타임에 src/lib/theme이 <meta name="theme-color">를 테마에 맞춰 갱신한다.
+  themeColor: THEME_BACKGROUND.dark,
 };
 
 export default function RootLayout({
@@ -53,8 +57,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko" className="h-full bg-background">
+    // data-theme: 서버는 항상 dark로 렌더하고, head의 인라인 스크립트가 첫 페인트 전에
+    // 저장된 선호(라이트/시스템)로 바꾼다. React가 그 속성 차이를 경고하지 않도록
+    // suppressHydrationWarning. (테마 전환 자체는 src/lib/theme/theme-store가 담당)
+    <html lang="ko" className="h-full bg-background" data-theme="dark" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <link
           rel="stylesheet"
           as="style"

@@ -64,7 +64,7 @@ export default function InstallPrompt() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-[9999] safe-bottom animate-slide-up">
-      <div className="glass border-t border-border mx-3 mb-3 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.3)]">
+      <div className="glass border-t border-border mx-3 mb-3 rounded-2xl px-4 py-3 flex items-center gap-3 shadow-[0_-4px_20px_var(--t-shadow-color)]">
         <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
           <span className="text-black font-bold text-lg">T</span>
         </div>

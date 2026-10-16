@@ -35,7 +35,7 @@ const variantConfig: Record<
   info: {
     icon: Info,
     accentClass: 'border-l-primary',
-    iconClass: 'text-primary',
+    iconClass: 'text-primary-ink',
   },
 };
 
@@ -75,8 +75,8 @@ export function Toast({ toast, onDismiss }: ToastProps) {
       className={cn(
         'flex items-center gap-3 px-4 py-3 rounded-xl',
         'min-w-[280px] max-w-[calc(100vw-2rem)]',
-        'glass border border-white/[0.06] border-l-[3px]',
-        'shadow-[0_8px_32px_rgba(0,0,0,0.4)]',
+        'glass border border-hairline border-l-[3px]',
+        'shadow-[0_8px_32px_var(--t-shadow-color)]',
         'transition-all duration-300 ease-out',
         config.accentClass,
         isVisible && !isExiting

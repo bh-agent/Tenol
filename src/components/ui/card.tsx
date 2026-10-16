@@ -21,7 +21,7 @@ export function Card({
         {
           'bg-card border border-border hover:border-primary/15':
             variant === 'default',
-          'glass border border-white/[0.06]':
+          'glass border border-hairline':
             variant === 'glass',
           'bg-card border border-primary/15 glow-primary-sm hover:border-primary/30 hover:shadow-[0_0_20px_rgba(0,230,118,0.12)]':
             variant === 'glow',

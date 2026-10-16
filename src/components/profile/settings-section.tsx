@@ -8,6 +8,7 @@ import { ChevronDown, FileText, ShieldOff, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
 import { cn } from '@/lib/utils/cn';
+import { ThemeSelector } from './theme-selector';
 
 type BlockedUser = { id: string; name: string };
 
@@ -72,6 +73,9 @@ export function SettingsSection() {
       <h3 className="text-sm font-semibold text-muted-foreground px-1">설정</h3>
       {/* Card와 동일 룩 — 행이 edge-to-edge여야 해서 패딩 없는 컨테이너 사용 */}
       <div className="rounded-2xl bg-card border border-border divide-y divide-border overflow-hidden">
+        {/* 화면 테마: 시스템 / 라이트 / 다크 */}
+        <ThemeSelector />
+
         {/* 차단한 사용자 관리 */}
         <div>
           <button type="button" onClick={toggleBlocked} className={cn(rowClass, 'cursor-pointer')}>

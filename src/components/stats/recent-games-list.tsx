@@ -50,7 +50,7 @@ export function RecentGamesList({ games, className }: RecentGamesListProps) {
                 )}
               >
                 {isWin ? (
-                  <Trophy className="w-4 h-4 text-primary" />
+                  <Trophy className="w-4 h-4 text-primary-ink" />
                 ) : isDraw ? (
                   <span>무</span>
                 ) : (
@@ -79,7 +79,7 @@ export function RecentGamesList({ games, className }: RecentGamesListProps) {
               {/* Score */}
               {myScore !== null && opponentScore !== null && (
                 <div className="text-right flex-shrink-0">
-                  <span className={cn('text-lg font-bold', isWin ? 'text-primary' : 'text-destructive')}>
+                  <span className={cn('text-lg font-bold', isWin ? 'text-primary-ink' : 'text-destructive')}>
                     {myScore}
                   </span>
                   <span className="text-muted-foreground mx-1">:</span>

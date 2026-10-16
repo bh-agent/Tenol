@@ -60,7 +60,7 @@ export function RecruitmentForm({ clubId, upcomingMatches }: RecruitmentFormProp
             className={cn(
               'py-3 rounded-xl text-sm font-medium transition-all duration-200 border cursor-pointer',
               type === 'member_recruit'
-                ? 'bg-[#00E676]/10 border-[#00E676]/40 text-[#00E676]'
+                ? 'bg-primary/10 border-primary/40 text-primary-ink'
                 : 'bg-surface-elevated border-border text-muted-foreground hover:border-border/80'
             )}
           >
@@ -72,7 +72,7 @@ export function RecruitmentForm({ clubId, upcomingMatches }: RecruitmentFormProp
             className={cn(
               'py-3 rounded-xl text-sm font-medium transition-all duration-200 border cursor-pointer',
               type === 'guest_recruit'
-                ? 'bg-[#42A5F5]/10 border-[#42A5F5]/40 text-[#42A5F5]'
+                ? 'bg-recruit-guest/10 border-recruit-guest/40 text-recruit-guest'
                 : 'bg-surface-elevated border-border text-muted-foreground hover:border-border/80'
             )}
           >
@@ -123,7 +123,7 @@ export function RecruitmentForm({ clubId, upcomingMatches }: RecruitmentFormProp
             className={cn(
               'py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border cursor-pointer',
               slotMode === 'any'
-                ? 'bg-primary/10 border-primary/40 text-primary'
+                ? 'bg-primary/10 border-primary/40 text-primary-ink'
                 : 'bg-surface-elevated border-border text-muted-foreground hover:border-border/80'
             )}
           >
@@ -135,7 +135,7 @@ export function RecruitmentForm({ clubId, upcomingMatches }: RecruitmentFormProp
             className={cn(
               'py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border cursor-pointer',
               slotMode === 'gendered'
-                ? 'bg-primary/10 border-primary/40 text-primary'
+                ? 'bg-primary/10 border-primary/40 text-primary-ink'
                 : 'bg-surface-elevated border-border text-muted-foreground hover:border-border/80'
             )}
           >
@@ -173,7 +173,7 @@ export function RecruitmentForm({ clubId, upcomingMatches }: RecruitmentFormProp
       {/* Guest-specific fields */}
       {type === 'guest_recruit' && (
         <div className="space-y-5 p-4 rounded-xl bg-surface-elevated border border-border">
-          <p className="text-sm font-medium text-[#42A5F5]">게스트 모집 정보</p>
+          <p className="text-sm font-medium text-recruit-guest">게스트 모집 정보</p>
 
           {/* Match selector */}
           {upcomingMatches.length > 0 && (

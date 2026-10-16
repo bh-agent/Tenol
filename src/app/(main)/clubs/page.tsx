@@ -73,11 +73,11 @@ export default async function ClubsPage() {
             >
               <div className="flex items-center gap-3.5">
                 <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center flex-shrink-0">
-                  <CalendarClock className="w-5 h-5 text-primary" />
+                  <CalendarClock className="w-5 h-5 text-primary-ink" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-xs font-semibold text-primary">다음 내 경기</p>
+                    <p className="text-xs font-semibold text-primary-ink">다음 내 경기</p>
                     <Badge
                       variant={
                         formatDDayWithStatus(nextMatch.match_date, nextMatch.status) === '오늘' ||
@@ -125,14 +125,14 @@ export default async function ClubsPage() {
             <div className="grid grid-cols-2 gap-3">
               <Link href="/clubs/explore">
                 <Card variant="default" className="text-center py-6 hover:border-primary/30 transition-all active:scale-[0.97]">
-                  <Search className="w-6 h-6 text-primary mx-auto mb-2" />
+                  <Search className="w-6 h-6 text-primary-ink mx-auto mb-2" />
                   <p className="text-sm font-medium text-foreground">클럽 탐색하기</p>
                   <p className="text-xs text-muted-foreground mt-0.5">공개 클럽 찾기</p>
                 </Card>
               </Link>
               <Link href="/clubs/new?mode=join">
                 <Card variant="default" className="text-center py-6 hover:border-primary/30 transition-all active:scale-[0.97]">
-                  <LinkIcon className="w-6 h-6 text-primary mx-auto mb-2" />
+                  <LinkIcon className="w-6 h-6 text-primary-ink mx-auto mb-2" />
                   <p className="text-sm font-medium text-foreground">초대코드로 가입</p>
                   <p className="text-xs text-muted-foreground mt-0.5">링크/코드 입력</p>
                 </Card>
@@ -141,7 +141,7 @@ export default async function ClubsPage() {
             {/* 클럽 없이도 칠 수 있는 유일한 경로 — 게스트 참가 */}
             <Link href="/recruit">
               <Card variant="default" className="text-center py-5 hover:border-primary/30 transition-all active:scale-[0.97]">
-                <Megaphone className="w-6 h-6 text-primary mx-auto mb-2" />
+                <Megaphone className="w-6 h-6 text-primary-ink mx-auto mb-2" />
                 <p className="text-sm font-medium text-foreground">게스트로 경기 참여하기</p>
                 <p className="text-xs text-muted-foreground mt-0.5">클럽 가입 없이 모집 중인 경기에 참가</p>
               </Card>
@@ -164,7 +164,7 @@ export default async function ClubsPage() {
                       </div>
                       {club.region && (
                         <p className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
-                          <MapPin className="w-3.5 h-3.5 text-primary/60" />
+                          <MapPin className="w-3.5 h-3.5 text-primary-ink/60" />
                           {club.region}
                         </p>
                       )}

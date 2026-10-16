@@ -8,6 +8,7 @@ import { logError } from '@/lib/logger';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { interstitialThemeCss, readThemeCookie, type ThemePreference } from "@/lib/theme/theme";
 
 /** 내부 경로만 허용 (open redirect 방지) */
 function sanitizeNext(raw: string | null): string | null {
@@ -22,9 +23,9 @@ function sanitizeNext(raw: string | null): string | null {
  * 다음 요청을 보내는 경우가 있어, 첫 로그인 시도가 세션 없이 /login으로 튕기는
  * 레이스가 발생한다. 150ms 뒤 클라이언트 측에서 이동하면 쿠키가 확실히 실린다.
  */
-function htmlRedirect(dest: string) {
+function htmlRedirect(dest: string, theme: ThemePreference) {
   const safe = JSON.stringify(dest).replace(/</g, '\\u003c');
-  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>로그인 중…</title><style>body{margin:0;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:#0A0A0A;color:#999;font-family:-apple-system,'Pretendard',sans-serif;font-size:14px}</style></head><body>로그인 중…<script>setTimeout(function(){location.replace(${safe})},150)</script></body></html>`;
+  const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>로그인 중…</title><style>${interstitialThemeCss(theme)}body{margin:0;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--muted);font-family:-apple-system,'Pretendard',sans-serif;font-size:14px}</style></head><body>로그인 중…<script>setTimeout(function(){location.replace(${safe})},150)</script></body></html>`;
   return new NextResponse(html, {
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
   });
@@ -48,7 +49,7 @@ function hasHandoffMarker(request: Request): boolean {
  * 사용자가 '앱으로 돌아가기'를 누르면 OS가 앱을 열고(appUrlOpen) 앱이 세션을
  * 수령한다. Android는 자동 시도, iOS는 사용자 탭(권장 표준 패턴).
  */
-function handoffInterstitial(kind: 'success' | 'error', token: string) {
+function handoffInterstitial(kind: 'success' | 'error', token: string, theme: ThemePreference) {
   // token은 makeHandoffToken()이 만든 hex 48자만 들어오므로 HTML 삽입에 안전
   const deepLink = `app.tenol.club://auth/handoff?token=${token}`;
   const title = kind === 'success' ? '로그인 완료' : '로그인 실패';
@@ -58,15 +59,16 @@ function handoffInterstitial(kind: 'success' | 'error', token: string) {
       ? '테놀 앱으로 돌아가면 자동으로 로그인됩니다.<br>돌아가지지 않으면 아래 버튼을 눌러주세요.'
       : '테놀 앱으로 돌아가 다시 시도해주세요.';
   const icon = kind === 'success' ? '✓' : '!';
-  const iconColor = kind === 'success' ? '#00E676' : '#FF5252';
+  const iconColor = kind === 'success' ? 'var(--ok)' : 'var(--err)';
   const html = `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${title}</title><style>
-body{margin:0;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:#0A0A0A;color:#EDEDED;font-family:-apple-system,'Pretendard',sans-serif;text-align:center}
+${interstitialThemeCss(theme)}
+body{margin:0;min-height:100dvh;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--fg);font-family:-apple-system,'Pretendard',sans-serif;text-align:center}
 .card{padding:32px 24px;max-width:320px}
 .icon{width:64px;height:64px;border-radius:50%;border:2px solid ${iconColor};color:${iconColor};font-size:32px;line-height:60px;margin:0 auto 20px}
 h1{font-size:20px;margin:0 0 12px}
-p{font-size:14px;color:#999;line-height:1.6;margin:0 0 28px}
-a.btn{display:block;padding:16px;border-radius:16px;background:#00E676;color:#0A0A0A;font-weight:700;font-size:16px;text-decoration:none}
-.hint{font-size:12px;color:#666;margin-top:16px}
+p{font-size:14px;color:var(--muted);line-height:1.6;margin:0 0 28px}
+a.btn{display:block;padding:16px;border-radius:16px;background:var(--btn-bg);color:var(--btn-fg);font-weight:700;font-size:16px;text-decoration:none}
+.hint{font-size:12px;color:var(--hint);margin-top:16px}
 </style></head><body><div class="card">
 <div class="icon">${icon}</div>
 <h1>${heading}</h1>
@@ -93,6 +95,7 @@ a.btn{display:block;padding:16px;border-radius:16px;background:#00E676;color:#0A
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
+  const theme = readThemeCookie(request.headers.get('cookie'));
   const code = searchParams.get('code');
   const error = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
@@ -107,7 +110,7 @@ export async function GET(request: Request) {
       path: '/auth/callback',
       metadata: { error, errorDescription, isHandoff },
     });
-    if (isHandoff) return handoffInterstitial('error', makeHandoffToken());
+    if (isHandoff) return handoffInterstitial('error', makeHandoffToken(), theme);
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error)}`);
   }
 
@@ -140,7 +143,7 @@ export async function GET(request: Request) {
         metadata: { exchangeMessage: exchangeError?.message ?? 'no session' },
       });
       await new Promise((r) => setTimeout(r, 400));
-      return handoffInterstitial('error', makeHandoffToken());
+      return handoffInterstitial('error', makeHandoffToken(), theme);
     }
 
     // 토큰은 여기서만 만들어 성공 화면에만 노출 → 본인 기기 외엔 알 수 없다
@@ -152,9 +155,9 @@ export async function GET(request: Request) {
     if (!stored) {
       await logError('auth', '핸드오프 세션 저장 실패', { path: '/auth/callback' });
       await new Promise((r) => setTimeout(r, 400));
-      return handoffInterstitial('error', makeHandoffToken());
+      return handoffInterstitial('error', makeHandoffToken(), theme);
     }
-    return handoffInterstitial('success', token);
+    return handoffInterstitial('success', token, theme);
   }
 
   if (code) {
@@ -200,11 +203,12 @@ export async function GET(request: Request) {
         if (!profile?.is_onboarded) {
           // 온보딩 완료 후 원래 목적지(초대 링크 등)로 복귀할 수 있게 전달
           return htmlRedirect(
-            `/onboarding${next ? `?next=${encodeURIComponent(next)}` : ''}`
+            `/onboarding${next ? `?next=${encodeURIComponent(next)}` : ''}`,
+            theme
           );
         }
       }
-      return htmlRedirect(next ?? '/clubs');
+      return htmlRedirect(next ?? '/clubs', theme);
     }
 
     console.error('Code exchange failed:', exchangeError);

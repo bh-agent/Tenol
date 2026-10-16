@@ -60,7 +60,7 @@ export function RecruitCreateFab({ clubs }: RecruitCreateFabProps) {
       {sheetOpen && (
         <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="모집글 작성할 클럽 선택">
           <div
-            className="absolute inset-0 bg-black/60"
+            className="absolute inset-0 bg-scrim"
             onClick={() => setSheetOpen(false)}
             aria-hidden="true"
           />

@@ -91,7 +91,7 @@ function TemplateCard({ template }: { template: TemplateWithDate }) {
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Repeat className="w-5 h-5 text-primary" />
+                <Repeat className="w-5 h-5 text-primary-ink" />
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">{template.name}</h3>
@@ -100,7 +100,7 @@ function TemplateCard({ template }: { template: TemplateWithDate }) {
             <div className="flex items-center gap-1">
               <Link
                 href={`/clubs/${template.club_id}/templates/${template.id}/edit`}
-                className="p-2 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all duration-200"
+                className="p-2 rounded-full text-muted-foreground hover:text-primary-ink hover:bg-primary/10 transition-all duration-200"
               >
                 <PenLine className="w-4 h-4" />
               </Link>
@@ -131,13 +131,13 @@ function TemplateCard({ template }: { template: TemplateWithDate }) {
           {/* Location */}
           {template.location && (
             <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-              <MapPin className="w-3.5 h-3.5 text-primary/70" />
+              <MapPin className="w-3.5 h-3.5 text-primary-ink/70" />
               {template.location}
             </div>
           )}
 
           {/* Next match date */}
-          <div className="flex items-center gap-1.5 text-sm text-primary font-medium">
+          <div className="flex items-center gap-1.5 text-sm text-primary-ink font-medium">
             <Calendar className="w-3.5 h-3.5" />
             다음 경기: {formatDate(template.nextMatchDate)}
           </div>
@@ -197,7 +197,7 @@ function EmptyState({ clubId }: { clubId: string }) {
     <Card variant="glass" padding="lg">
       <div className="text-center py-8 space-y-4">
         <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-          <Repeat className="w-7 h-7 text-primary/50" />
+          <Repeat className="w-7 h-7 text-primary-ink/50" />
         </div>
         <div>
           <p className="text-foreground font-medium">등록된 템플릿이 없습니다</p>

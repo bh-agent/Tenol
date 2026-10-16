@@ -87,7 +87,7 @@ export function RegionPicker({
       {/* Bottom Sheet */}
       {open && createPortal(
         <>
-          <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 z-50 bg-scrim" onClick={() => setOpen(false)} />
           <div
             role="dialog"
             aria-modal="true"
@@ -125,7 +125,7 @@ export function RegionPicker({
                     className={cn(
                       'w-full text-left px-4 py-3 text-sm transition-colors',
                       selectedSido === r.short
-                        ? 'bg-primary/10 text-primary font-semibold'
+                        ? 'bg-primary/10 text-primary-ink font-semibold'
                         : 'text-foreground hover:bg-surface-hover'
                     )}
                   >
@@ -149,8 +149,8 @@ export function RegionPicker({
                       className={cn(
                         'w-full text-left px-4 py-3 text-sm transition-colors font-medium',
                         value === selectedSido
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-primary/80 hover:bg-surface-hover'
+                          ? 'bg-primary/10 text-primary-ink'
+                          : 'text-primary-ink/80 hover:bg-surface-hover'
                       )}
                     >
                       {selectedSido} 전체
@@ -164,7 +164,7 @@ export function RegionPicker({
                           className={cn(
                             'w-full text-left px-4 py-3 text-sm transition-colors',
                             value === fullValue
-                              ? 'bg-primary/10 text-primary font-semibold'
+                              ? 'bg-primary/10 text-primary-ink font-semibold'
                               : 'text-foreground hover:bg-surface-hover'
                           )}
                         >

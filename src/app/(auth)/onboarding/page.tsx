@@ -315,7 +315,7 @@ function OnboardingContent() {
                       className={cn(
                         'h-12 rounded-xl border text-sm font-medium transition-all duration-200',
                         gender === 'M'
-                          ? 'border-primary bg-primary/10 text-primary glow-primary-sm'
+                          ? 'border-primary bg-primary/10 text-primary-ink glow-primary-sm'
                           : 'border-border bg-surface text-muted-foreground hover:border-primary/30 hover:text-foreground'
                       )}
                     >
@@ -327,7 +327,7 @@ function OnboardingContent() {
                       className={cn(
                         'h-12 rounded-xl border text-sm font-medium transition-all duration-200',
                         gender === 'F'
-                          ? 'border-primary bg-primary/10 text-primary glow-primary-sm'
+                          ? 'border-primary bg-primary/10 text-primary-ink glow-primary-sm'
                           : 'border-border bg-surface text-muted-foreground hover:border-primary/30 hover:text-foreground'
                       )}
                     >
@@ -375,7 +375,7 @@ function OnboardingContent() {
                         className={cn(
                           'h-12 rounded-xl border text-sm font-medium transition-all duration-200',
                           ntrp === option.value
-                            ? 'border-primary bg-primary/10 text-primary glow-primary-sm'
+                            ? 'border-primary bg-primary/10 text-primary-ink glow-primary-sm'
                             : 'border-border bg-surface text-muted-foreground hover:border-primary/30 hover:text-foreground'
                         )}
                       >
@@ -384,7 +384,7 @@ function OnboardingContent() {
                     ))}
                   </div>
                   {ntrp && (
-                    <p className="mt-2 text-xs text-primary/80 text-center animate-fade-in">
+                    <p className="mt-2 text-xs text-primary-ink/80 text-center animate-fade-in">
                       {NTRP_OPTIONS.find((o) => o.value === ntrp)?.label}
                     </p>
                   )}
@@ -394,10 +394,10 @@ function OnboardingContent() {
                 <div className="rounded-xl bg-surface-elevated/50 border border-border p-3 space-y-1.5">
                   <p className="text-xs font-medium text-foreground mb-1">레벨 가이드</p>
                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">1.0-2.0</span> 입문자</p>
-                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">2.5-3.0</span> 초급</p>
-                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">3.5-4.0</span> 중급</p>
-                    <p className="text-[11px] text-muted-foreground"><span className="text-primary font-medium">4.5-5.0</span> 상급</p>
+                    <p className="text-[11px] text-muted-foreground"><span className="text-primary-ink font-medium">1.0-2.0</span> 입문자</p>
+                    <p className="text-[11px] text-muted-foreground"><span className="text-primary-ink font-medium">2.5-3.0</span> 초급</p>
+                    <p className="text-[11px] text-muted-foreground"><span className="text-primary-ink font-medium">3.5-4.0</span> 중급</p>
+                    <p className="text-[11px] text-muted-foreground"><span className="text-primary-ink font-medium">4.5-5.0</span> 상급</p>
                   </div>
                 </div>
               </div>
@@ -433,7 +433,7 @@ function OnboardingContent() {
                       <Avatar src={avatarUrl} alt="프로필" fallback="?" size="xl" className="w-full h-full" />
                     ) : (
                       <div className="flex flex-col items-center gap-1.5">
-                        <Camera className="w-7 h-7 text-primary/60" />
+                        <Camera className="w-7 h-7 text-primary-ink/60" />
                         <span className="text-xs text-muted-foreground">사진 추가</span>
                       </div>
                     )}
@@ -451,7 +451,7 @@ function OnboardingContent() {
                     className="hidden"
                   />
                   {uploading && (
-                    <p className="text-xs text-primary mt-3 animate-pulse">업로드 중...</p>
+                    <p className="text-xs text-primary-ink mt-3 animate-pulse">업로드 중...</p>
                   )}
                   <p className="text-xs text-subtle mt-2">선택사항 - 나중에 추가할 수 있어요</p>
                 </div>

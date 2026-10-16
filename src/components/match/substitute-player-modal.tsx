@@ -215,7 +215,7 @@ export function SubstitutePlayerModal({
                   <div className="flex-1 min-w-0 text-left">
                     <p className="text-sm font-medium text-foreground truncate">{m.name}</p>
                     {m.ntrp && (
-                      <p className="text-xs text-primary font-semibold">NTRP {m.ntrp}</p>
+                      <p className="text-xs text-primary-ink font-semibold">NTRP {m.ntrp}</p>
                     )}
                   </div>
                 </button>

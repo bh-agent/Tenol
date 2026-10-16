@@ -40,8 +40,8 @@ export default async function MembersPage({
   );
 
   const getRoleIcon = (role: string) => {
-    if (role === 'owner') return <Crown className="w-3 h-3 text-yellow-500" />;
-    if (role === 'admin') return <Shield className="w-3 h-3 text-emerald-500" />;
+    if (role === 'owner') return <Crown className="w-3 h-3 text-medal-gold" />;
+    if (role === 'admin') return <Shield className="w-3 h-3 text-primary-ink" />;
     return null;
   };
 
@@ -53,7 +53,7 @@ export default async function MembersPage({
         {/* Header */}
         <div className="flex items-center gap-3 mb-5">
           <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-            <Users className="w-5 h-5 text-primary" />
+            <Users className="w-5 h-5 text-primary-ink" />
           </div>
           <div>
             <h2 className="font-semibold text-foreground">멤버 목록</h2>
@@ -82,7 +82,7 @@ export default async function MembersPage({
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-foreground truncate hover:text-primary transition-colors">
+                      <span className="font-medium text-foreground truncate hover:text-primary-ink transition-colors">
                         {member.profiles?.display_name}
                       </span>
                       {member.profiles?.id && achievementsByUser[member.profiles.id]?.length > 0 && (
@@ -101,7 +101,7 @@ export default async function MembersPage({
                   </div>
                   {member.profiles?.ntrp_level && (
                     <span className="text-xs text-muted-foreground">
-                      NTRP <span className="text-primary font-medium">{member.profiles.ntrp_level}</span>
+                      NTRP <span className="text-primary-ink font-medium">{member.profiles.ntrp_level}</span>
                     </span>
                   )}
                   </div>

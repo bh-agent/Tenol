@@ -19,7 +19,7 @@ export function Badge({
         {
           'bg-muted text-muted-foreground border-border':
             variant === 'default',
-          'bg-primary/10 text-primary border-primary/20':
+          'bg-primary/10 text-primary-ink border-primary/20':
             variant === 'primary',
           'bg-success/10 text-success border-success/20':
             variant === 'success',

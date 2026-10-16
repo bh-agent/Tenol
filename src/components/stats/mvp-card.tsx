@@ -17,7 +17,7 @@ const PERIOD_LABELS: Record<MvpPeriod, string> = {
 };
 
 const MEDAL_EMOJI = ['👑', '🥈', '🥉'];
-const MEDAL_COLORS = ['#FFD740', '#C0C0C0', '#CD7F32'];
+const MEDAL_COLORS = ['var(--t-medal-gold)', 'var(--t-medal-silver)', 'var(--t-medal-bronze)'];
 
 interface MvpCardProps {
   /** MVP entries keyed by period. Pre-fetched from the server. */
@@ -47,13 +47,13 @@ export function MvpCard({
       className={cn('relative overflow-hidden', className)}
     >
       {/* Gold glow background */}
-      <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-[#FFD740]/8 blur-2xl pointer-events-none" />
-      <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full bg-[#FFD740]/5 blur-xl pointer-events-none" />
+      <div className="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-medal-gold/8 blur-2xl pointer-events-none" />
+      <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full bg-medal-gold/5 blur-xl pointer-events-none" />
 
       {/* Header */}
       <div className="flex items-center gap-2 mb-4 relative">
-        <div className="w-9 h-9 rounded-xl bg-[#FFD740]/15 flex items-center justify-center">
-          <Trophy className="w-5 h-5 text-[#FFD740]" />
+        <div className="w-9 h-9 rounded-xl bg-medal-gold/15 flex items-center justify-center">
+          <Trophy className="w-5 h-5 text-medal-gold" />
         </div>
         <div>
           <h3 className="font-bold text-foreground text-base">MVP Top 3</h3>
@@ -72,7 +72,7 @@ export function MvpCard({
             className={cn(
               'flex-1 py-1.5 text-xs font-medium rounded-lg transition-all duration-200 cursor-pointer',
               activePeriod === period
-                ? 'bg-[#FFD740]/15 text-[#FFD740] shadow-sm'
+                ? 'bg-medal-gold/15 text-medal-gold shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -93,7 +93,7 @@ export function MvpCard({
                 key={mvp.user_id}
                 className={cn(
                   'flex items-center gap-3 p-3 rounded-xl',
-                  i === 0 ? 'bg-[#FFD740]/8 border border-[#FFD740]/20' : 'bg-surface-elevated/50'
+                  i === 0 ? 'bg-medal-gold/8 border border-medal-gold/20' : 'bg-surface-elevated/50'
                 )}
               >
                 {/* Medal */}
@@ -109,7 +109,7 @@ export function MvpCard({
                     active={i === 0}
                   />
                   {i === 0 && (
-                    <Crown className="absolute -top-1.5 -right-1.5 w-4 h-4 text-[#FFD740] drop-shadow-[0_0_4px_rgba(255,215,64,0.5)]" />
+                    <Crown className="absolute -top-1.5 -right-1.5 w-4 h-4 text-medal-gold drop-shadow-[0_0_4px_rgba(255,215,64,0.5)]" />
                   )}
                 </div>
 
@@ -132,7 +132,7 @@ export function MvpCard({
 
                 {/* Avg Score */}
                 <div className="text-right flex-shrink-0">
-                  <p className="text-xl font-bold" style={{ color: MEDAL_COLORS[i] || '#EEEEEE' }}>
+                  <p className="text-xl font-bold" style={{ color: MEDAL_COLORS[i] || 'var(--t-foreground)' }}>
                     {avgScore}
                   </p>
                   <p className="text-[10px] text-muted-foreground">평균</p>
@@ -170,18 +170,18 @@ export function MatchMvpCard({
       padding="md"
       className={cn('relative overflow-hidden', className)}
     >
-      <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-[#FFD740]/8 blur-xl pointer-events-none" />
+      <div className="absolute -top-8 -right-8 w-24 h-24 rounded-full bg-medal-gold/8 blur-xl pointer-events-none" />
 
       <div className="flex items-center gap-2 mb-3">
-        <Trophy className="w-4 h-4 text-[#FFD740]" />
-        <span className="text-sm font-bold text-[#FFD740]">
+        <Trophy className="w-4 h-4 text-medal-gold" />
+        <span className="text-sm font-bold text-medal-gold">
           이 경기의 MVP
         </span>
       </div>
 
       <div className="flex items-center gap-3">
         <div className="relative">
-          <div className="absolute inset-0 rounded-full bg-[#FFD740]/15 blur-sm scale-110" />
+          <div className="absolute inset-0 rounded-full bg-medal-gold/15 blur-sm scale-110" />
           <Avatar
             src={mvp.avatar_url}
             alt={mvp.display_name}
@@ -189,7 +189,7 @@ export function MatchMvpCard({
             size="lg"
             active
           />
-          <Crown className="absolute -top-1.5 -right-1.5 w-4 h-4 text-[#FFD740] drop-shadow-[0_0_4px_rgba(255,215,64,0.5)]" />
+          <Crown className="absolute -top-1.5 -right-1.5 w-4 h-4 text-medal-gold drop-shadow-[0_0_4px_rgba(255,215,64,0.5)]" />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -209,7 +209,7 @@ export function MatchMvpCard({
         </div>
 
         <div className="text-right flex-shrink-0">
-          <p className="text-xl font-bold text-[#FFD740]">
+          <p className="text-xl font-bold text-medal-gold">
             {mvp.total_score}
           </p>
           <p className="text-[10px] text-muted-foreground">득점</p>

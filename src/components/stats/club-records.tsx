@@ -23,17 +23,17 @@ export function ClubRecords({ records, className }: ClubRecordsProps) {
         <Card
           key={record.type}
           padding="sm"
-          className="border-[#FFD740]/15 hover:border-[#FFD740]/30 transition-all duration-300"
+          className="border-medal-gold/15 hover:border-medal-gold/30 transition-all duration-300"
         >
           <div className="flex items-center gap-3">
             {/* Emoji */}
-            <div className="w-10 h-10 rounded-xl bg-[#FFD740]/10 flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-medal-gold/10 flex items-center justify-center flex-shrink-0">
               <span className="text-lg">{record.emoji}</span>
             </div>
 
             {/* Record Info */}
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-[#FFD740] font-medium">{record.title}</p>
+              <p className="text-xs text-medal-gold font-medium">{record.title}</p>
               <div className="flex items-center gap-2 mt-1">
                 <Avatar
                   src={record.holderAvatarUrl}
@@ -54,7 +54,7 @@ export function ClubRecords({ records, className }: ClubRecordsProps) {
 
             {/* Value */}
             <div className="text-right flex-shrink-0">
-              <p className="text-lg font-bold text-[#FFD740]">{record.value}</p>
+              <p className="text-lg font-bold text-medal-gold">{record.value}</p>
             </div>
           </div>
         </Card>

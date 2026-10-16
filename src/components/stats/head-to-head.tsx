@@ -26,7 +26,7 @@ export function HeadToHead({ player1, player2, result, className }: HeadToHeadPr
         <div className="flex flex-col items-center gap-2 flex-1">
           <div className={cn(
             'rounded-full p-0.5',
-            p1Leading && 'ring-2 ring-[#00E676] ring-offset-2 ring-offset-card'
+            p1Leading && 'ring-2 ring-primary ring-offset-2 ring-offset-card'
           )}>
             <Avatar
               src={player1.avatarUrl}
@@ -37,7 +37,7 @@ export function HeadToHead({ player1, player2, result, className }: HeadToHeadPr
           </div>
           <p className={cn(
             'text-sm font-medium text-center truncate max-w-[80px]',
-            p1Leading ? 'text-[#00E676]' : 'text-foreground'
+            p1Leading ? 'text-primary-ink' : 'text-foreground'
           )}>
             {player1.displayName}
           </p>
@@ -49,14 +49,14 @@ export function HeadToHead({ player1, player2, result, className }: HeadToHeadPr
           <div className="flex items-center gap-2">
             <span className={cn(
               'text-2xl font-bold',
-              p1Leading ? 'text-[#00E676]' : tied ? 'text-foreground' : 'text-muted-foreground'
+              p1Leading ? 'text-primary-ink' : tied ? 'text-foreground' : 'text-muted-foreground'
             )}>
               {player1Wins}
             </span>
             <span className="text-muted-foreground font-bold">:</span>
             <span className={cn(
               'text-2xl font-bold',
-              p2Leading ? 'text-[#00E676]' : tied ? 'text-foreground' : 'text-muted-foreground'
+              p2Leading ? 'text-primary-ink' : tied ? 'text-foreground' : 'text-muted-foreground'
             )}>
               {player2Wins}
             </span>
@@ -68,7 +68,7 @@ export function HeadToHead({ player1, player2, result, className }: HeadToHeadPr
         <div className="flex flex-col items-center gap-2 flex-1">
           <div className={cn(
             'rounded-full p-0.5',
-            p2Leading && 'ring-2 ring-[#00E676] ring-offset-2 ring-offset-card'
+            p2Leading && 'ring-2 ring-primary ring-offset-2 ring-offset-card'
           )}>
             <Avatar
               src={player2.avatarUrl}
@@ -79,7 +79,7 @@ export function HeadToHead({ player1, player2, result, className }: HeadToHeadPr
           </div>
           <p className={cn(
             'text-sm font-medium text-center truncate max-w-[80px]',
-            p2Leading ? 'text-[#00E676]' : 'text-foreground'
+            p2Leading ? 'text-primary-ink' : 'text-foreground'
           )}>
             {player2.displayName}
           </p>
@@ -98,7 +98,7 @@ export function HeadToHead({ player1, player2, result, className }: HeadToHeadPr
               >
                 <span className={cn(
                   'font-medium',
-                  game.winner === 'player1' ? 'text-[#00E676]' : 'text-muted-foreground'
+                  game.winner === 'player1' ? 'text-primary-ink' : 'text-muted-foreground'
                 )}>
                   {game.winner === 'player1' ? '승' : '패'}
                 </span>
@@ -107,7 +107,7 @@ export function HeadToHead({ player1, player2, result, className }: HeadToHeadPr
                 </span>
                 <span className={cn(
                   'font-medium',
-                  game.winner === 'player2' ? 'text-[#00E676]' : 'text-muted-foreground'
+                  game.winner === 'player2' ? 'text-primary-ink' : 'text-muted-foreground'
                 )}>
                   {game.winner === 'player2' ? '승' : '패'}
                 </span>

@@ -159,7 +159,7 @@ export default function ClubSettingsPage() {
       <>
         <TopBar title="클럽 설정" backHref={`/clubs/${clubId}`} />
         <div className="flex items-center justify-center py-16">
-          <RefreshCw className="w-6 h-6 text-primary animate-spin" />
+          <RefreshCw className="w-6 h-6 text-primary-ink animate-spin" />
         </div>
       </>
     );
@@ -174,7 +174,7 @@ export default function ClubSettingsPage() {
         <Card variant="glass" padding="lg">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <Camera className="w-5 h-5 text-primary" />
+              <Camera className="w-5 h-5 text-primary-ink" />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">클럽 프로필 사진</h3>
@@ -220,7 +220,7 @@ export default function ClubSettingsPage() {
         <Card variant="glass" padding="lg">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <Settings className="w-5 h-5 text-primary" />
+              <Settings className="w-5 h-5 text-primary-ink" />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">클럽 정보</h3>

@@ -98,7 +98,7 @@ export function GuestPendingList({ pending, matchId }: GuestPendingListProps) {
                   <div className="flex items-center gap-2">
                     {p.user_id ? (
                       <Link href={`/profile/${p.user_id}`}>
-                        <p className="text-sm font-semibold text-foreground hover:text-primary transition-colors truncate">
+                        <p className="text-sm font-semibold text-foreground hover:text-primary-ink transition-colors truncate">
                           {displayName}
                         </p>
                       </Link>

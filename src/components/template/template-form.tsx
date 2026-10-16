@@ -61,7 +61,7 @@ export function TemplateForm({ clubId, template }: TemplateFormProps) {
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-          <Repeat className="w-5 h-5 text-primary" />
+          <Repeat className="w-5 h-5 text-primary-ink" />
         </div>
         <div>
           <h3 className="font-semibold text-foreground">{isEdit ? '템플릿 수정' : '새 템플릿'}</h3>
@@ -99,7 +99,7 @@ export function TemplateForm({ clubId, template }: TemplateFormProps) {
         {/* Schedule section */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Repeat className="w-4 h-4 text-primary/70" />
+            <Repeat className="w-4 h-4 text-primary-ink/70" />
             <span className="font-medium">반복 설정</span>
           </div>
           <Select
@@ -123,7 +123,7 @@ export function TemplateForm({ clubId, template }: TemplateFormProps) {
         {/* Preview */}
         <div className="rounded-xl border border-border bg-muted/30 p-3 space-y-2">
           <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-            <Calendar className="w-3.5 h-3.5 text-primary/70" />
+            <Calendar className="w-3.5 h-3.5 text-primary-ink/70" />
             다음 경기 미리보기
           </div>
           {previewDates.map((dateStr, i) => {
@@ -142,7 +142,7 @@ export function TemplateForm({ clubId, template }: TemplateFormProps) {
         {/* Time section */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4 text-primary/70" />
+            <Clock className="w-4 h-4 text-primary-ink/70" />
             <span className="font-medium">시간</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -166,7 +166,7 @@ export function TemplateForm({ clubId, template }: TemplateFormProps) {
         {/* Location section */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <MapPin className="w-4 h-4 text-primary/70" />
+            <MapPin className="w-4 h-4 text-primary-ink/70" />
             <span className="font-medium">장소</span>
           </div>
           <Input
@@ -181,7 +181,7 @@ export function TemplateForm({ clubId, template }: TemplateFormProps) {
         {/* Match settings section */}
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <LayoutGrid className="w-4 h-4 text-primary/70" />
+            <LayoutGrid className="w-4 h-4 text-primary-ink/70" />
             <span className="font-medium">경기 설정</span>
           </div>
           <Select

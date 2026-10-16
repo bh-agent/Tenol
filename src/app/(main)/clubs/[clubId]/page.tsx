@@ -72,7 +72,7 @@ export default async function ClubDetailPage({
                 href={`/clubs/${clubId}/settings`}
                 className="p-2 rounded-full hover:bg-surface-elevated transition-colors"
               >
-                <Settings className="w-5 h-5 text-muted-foreground hover:text-primary transition-colors" />
+                <Settings className="w-5 h-5 text-muted-foreground hover:text-primary-ink transition-colors" />
               </Link>
             )}
             {/* 비운영진(클럽 콘텐츠 신고) — Apple 1.2 UGC */}
@@ -113,13 +113,13 @@ export default async function ClubDetailPage({
             <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
               {club.region && (
                 <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-elevated border border-border">
-                  <MapPin className="w-3.5 h-3.5 text-primary/70" />
+                  <MapPin className="w-3.5 h-3.5 text-primary-ink/70" />
                   {club.region}
                 </span>
               )}
               {club.main_court && (
                 <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-elevated border border-border">
-                  <Trophy className="w-3.5 h-3.5 text-primary/70" />
+                  <Trophy className="w-3.5 h-3.5 text-primary-ink/70" />
                   {club.main_court}
                 </span>
               )}
@@ -131,7 +131,7 @@ export default async function ClubDetailPage({
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-elevated border border-border hover:border-primary/40 hover:text-foreground transition-colors"
                 >
-                  <MessageCircle className="w-3.5 h-3.5 text-primary/70" />
+                  <MessageCircle className="w-3.5 h-3.5 text-primary-ink/70" />
                   오픈채팅
                 </a>
               )}
@@ -142,7 +142,7 @@ export default async function ClubDetailPage({
                   rel="noopener noreferrer"
                   className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-elevated border border-border hover:border-primary/40 hover:text-foreground transition-colors"
                 >
-                  <Instagram className="w-3.5 h-3.5 text-primary/70" />
+                  <Instagram className="w-3.5 h-3.5 text-primary-ink/70" />
                   인스타그램
                 </a>
               )}
@@ -181,7 +181,7 @@ export default async function ClubDetailPage({
               className={`flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-200 ${totalPending > 0 ? 'ring-1 ring-primary/30 shadow-[0_0_12px_rgba(var(--color-primary-rgb,99,102,241),0.15)]' : ''}`}
             >
               <div className="relative w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <ClipboardList className="w-5 h-5 text-primary" />
+                <ClipboardList className="w-5 h-5 text-primary-ink" />
                 {totalPending > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-destructive text-white text-xs font-bold flex items-center justify-center animate-pulse">
                     {totalPending}
@@ -213,15 +213,15 @@ export default async function ClubDetailPage({
       <div className="px-4 pt-2 pb-0 animate-fade-in">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-elevated border border-border text-sm text-muted-foreground">
-            <Swords className="w-3.5 h-3.5 text-primary/70" />
+            <Swords className="w-3.5 h-3.5 text-primary-ink/70" />
             경기 {matches.length}회
           </span>
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-elevated border border-border text-sm text-muted-foreground">
-            <Users className="w-3.5 h-3.5 text-primary/70" />
+            <Users className="w-3.5 h-3.5 text-primary-ink/70" />
             멤버 {members.length}명
           </span>
           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-elevated border border-border text-sm text-muted-foreground">
-            <Calendar className="w-3.5 h-3.5 text-primary/70" />
+            <Calendar className="w-3.5 h-3.5 text-primary-ink/70" />
             이번 달 {(() => {
               const now = new Date();
               const y = now.getFullYear();
@@ -248,7 +248,7 @@ export default async function ClubDetailPage({
           className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-200"
         >
           <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-            <BarChart3 className="w-5 h-5 text-primary" />
+            <BarChart3 className="w-5 h-5 text-primary-ink" />
           </div>
           <div className="flex-1">
             <span className="text-sm font-semibold text-foreground">통계</span>
@@ -259,10 +259,10 @@ export default async function ClubDetailPage({
         {canManageMembers && (
           <Link
             href={`/clubs/${clubId}/recruit`}
-            className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-[#00E676]/30 transition-all duration-200"
+            className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-200"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#00E676]/15 flex items-center justify-center">
-              <Megaphone className="w-5 h-5 text-[#00E676]" />
+            <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
+              <Megaphone className="w-5 h-5 text-primary-ink" />
             </div>
             <div className="flex-1">
               <span className="text-sm font-semibold text-foreground">모집글 작성</span>
@@ -277,7 +277,7 @@ export default async function ClubDetailPage({
             className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-200"
           >
             <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-              <Repeat className="w-5 h-5 text-primary" />
+              <Repeat className="w-5 h-5 text-primary-ink" />
             </div>
             <div className="flex-1">
               <span className="text-sm font-semibold text-foreground">반복 경기 템플릿</span>

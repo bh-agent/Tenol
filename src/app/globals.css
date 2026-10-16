@@ -1,38 +1,155 @@
 @import "tailwindcss";
 
+/* ──────────────────────────────────────────────────────────────
+   테마 2단 구조
+   1) `--t-*` 원시 값: html(다크 기본) / [data-theme="light"] / [data-theme="dark"]
+   2) `@theme inline`의 `--color-*` 토큰이 `--t-*`를 참조 → Tailwind 유틸리티가
+      런타임 테마 전환을 그대로 따라간다.
+   - `data-theme`는 <head> 인라인 스크립트(src/lib/theme)가 첫 페인트 전에 확정.
+   - 공유 이미지처럼 테마와 무관하게 다크를 고정할 섹션은 `data-theme="dark"`를 박는다.
+   - 대비: 라이트 글자색은 흰 배경 기준 WCAG AA(4.5:1) 이상. 수치는 docs/LIGHT_MODE_PLAN.md.
+   ────────────────────────────────────────────────────────────── */
+html,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Core: Black × Green */
+  --t-primary: #00E676;          /* 채움(버튼·FAB·인디케이터). 위 글자는 검정 */
+  --t-primary-ink: #00E676;      /* 글자·아이콘·링크 */
+  --t-primary-light: #69F0AE;
+  --t-primary-dark: #00C853;
+  --t-primary-dim: rgba(0, 230, 118, 0.12);
+
+  /* Surfaces */
+  --t-background: #0A0A0A;
+  --t-foreground: #F5F5F5;
+  --t-surface: #141414;
+  --t-surface-elevated: #1C1C1C;
+  --t-surface-hover: #222222;
+
+  /* Text */
+  --t-muted: #1A1A1A;
+  --t-muted-foreground: #A3A3A3;
+  --t-subtle: #7A7A7A;
+
+  /* Borders */
+  --t-border: #2A2A2A;
+  --t-border-light: #1F1F1F;
+  --t-hairline: rgba(255, 255, 255, 0.06);   /* 글래스 패널 가장자리 */
+  --t-scrim: rgba(0, 0, 0, 0.6);              /* 모달·시트 배경 */
+
+  /* Semantic */
+  --t-destructive: #FF5252;
+  --t-success: #00E676;
+  --t-warning: #FFD740;
+  --t-info: #40C4FF;
+  --t-medal-gold: #FFD740;
+  --t-medal-silver: #C0C0C0;
+  --t-medal-bronze: #CD7F32;
+  --t-recruit-guest: #42A5F5;
+
+  /* Effects */
+  --t-glass-bg: rgba(20, 20, 20, 0.8);
+  --t-glass-bg-opaque: rgba(18, 18, 18, 0.96);
+  --t-glow: 0 0 20px rgba(0, 230, 118, 0.15), 0 0 60px rgba(0, 230, 118, 0.05);
+  --t-glow-sm: 0 0 10px rgba(0, 230, 118, 0.1);
+  --t-shadow-color: rgba(0, 0, 0, 0.4);
+  --t-gradient-text: linear-gradient(135deg, #00E676 0%, #69F0AE 50%, #00E676 100%);
+  --t-selection-fg: #ffffff;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  --t-primary: #00C853;          /* 검은 글자 대비 9.4:1 */
+  --t-primary-ink: #007F55;      /* 흰 배경 5.1:1, 바닥 4.6:1 (AA) */
+  --t-primary-light: #00E676;
+  --t-primary-dark: #00A846;
+  --t-primary-dim: rgba(0, 200, 83, 0.10);
+
+  --t-background: #F5F6F5;       /* 순백 카드가 떠 보이도록 아주 옅은 회색 */
+  --t-foreground: #111111;
+  --t-surface: #FFFFFF;
+  --t-surface-elevated: #F0F1F0;
+  --t-surface-hover: #E8EAE8;
+
+  --t-muted: #F0F1F0;
+  --t-muted-foreground: #5C5F5C; /* 6.3:1 */
+  --t-subtle: #8A8D8A;           /* 플레이스홀더 3.5:1 */
+
+  --t-border: #E2E4E2;
+  --t-border-light: #ECEEEC;
+  --t-hairline: rgba(0, 0, 0, 0.06);
+  --t-scrim: rgba(0, 0, 0, 0.4);
+
+  --t-destructive: #C62828;      /* 5.6:1 */
+  --t-success: #007F55;
+  --t-warning: #9E5F00;          /* 5.1:1 */
+  --t-info: #1565C0;             /* 5.8:1 */
+  --t-medal-gold: #8F6400;
+  --t-medal-silver: #757575;
+  --t-medal-bronze: #A0522D;
+  --t-recruit-guest: #1565C0;
+
+  --t-glass-bg: rgba(255, 255, 255, 0.8);
+  --t-glass-bg-opaque: rgba(255, 255, 255, 0.96);
+  --t-glow: 0 0 20px rgba(0, 200, 83, 0.10), 0 0 60px rgba(0, 200, 83, 0.03);
+  --t-glow-sm: 0 0 10px rgba(0, 200, 83, 0.06);
+  --t-shadow-color: rgba(0, 0, 0, 0.12);
+  --t-gradient-text: linear-gradient(135deg, #007F55 0%, #00A86B 50%, #007F55 100%);
+  --t-selection-fg: #111111;
+}
+
+/* 테마 전환 시 배경·글자만 짧게 보간 (요소별 transition은 각자 유지) */
+html.theme-transition,
+html.theme-transition * {
+  transition: background-color 0.2s ease-out, color 0.2s ease-out, border-color 0.2s ease-out !important;
+}
+
+/* 토큰으로 못 푸는 예외에만 쓰는 변형. 목표: 전체 10곳 이하 */
+@custom-variant light (&:where([data-theme="light"], [data-theme="light"] *));
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 @theme inline {
   /* ── Core: Black × Green ── */
-  --color-primary: #00E676;
-  --color-primary-light: #69F0AE;
-  --color-primary-dark: #00C853;
-  --color-primary-dim: rgba(0, 230, 118, 0.12);
-  --color-accent: #00E676;
+  --color-primary: var(--t-primary);
+  --color-primary-ink: var(--t-primary-ink);
+  --color-primary-light: var(--t-primary-light);
+  --color-primary-dark: var(--t-primary-dark);
+  --color-primary-dim: var(--t-primary-dim);
+  --color-accent: var(--t-primary);
 
   /* ── Surfaces ── */
-  --color-background: #0A0A0A;
-  --color-foreground: #F5F5F5;
-  --color-surface: #141414;
-  --color-surface-elevated: #1C1C1C;
-  --color-surface-hover: #222222;
+  --color-background: var(--t-background);
+  --color-foreground: var(--t-foreground);
+  --color-surface: var(--t-surface);
+  --color-surface-elevated: var(--t-surface-elevated);
+  --color-surface-hover: var(--t-surface-hover);
 
   /* ── Text ── */
-  --color-muted: #1A1A1A;
-  --color-muted-foreground: #A3A3A3;
-  --color-subtle: #7A7A7A;
+  --color-muted: var(--t-muted);
+  --color-muted-foreground: var(--t-muted-foreground);
+  --color-subtle: var(--t-subtle);
 
   /* ── Borders ── */
-  --color-border: #2A2A2A;
-  --color-border-light: #1F1F1F;
+  --color-border: var(--t-border);
+  --color-border-light: var(--t-border-light);
+  --color-hairline: var(--t-hairline);
+  --color-scrim: var(--t-scrim);
 
   /* ── Cards ── */
-  --color-card: #141414;
-  --color-card-foreground: #F5F5F5;
+  --color-card: var(--t-surface);
+  --color-card-foreground: var(--t-foreground);
 
   /* ── Semantic ── */
-  --color-destructive: #FF5252;
-  --color-success: #00E676;
-  --color-warning: #FFD740;
-  --color-info: #40C4FF;
+  --color-destructive: var(--t-destructive);
+  --color-success: var(--t-success);
+  --color-warning: var(--t-warning);
+  --color-info: var(--t-info);
+  --color-medal-gold: var(--t-medal-gold);
+  --color-medal-silver: var(--t-medal-silver);
+  --color-medal-bronze: var(--t-medal-bronze);
+  --color-recruit-guest: var(--t-recruit-guest);
 
   /* ── Typography ── */
   --font-sans: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -90,12 +207,12 @@ body.keyboard-open .hide-on-keyboard {
 
 ::selection {
   background: rgba(0, 230, 118, 0.3);
-  color: #fff;
+  color: var(--t-selection-fg);
 }
 
 body {
-  background: var(--color-background);
-  color: var(--color-foreground);
+  background: var(--t-background);
+  color: var(--t-foreground);
   font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
   -webkit-font-smoothing: antialiased;
@@ -131,18 +248,18 @@ html {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: var(--t-border);
   border-radius: 4px;
 }
 
 /* ── Glass Effect ── */
 /* Fallback: 일부 안드로이드 WebView는 backdrop-filter 미지원 → 불투명 배경으로 대체 */
 .glass {
-  background: rgba(18, 18, 18, 0.96);
+  background: var(--t-glass-bg-opaque);
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .glass {
-    background: rgba(20, 20, 20, 0.8);
+    background: var(--t-glass-bg);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
   }
@@ -150,24 +267,24 @@ html {
 
 /* ── Glow Effects ── */
 .glow-primary {
-  box-shadow: 0 0 20px rgba(0, 230, 118, 0.15), 0 0 60px rgba(0, 230, 118, 0.05);
+  box-shadow: var(--t-glow);
 }
 
 .glow-primary-sm {
-  box-shadow: 0 0 10px rgba(0, 230, 118, 0.1);
+  box-shadow: var(--t-glow-sm);
 }
 
 /* ── Gradient Text ── */
 /* 폴백: background-clip:text 미지원 시 단색 그린으로. iOS 텍스트 선택 시
    투명 글자가 안 보이는 문제 방지를 위해 user-select 비활성화. */
 .text-gradient {
-  color: #69F0AE;
+  color: var(--t-primary-ink);
   -webkit-user-select: none;
   user-select: none;
 }
 @supports ((-webkit-background-clip: text) or (background-clip: text)) {
   .text-gradient {
-    background: linear-gradient(135deg, #00E676 0%, #69F0AE 50%, #00E676 100%);
+    background: var(--t-gradient-text);
     -webkit-background-clip: text;
     background-clip: text;
     -webkit-text-fill-color: transparent;

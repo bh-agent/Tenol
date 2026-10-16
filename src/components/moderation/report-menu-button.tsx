@@ -52,7 +52,7 @@ export function ReportMenuButton({
         createPortal(
           <>
             <div
-              className="fixed inset-0 z-50 bg-black/40"
+              className="fixed inset-0 z-50 bg-scrim"
               onClick={() => setShowMenu(false)}
             />
             <div

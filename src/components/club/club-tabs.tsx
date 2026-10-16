@@ -44,7 +44,7 @@ export function ClubTabs({
             className={cn(
               'flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors relative',
               activeTab === tab.key
-                ? 'text-primary'
+                ? 'text-primary-ink'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >

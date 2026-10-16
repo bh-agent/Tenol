@@ -155,7 +155,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
 
         {showMenu && createPortal(
           <>
-            <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setShowMenu(false)} />
+            <div className="fixed inset-0 z-50 bg-scrim" onClick={() => setShowMenu(false)} />
             <div
               className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom"
               role="dialog"
@@ -172,7 +172,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
                     className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
                     role="menuitem"
                   >
-                    <ShieldCheck className="w-5 h-5 text-primary" />
+                    <ShieldCheck className="w-5 h-5 text-primary-ink" />
                     운영진으로 승격
                   </button>
                 )}
@@ -199,7 +199,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
                     className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
                     role="menuitem"
                   >
-                    <Crown className="w-5 h-5 text-yellow-500" />
+                    <Crown className="w-5 h-5 text-medal-gold" />
                     클럽장 양도
                   </button>
                 )}
@@ -217,7 +217,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
                     className="w-full flex items-center gap-3 px-5 py-3.5 text-sm text-foreground hover:bg-surface-hover transition-colors"
                     role="menuitem"
                   >
-                    <KeyRound className="w-5 h-5 text-primary" />
+                    <KeyRound className="w-5 h-5 text-primary-ink" />
                     권한 관리
                   </button>
                 )}
@@ -249,7 +249,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
       {/* 클럽장 양도 확인 모달 */}
       {showTransferConfirm && createPortal(
         <>
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setShowTransferConfirm(false)} />
+          <div className="fixed inset-0 z-50 bg-scrim backdrop-blur-sm" onClick={() => setShowTransferConfirm(false)} />
           <div
             role="dialog"
             aria-modal="true"
@@ -267,8 +267,8 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
             </div>
 
             <div className="p-4 space-y-4">
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                <Crown className="w-5 h-5 text-yellow-500 shrink-0" />
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-warning/10 border border-warning/20">
+                <Crown className="w-5 h-5 text-medal-gold shrink-0" />
                 <p className="text-sm text-foreground">
                   이 멤버에게 클럽장을 양도하면 회원님은 운영진으로 변경됩니다. 이 작업은 되돌릴 수 없습니다.
                 </p>
@@ -284,7 +284,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
                 <button
                   onClick={handleTransferOwnership}
                   disabled={loading}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-yellow-500 text-white hover:bg-yellow-600 transition-colors disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-warning text-black light:text-white hover:opacity-90 transition-colors disabled:opacity-50"
                 >
                   {loading ? '처리 중...' : '양도하기'}
                 </button>
@@ -323,7 +323,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
       {/* 권한 관리 모달 */}
       {showPermissions && createPortal(
         <>
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm" onClick={() => setShowPermissions(false)} />
+          <div className="fixed inset-0 z-50 bg-scrim backdrop-blur-sm" onClick={() => setShowPermissions(false)} />
           <div
             role="dialog"
             aria-modal="true"
@@ -347,7 +347,7 @@ export function MemberManageActions({ clubId, targetUserId, currentRole, myRole,
                     {currentRole === 'admin' ? '운영진' : '멤버'}
                   </Badge>
                   {isCustomized && !hasChanges && (
-                    <span className="text-[10px] text-primary font-medium px-1.5 py-0.5 bg-primary/10 rounded-full">
+                    <span className="text-[10px] text-primary-ink font-medium px-1.5 py-0.5 bg-primary/10 rounded-full">
                       커스텀
                     </span>
                   )}

@@ -147,7 +147,7 @@ export function PlayerGameSummary({ games, participantMap, courtNames }: PlayerG
   return (
     <Card variant="glass" padding="lg">
       <h4 className="font-semibold text-foreground flex items-center gap-2 mb-4">
-        <BarChart3 className="w-4 h-4 text-primary" />
+        <BarChart3 className="w-4 h-4 text-primary-ink" />
         참가자별 경기 요약
       </h4>
 

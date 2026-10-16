@@ -105,8 +105,8 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
       className={cn(
         'bg-card rounded-2xl border overflow-hidden transition-all duration-200',
         isMemberRecruit
-          ? 'border-l-[3px] border-l-[#00E676] border-t-border border-r-border border-b-border'
-          : 'border-l-[3px] border-l-[#42A5F5] border-t-border border-r-border border-b-border'
+          ? 'border-l-[3px] border-l-primary border-t-border border-r-border border-b-border'
+          : 'border-l-[3px] border-l-recruit-guest border-t-border border-r-border border-b-border'
       )}
     >
       {/* Header */}
@@ -123,7 +123,7 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
           <div className="flex items-center gap-2">
             <Link
               href={`/clubs/${post.club_id}`}
-              className="text-sm font-semibold text-foreground hover:text-primary transition-colors truncate"
+              className="text-sm font-semibold text-foreground hover:text-primary-ink transition-colors truncate"
             >
               {clubName}
             </Link>
@@ -131,7 +131,7 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
               variant={isMemberRecruit ? 'success' : 'primary'}
               className={cn(
                 'text-[10px] flex-shrink-0',
-                !isMemberRecruit && 'bg-[#42A5F5]/10 text-[#42A5F5] border-[#42A5F5]/20'
+                !isMemberRecruit && 'bg-recruit-guest/10 text-recruit-guest border-recruit-guest/20'
               )}
             >
               {isMemberRecruit ? '회원 모집' : '게스트 모집'}
@@ -157,7 +157,7 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
 
             {showMenu && createPortal(
               <>
-                <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setShowMenu(false)} />
+                <div className="fixed inset-0 z-50 bg-scrim" onClick={() => setShowMenu(false)} />
                 <div
                   className="fixed bottom-0 left-0 right-0 z-50 bg-surface-elevated rounded-t-2xl border-t border-border shadow-xl animate-slide-up safe-bottom"
                   role="dialog"
@@ -218,19 +218,19 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
         <div className="px-4 pb-2 flex flex-wrap gap-2">
           {post.match_date && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-xs text-muted-foreground">
-              <Calendar className="w-3 h-3 text-[#42A5F5]/70" />
+              <Calendar className="w-3 h-3 text-recruit-guest/70" />
               {formatDate(post.match_date)}
             </span>
           )}
           {post.location && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-xs text-muted-foreground">
-              <MapPin className="w-3 h-3 text-[#42A5F5]/70" />
+              <MapPin className="w-3 h-3 text-recruit-guest/70" />
               {post.location}
             </span>
           )}
           {formatSlots(post) && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-xs text-muted-foreground">
-              <Users className="w-3 h-3 text-[#42A5F5]/70" />
+              <Users className="w-3 h-3 text-recruit-guest/70" />
               {formatSlots(post)}
             </span>
           )}
@@ -252,13 +252,13 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
         <div className="px-4 pb-2 flex flex-wrap gap-2">
           {post.clubs?.region && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-xs text-muted-foreground">
-              <MapPin className="w-3 h-3 text-[#00E676]/70" />
+              <MapPin className="w-3 h-3 text-primary-ink/70" />
               {post.clubs.region}
             </span>
           )}
           {formatSlots(post) && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-elevated border border-border text-xs text-muted-foreground">
-              <Users className="w-3 h-3 text-[#00E676]/70" />
+              <Users className="w-3 h-3 text-primary-ink/70" />
               {formatSlots(post)}
             </span>
           )}
@@ -279,7 +279,7 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
           {isDescriptionLong && !expanded && (
             <button
               onClick={() => setExpanded(true)}
-              className="text-sm text-primary mt-0.5 hover:underline"
+              className="text-sm text-primary-ink mt-0.5 hover:underline"
             >
               더 보기
             </button>
@@ -298,7 +298,7 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
             }
           >
             <Button variant="ghost" size="sm" fullWidth className="text-muted-foreground">
-              <Check className="w-4 h-4 text-primary" />
+              <Check className="w-4 h-4 text-primary-ink" />
               {isMemberRecruit ? '가입된 클럽' : '내 클럽 경기 보기'}
             </Button>
           </Link>
@@ -309,7 +309,7 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
             clubName={post.clubs?.name}
             variant="outline"
             size="sm"
-            className="border-[#00E676]/30 text-[#00E676] hover:bg-[#00E676]/10 hover:border-[#00E676]/50"
+            className="border-primary/30 text-primary-ink hover:bg-primary/10 hover:border-primary/50"
           />
         ) : (
           <Link href={post.match_id ? `/clubs/${post.club_id}/matches/${post.match_id}` : `/clubs/${post.club_id}`}>
@@ -317,7 +317,7 @@ export function RecruitmentCard({ post, currentUserId, isMyClub, onClose, onDele
               variant="outline"
               size="sm"
               fullWidth
-              className="border-[#42A5F5]/30 text-[#42A5F5] hover:bg-[#42A5F5]/10 hover:border-[#42A5F5]/50"
+              className="border-recruit-guest/30 text-recruit-guest hover:bg-recruit-guest/10 hover:border-recruit-guest/50"
             >
               게스트 신청
             </Button>

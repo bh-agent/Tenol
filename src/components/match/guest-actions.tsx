@@ -71,7 +71,7 @@ export function GuestActions({ participantId, matchId }: { participantId: string
   if (state === 'approved') {
     return (
       <>
-        <div className="flex items-center gap-1.5 text-sm font-medium text-primary animate-fade-in">
+        <div className="flex items-center gap-1.5 text-sm font-medium text-primary-ink animate-fade-in">
           <Check className="w-4 h-4" />
           승인됨
         </div>

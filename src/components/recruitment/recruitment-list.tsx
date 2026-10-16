@@ -85,7 +85,7 @@ export function RecruitmentList({
             className={cn(
               'flex-1 py-3 text-sm font-medium text-center transition-colors duration-200 relative cursor-pointer',
               activeType === tab.key
-                ? 'text-primary'
+                ? 'text-primary-ink'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >

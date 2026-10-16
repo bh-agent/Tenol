@@ -608,9 +608,9 @@ export default function ResultsPage() {
 
   // ── Medal colors ──
   const medalColors = [
-    { accent: '#FFD740', ring: 'ring-[#FFD740]/50', border: 'border-[#FFD740]/30', emoji: '👑' },
-    { accent: '#C0C0C0', ring: 'ring-[#C0C0C0]/40', border: 'border-[#C0C0C0]/20', emoji: '🥈' },
-    { accent: '#CD7F32', ring: 'ring-[#CD7F32]/40', border: 'border-[#CD7F32]/20', emoji: '🥉' },
+    { accent: 'var(--t-medal-gold)', ring: 'ring-medal-gold/50', border: 'border-medal-gold/30', emoji: '👑' },
+    { accent: 'var(--t-medal-silver)', ring: 'ring-medal-silver/40', border: 'border-medal-silver/20', emoji: '🥈' },
+    { accent: 'var(--t-medal-bronze)', ring: 'ring-medal-bronze/40', border: 'border-medal-bronze/20', emoji: '🥉' },
   ];
 
   // ── Group games by game_order (time slot) ──
@@ -678,7 +678,7 @@ export default function ResultsPage() {
 
         {loading ? (
           <div className="flex items-center justify-center py-16">
-            <RefreshCw className="w-6 h-6 text-primary animate-spin" />
+            <RefreshCw className="w-6 h-6 text-primary-ink animate-spin" />
           </div>
         ) : loadFailed && games.length === 0 ? (
           /* 로드 실패 ≠ 경기 없음 — 오프라인을 빈 상태로 오표시하지 않는다 */
@@ -713,25 +713,25 @@ export default function ResultsPage() {
                 <div className={cn('gap-3 mb-3', firstGroup.length > 1 ? 'grid grid-cols-2' : '')}>
                   {firstGroup.map((first) => (
                     <Card key={first.participantId} variant="glow" padding={firstGroup.length > 1 ? 'md' : 'lg'} className={cn('relative overflow-hidden', medalColors[0].border)}>
-                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#FFD740] via-[#FFA000] to-[#FFD740]" />
+                      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-medal-gold via-warning to-medal-gold" />
                       <div className="flex flex-col items-center gap-2">
                         <span className={firstGroup.length > 1 ? 'text-2xl' : 'text-3xl'}>{medalColors[0].emoji}</span>
                         <div className={cn('ring-2 ring-offset-2 ring-offset-background rounded-full', medalColors[0].ring)}>
                           <Avatar src={first.avatarUrl} alt={first.displayName} fallback={first.displayName} size={firstGroup.length > 1 ? 'lg' : 'xl'} />
                         </div>
-                        <span className="text-xs font-extrabold tracking-wide" style={{ color: '#FFD740' }}>
+                        <span className="text-xs font-extrabold tracking-wide text-medal-gold">
                           {first.tied ? '공동 ' : ''}{first.rank}위
                         </span>
                         <p className="text-lg font-bold text-foreground truncate max-w-full">{first.displayName}</p>
                       </div>
-                      <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-[#FFD740]/10">
+                      <div className="grid grid-cols-3 gap-3 mt-4 pt-4 border-t border-medal-gold/10">
                         <div className="text-center">
                           <p className="text-[11px] text-muted-foreground">평균 득점</p>
-                          <p className="text-xl font-bold" style={{ color: '#FFD740' }}>{first.avgScore}</p>
+                          <p className="text-xl font-bold text-medal-gold">{first.avgScore}</p>
                         </div>
                         <div className="text-center">
                           <p className="text-[11px] text-muted-foreground">승수</p>
-                          <p className="text-xl font-bold text-primary">{first.wins}승</p>
+                          <p className="text-xl font-bold text-primary-ink">{first.wins}승</p>
                         </div>
                         <div className="text-center">
                           <p className="text-[11px] text-muted-foreground">총 득점</p>
@@ -760,14 +760,14 @@ export default function ResultsPage() {
                             </span>
                             <p className="text-sm font-semibold text-foreground mt-1 truncate max-w-full">{mvp.displayName}</p>
                           </div>
-                          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/[0.06]">
+                          <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-hairline">
                             <div className="text-center">
                               <p className="text-[10px] text-muted-foreground">평균</p>
                               <p className="text-base font-bold" style={{ color: medal.accent }}>{mvp.avgScore}</p>
                             </div>
                             <div className="text-center">
                               <p className="text-[10px] text-muted-foreground">승수</p>
-                              <p className="text-base font-bold text-primary">{mvp.wins}승</p>
+                              <p className="text-base font-bold text-primary-ink">{mvp.wins}승</p>
                             </div>
                           </div>
                         </Card>
@@ -783,7 +783,7 @@ export default function ResultsPage() {
             {highlights.length > 0 && (
               <div>
                 <h2 className="text-lg font-bold text-foreground mb-3">오늘의 명장면</h2>
-                <Card variant="glass" padding="sm" className="divide-y divide-white/[0.04]">
+                <Card variant="glass" padding="sm" className="divide-y divide-hairline">
                   {highlights.map((h, i) => (
                     <div key={i} className="flex items-center gap-3 py-2.5">
                       <div className="w-8 h-8 rounded-full bg-surface-elevated flex items-center justify-center flex-shrink-0 text-base">
@@ -807,7 +807,7 @@ export default function ResultsPage() {
                   {funStats.map((stat, i) => (
                     <Card key={i} variant={i === 0 ? 'glow' : 'glass'} padding="md" className="text-center">
                       <p className="text-[11px] text-muted-foreground">{stat.label}</p>
-                      <p className={cn('text-2xl font-bold mt-1', i === 0 ? 'text-primary' : 'text-foreground')}>{stat.value}</p>
+                      <p className={cn('text-2xl font-bold mt-1', i === 0 ? 'text-primary-ink' : 'text-foreground')}>{stat.value}</p>
                       {stat.sub && <p className="text-[10px] text-muted-foreground mt-0.5">{stat.sub}</p>}
                     </Card>
                   ))}
@@ -833,7 +833,7 @@ export default function ResultsPage() {
                           {/* Court label */}
                           <div className="flex items-center justify-between mb-2">
                             <Badge variant="outline" className="text-[10px]">{game.court_number}코트</Badge>
-                            {game.winner && <Trophy className="w-3.5 h-3.5 text-primary/60" />}
+                            {game.winner && <Trophy className="w-3.5 h-3.5 text-primary-ink/60" />}
                           </div>
 
                           {/* Score row */}
@@ -933,9 +933,9 @@ export default function ResultsPage() {
                               <div className="min-w-[60px] text-center px-2">
                                 {game.score_team_a !== null ? (
                                   <span className="font-bold text-base tabular-nums">
-                                    <span className={game.winner === 'team_a' ? 'text-primary' : 'text-muted-foreground'}>{game.score_team_a}</span>
+                                    <span className={game.winner === 'team_a' ? 'text-primary-ink' : 'text-muted-foreground'}>{game.score_team_a}</span>
                                     <span className="text-subtle mx-1">:</span>
-                                    <span className={game.winner === 'team_b' ? 'text-primary' : 'text-muted-foreground'}>{game.score_team_b}</span>
+                                    <span className={game.winner === 'team_b' ? 'text-primary-ink' : 'text-muted-foreground'}>{game.score_team_b}</span>
                                   </span>
                                 ) : (
                                   <span className="text-[10px] text-muted-foreground">미입력</span>

@@ -100,7 +100,7 @@ function NewClubContent() {
           <Card variant="glass" padding="lg" className="animate-fade-in">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <Plus className="w-5 h-5 text-primary" />
+                <Plus className="w-5 h-5 text-primary-ink" />
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">클럽 만들기</h3>
@@ -156,7 +156,7 @@ function NewClubContent() {
           <Card variant="glass" padding="lg" className="animate-fade-in">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 rounded-xl bg-primary/15 flex items-center justify-center">
-                <LinkIcon className="w-5 h-5 text-primary" />
+                <LinkIcon className="w-5 h-5 text-primary-ink" />
               </div>
               <div>
                 <h3 className="font-semibold text-foreground">초대 링크/코드로 가입</h3>

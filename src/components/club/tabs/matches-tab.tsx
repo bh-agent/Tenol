@@ -139,7 +139,7 @@ export function MatchesTab({ clubId, matches, canCreateMatch, pendingGuestByMatc
             </div>
             <div className="text-right text-sm space-y-1">
               <div>
-                <span className="text-primary font-semibold">{confirmedCount}명</span>
+                <span className="text-primary-ink font-semibold">{confirmedCount}명</span>
                 {match.max_participants && (
                   <span className="text-muted-foreground">/{match.max_participants}</span>
                 )}
@@ -163,7 +163,7 @@ export function MatchesTab({ clubId, matches, canCreateMatch, pendingGuestByMatc
     <div className="space-y-3">
       {canCreateMatch && (
         <Link href={`/clubs/${clubId}/matches/new`}>
-          <button className="w-full border-2 border-dashed border-border rounded-2xl py-5 flex items-center justify-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors active:scale-[0.98]">
+          <button className="w-full border-2 border-dashed border-border rounded-2xl py-5 flex items-center justify-center gap-2 text-muted-foreground hover:border-primary hover:text-primary-ink transition-colors active:scale-[0.98]">
             <Plus className="w-5 h-5" />
             <span className="text-sm font-medium">경기 만들기</span>
           </button>
@@ -228,7 +228,7 @@ export function MatchesTab({ clubId, matches, canCreateMatch, pendingGuestByMatc
         ) : (
           <div className="text-center py-12 text-muted-foreground">
             <div className="w-16 h-16 rounded-2xl bg-primary-dim flex items-center justify-center mx-auto mb-5">
-              <Calendar className="w-7 h-7 text-primary" />
+              <Calendar className="w-7 h-7 text-primary-ink" />
             </div>
             <p className="text-lg font-semibold text-foreground mb-1.5">예정된 경기가 없어요</p>
             <p className="text-sm text-muted-foreground max-w-xs mx-auto leading-relaxed">

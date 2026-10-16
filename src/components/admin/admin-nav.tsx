@@ -28,7 +28,7 @@ export function AdminNav() {
             className={cn(
               'flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-all',
               isActive
-                ? 'bg-surface-elevated text-primary shadow-sm'
+                ? 'bg-surface-elevated text-primary-ink shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >

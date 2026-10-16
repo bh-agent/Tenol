@@ -19,15 +19,15 @@ import {
 import { useRouter } from 'next/navigation';
 
 const typeConfig: Record<string, { icon: typeof Bell; color: string }> = {
-  match_invite: { icon: Calendar, color: 'text-primary bg-primary-dim' },
+  match_invite: { icon: Calendar, color: 'text-primary-ink bg-primary-dim' },
   guest_approved: { icon: UserCheck, color: 'text-success bg-success/10' },
   guest_rejected: { icon: UserX, color: 'text-destructive bg-destructive/10' },
   match_reminder: { icon: Bell, color: 'text-warning bg-warning/10' },
   match_updated: { icon: CalendarClock, color: 'text-warning bg-warning/10' },
   match_cancelled: { icon: CalendarX, color: 'text-destructive bg-destructive/10' },
-  draw_published: { icon: Shuffle, color: 'text-primary bg-primary-dim' },
+  draw_published: { icon: Shuffle, color: 'text-primary-ink bg-primary-dim' },
   score_updated: { icon: Trophy, color: 'text-warning bg-warning/10' },
-  role_changed: { icon: Shield, color: 'text-primary bg-primary-dim' },
+  role_changed: { icon: Shield, color: 'text-primary-ink bg-primary-dim' },
   join_request: { icon: Users, color: 'text-warning bg-warning/10' },
   join_approved: { icon: UserCheck, color: 'text-success bg-success/10' },
   join_rejected: { icon: UserX, color: 'text-destructive bg-destructive/10' },

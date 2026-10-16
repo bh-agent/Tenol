@@ -152,7 +152,7 @@ export function MyMatchesTabs({ upcoming, history }: MyMatchesTabsProps) {
             className={cn(
               'flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors relative',
               activeTab === tab.key
-                ? 'text-primary'
+                ? 'text-primary-ink'
                 : 'text-muted-foreground hover:text-foreground'
             )}
           >
@@ -162,7 +162,7 @@ export function MyMatchesTabs({ upcoming, history }: MyMatchesTabsProps) {
               <span className={cn(
                 'ml-1 text-[10px] rounded-full px-1.5 py-0.5 font-semibold',
                 activeTab === tab.key
-                  ? 'bg-primary-dim text-primary'
+                  ? 'bg-primary-dim text-primary-ink'
                   : 'bg-surface-elevated text-muted-foreground'
               )}>
                 {tab.count}
@@ -184,7 +184,7 @@ export function MyMatchesTabs({ upcoming, history }: MyMatchesTabsProps) {
               onClick={() => setShowFilters(!showFilters)}
               className={cn(
                 'flex items-center gap-1.5 text-sm font-medium transition-colors',
-                showFilters || hasFilters ? 'text-primary' : 'text-muted-foreground'
+                showFilters || hasFilters ? 'text-primary-ink' : 'text-muted-foreground'
               )}
             >
               <Filter className="w-4 h-4" />

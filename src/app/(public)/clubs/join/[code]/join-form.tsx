@@ -68,7 +68,7 @@ export function JoinByLinkForm({ inviteCode, profile, isLoggedIn = true }: JoinB
   if (success) {
     return (
       <div className="text-center py-3 space-y-2">
-        <p className="text-sm font-medium text-primary">
+        <p className="text-sm font-medium text-primary-ink">
           가입 신청이 완료되었습니다!
         </p>
         <p className="text-xs text-muted-foreground">

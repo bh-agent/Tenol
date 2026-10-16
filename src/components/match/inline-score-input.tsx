@@ -75,7 +75,7 @@ export function InlineScoreInput({
               onChange={(e) => handleScoreChange(setScoreA, e.target.value)}
               className={cn(
                 'w-12 h-11 text-center text-xl font-bold tabular-nums rounded-lg bg-muted border border-border focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30',
-                scoreA > scoreB ? 'text-primary' : 'text-foreground'
+                scoreA > scoreB ? 'text-primary-ink' : 'text-foreground'
               )}
             />
             <button
@@ -108,7 +108,7 @@ export function InlineScoreInput({
               onChange={(e) => handleScoreChange(setScoreB, e.target.value)}
               className={cn(
                 'w-12 h-11 text-center text-xl font-bold tabular-nums rounded-lg bg-muted border border-border focus:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/30',
-                scoreB > scoreA ? 'text-primary' : 'text-foreground'
+                scoreB > scoreA ? 'text-primary-ink' : 'text-foreground'
               )}
             />
             <button

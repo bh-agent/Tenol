@@ -55,7 +55,7 @@ export function ClubInviteLink({ code }: { code: string }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2 bg-surface-elevated rounded-lg px-3 py-2.5 border border-border">
-        <LinkIcon className="w-3.5 h-3.5 text-primary/70 flex-shrink-0" />
+        <LinkIcon className="w-3.5 h-3.5 text-primary-ink/70 flex-shrink-0" />
         <span className="text-xs text-foreground/70 flex-1 truncate font-mono">
           {displayLink}
         </span>
@@ -70,7 +70,7 @@ export function ClubInviteLink({ code }: { code: string }) {
           aria-label="링크 복사"
         >
           {copied ? (
-            <Check className="w-4 h-4 text-primary animate-fade-in" />
+            <Check className="w-4 h-4 text-primary-ink animate-fade-in" />
           ) : (
             <Copy className="w-4 h-4 text-muted-foreground" />
           )}

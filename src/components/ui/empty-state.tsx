@@ -22,7 +22,7 @@ export function EmptyState({
   return (
     <div className="flex flex-col items-center justify-center py-16 px-6 text-center animate-fade-in">
       <div className="w-20 h-20 rounded-full border-2 border-dashed border-border flex items-center justify-center mb-6">
-        <Icon className="w-8 h-8 text-primary/70" strokeWidth={1.75} />
+        <Icon className="w-8 h-8 text-primary-ink/70" strokeWidth={1.75} />
       </div>
       <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
       <p className="text-sm text-muted-foreground mb-7 max-w-xs leading-relaxed">

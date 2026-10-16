@@ -3,6 +3,22 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Capacitor } from '@capacitor/core';
+import { getResolvedTheme, subscribeTheme } from '@/lib/theme/theme-store';
+import { THEME_BACKGROUND, type ResolvedTheme } from '@/lib/theme/theme';
+
+/**
+ * 상태바를 현재 테마에 맞춘다.
+ * Capacitor 기준 Style.Dark = 어두운 배경 + 밝은 글자, Style.Light = 밝은 배경 + 어두운 글자.
+ */
+async function applyStatusBarTheme(theme: ResolvedTheme) {
+  try {
+    const { StatusBar, Style } = await import('@capacitor/status-bar');
+    await StatusBar.setStyle({ style: theme === 'dark' ? Style.Dark : Style.Light });
+    if (Capacitor.getPlatform() === 'android') {
+      await StatusBar.setBackgroundColor({ color: THEME_BACKGROUND[theme] });
+    }
+  } catch {}
+}
 
 export function NativeInit() {
   const router = useRouter();
@@ -15,14 +31,17 @@ export function NativeInit() {
     const removers: Array<() => void> = [];
 
     const initNative = async () => {
-      // Status Bar
-      try {
-        const { StatusBar, Style } = await import('@capacitor/status-bar');
-        await StatusBar.setStyle({ style: Style.Dark });
-        if (Capacitor.getPlatform() === 'android') {
-          await StatusBar.setBackgroundColor({ color: '#0A0A0A' });
-        }
-      } catch {}
+      // Status Bar — 테마 변경(설정·OS 전환)을 구독해 즉시 반영
+      await applyStatusBarTheme(getResolvedTheme());
+      let lastTheme = getResolvedTheme();
+      removers.push(
+        subscribeTheme(() => {
+          const next = getResolvedTheme();
+          if (next === lastTheme) return;
+          lastTheme = next;
+          void applyStatusBarTheme(next);
+        }),
+      );
 
       // Keyboard (iOS form handling)
       try {
@@ -91,6 +110,8 @@ export function NativeInit() {
         const hResume = await App.addListener('resume', () => {
           const stale = hiddenAt && Date.now() - hiddenAt > STALE_MS;
           hiddenAt = null;
+          // 백그라운드에서 OS 테마가 바뀌었을 수 있음 — 상태바 재적용
+          void applyStatusBarTheme(getResolvedTheme());
           if (stale) {
             void reloadWhenReachable();
           } else {

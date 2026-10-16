@@ -60,7 +60,7 @@ export function JoinRequestList({ requests, clubId }: JoinRequestListProps) {
     <div className="px-4 py-2 animate-fade-in">
       <Card padding="md">
         <div className="flex items-center gap-2 mb-3">
-          <UserPlus className="w-4 h-4 text-primary" />
+          <UserPlus className="w-4 h-4 text-primary-ink" />
           <h3 className="text-sm font-semibold text-foreground">가입 신청</h3>
           <Badge variant="primary">{pendingRequests.length}</Badge>
         </div>
@@ -90,7 +90,7 @@ export function JoinRequestList({ requests, clubId }: JoinRequestListProps) {
                           className="w-10 h-10 rounded-full object-cover"
                         />
                       ) : (
-                        <span className="text-sm font-bold text-primary">{avatarInitial}</span>
+                        <span className="text-sm font-bold text-primary-ink">{avatarInitial}</span>
                       )}
                     </div>
                   </Link>
@@ -99,7 +99,7 @@ export function JoinRequestList({ requests, clubId }: JoinRequestListProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <Link href={`/profile/${request.user_id}`}>
-                        <p className="text-sm font-semibold text-foreground hover:text-primary transition-colors truncate">{displayName}</p>
+                        <p className="text-sm font-semibold text-foreground hover:text-primary-ink transition-colors truncate">{displayName}</p>
                       </Link>
                       {(profile as any)?.real_name && (
                         <span className="text-xs text-muted-foreground">({(profile as any).real_name})</span>

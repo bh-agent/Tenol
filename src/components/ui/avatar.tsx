@@ -67,7 +67,7 @@ export function Avatar({
         />
         {/* Fallback shown while image loads */}
         {!loaded && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary-dark/20 text-primary font-semibold">
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary-dark/20 text-primary-ink font-semibold">
             {initial}
           </div>
         )}
