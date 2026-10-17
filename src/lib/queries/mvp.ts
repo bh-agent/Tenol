@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
+import { kstToday } from '@/lib/utils/next-match-date';
+import { getClubMemberIds } from './member-ids';
 
 export type MvpPeriod = 'match' | 'week' | 'month' | 'year' | 'all';
 
@@ -24,21 +26,37 @@ export function compareMvp(a: MvpAgg, b: MvpAgg): number {
   return avgB - avgA;
 }
 
-function getPeriodStartDate(period: MvpPeriod): string | null {
+function toDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/**
+ * 기간 시작일 (KST 달력 기준).
+ * - week: 이번 주 월요일
+ * - month: 이번 달 1일
+ * - year: 올해 1월 1일
+ * (이전엔 최근 7일/30일/365일 롤링이라 "이번 주 MVP"가 지난주 경기까지 포함했다)
+ */
+export function getPeriodStartDate(period: MvpPeriod, today: Date = kstToday()): string | null {
   if (period === 'all' || period === 'match') return null;
-  const now = new Date();
+  const d = new Date(today);
   switch (period) {
-    case 'week':
-      now.setDate(now.getDate() - 7);
+    case 'week': {
+      const diffToMonday = (d.getDay() + 6) % 7; // 일(0)→6, 월(1)→0
+      d.setDate(d.getDate() - diffToMonday);
       break;
+    }
     case 'month':
-      now.setDate(now.getDate() - 30);
+      d.setDate(1);
       break;
     case 'year':
-      now.setDate(now.getDate() - 365);
+      d.setMonth(0, 1);
       break;
   }
-  return now.toISOString().split('T')[0];
+  return toDateStr(d);
 }
 
 async function buildMvpRanking(
@@ -59,9 +77,12 @@ async function buildMvpRanking(
     query = query.gte('match_date', startDate);
   }
 
-  const { data } = await query;
+  const [{ data: rows }, memberIds] = await Promise.all([query, getClubMemberIds(clubId)]);
 
-  if (!data || data.length === 0) return [];
+  // 클럽 회원만 (게스트 참가 계정 제외)
+  const data = (rows ?? []).filter((r) => memberIds.has(r.user_id));
+
+  if (data.length === 0) return [];
 
   // Aggregate: for each player, sum the score of their team, count games & wins
   const playerAgg: Record<

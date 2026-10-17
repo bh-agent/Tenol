@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getClubMemberIds } from './member-ids';
 
 export async function getPlayerStats(userId: string, clubId?: string) {
   const supabase = await createClient();
@@ -82,13 +83,19 @@ export async function getPlayerRecentGames(userId: string, limit: number = 10, c
 export async function getClubLeaderboard(clubId: string) {
   const supabase = await createClient();
 
-  const { data } = await supabase
-    .from('player_game_stats')
-    .select('user_id, result, score_team_a')
-    .eq('club_id', clubId)
-    .not('score_team_a', 'is', null);
+  const [{ data: rows }, memberIds] = await Promise.all([
+    supabase
+      .from('player_game_stats')
+      .select('user_id, result, score_team_a')
+      .eq('club_id', clubId)
+      .not('score_team_a', 'is', null),
+    getClubMemberIds(clubId),
+  ]);
 
-  if (!data || data.length === 0) return [];
+  // 클럽 회원만 (게스트 참가 계정 제외)
+  const data = (rows ?? []).filter((r) => memberIds.has(r.user_id));
+
+  if (data.length === 0) return [];
 
   // Aggregate stats per player (점수 입력된 모든 경기 포함)
   const playerStats: Record<string, { wins: number; losses: number; draws: number; total: number }> = {};

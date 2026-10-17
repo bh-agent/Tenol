@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { getClubMemberIds } from './member-ids';
 
 export type ClubRecord = {
   type: 'highest_score' | 'longest_streak' | 'most_games_day' | 'most_active_month';
@@ -13,14 +14,20 @@ export type ClubRecord = {
 export async function getClubRecords(clubId: string): Promise<ClubRecord[]> {
   const supabase = await createClient();
 
-  const { data: rawStats } = await supabase
-    .from('player_game_stats')
-    .select('*')
-    .eq('club_id', clubId)
-    .not('score_team_a', 'is', null)
-    .order('match_date', { ascending: true });
+  const [{ data: allStats }, memberIds] = await Promise.all([
+    supabase
+      .from('player_game_stats')
+      .select('*')
+      .eq('club_id', clubId)
+      .not('score_team_a', 'is', null)
+      .order('match_date', { ascending: true }),
+    getClubMemberIds(clubId),
+  ]);
 
-  if (!rawStats || rawStats.length === 0) return [];
+  // 클럽 기록은 회원만 (게스트 참가 계정 제외)
+  const rawStats = (allStats ?? []).filter((s) => memberIds.has(s.user_id));
+
+  if (rawStats.length === 0) return [];
 
   // 같은 날 여러 게임의 순서가 DB 반환 순서에 따라 뒤섞이면 연승 계산이 흔들린다.
   // match_date → completed_at → game_order → court_number 순으로 결정적 정렬.

@@ -10,9 +10,9 @@ import { useState } from 'react';
 
 const PERIOD_LABELS: Record<MvpPeriod, string> = {
   match: '경기',
-  week: '주간',
-  month: '월간',
-  year: '연간',
+  week: '이번 주',
+  month: '이번 달',
+  year: '올해',
   all: '전체',
 };
 
